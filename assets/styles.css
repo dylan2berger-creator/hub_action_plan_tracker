@@ -6,6 +6,44 @@
    ============================================================ */
 
 :root {
+  /* ===== Real Hub design tokens (verbatim values from the shipped CSS) =====
+     These back the imported hub-shell.css so its var() references resolve. */
+  --color-primary-on-primary-container: #002241;
+  --color-primary-primary: #00529b;
+  --color-secondary-secondary: #2b7a8e;
+  --color-neutral-background: #fff;
+  --color-neutral-surface-bright: #f8f8f8;
+  --color-neutral-surface-container-lowest: #fff;
+  --color-neutral-surface-container-low: #f8f8f8;
+  --color-neutral-surface-container: #dfdfdf;
+  --color-neutral-surface-container-high: #d1d1d1;
+  --color-neutral-surface-outline-variant: #d5e2ee;
+  --color-neutral-on-surface-variant: #313031;
+  --color-neutral-on-background-variant: #474647;
+  --color-neutral-outline-variant: #b0c9e0;
+  --color-background-alert-background-warning-strong: #ffc107;
+
+  --spacing-spacing1: 2px;  --spacing-spacing2: 4px;  --spacing-spacing3: 8px;
+  --spacing-spacing4: 12px; --spacing-spacing5: 16px; --spacing-spacing6: 24px;
+  --spacing-spacing7: 32px; --spacing-spacing8: 40px; --spacing-spacing9: 48px;
+
+  --sizing-navigation-bar-height: 64px;
+  --sizing-page-content-top-padding: 24px;
+  --sizing-impersonation-banner-height: 64px;
+  --sizing-layout-breakpoints-min-width: 1366px;
+  --sizing-layout-breakpoints-max-width: 1600px;
+  --sizing-huddleboard-breakpoints-max-width: 1920px;
+
+  --z-index-header: 6;
+  --z-index-navigation-bar: 6;
+  --z-index-navigation-bar-background: 5;
+  --z-index-page-content-wrapper: 5;
+  --z-index-page-content: 0;
+  --z-index-impersonation-banner: 7;
+  --z-index-selector-dropdown: 1307;
+
+  --corner-none: 0;
+
   /* Brand / primary */
   --navy: #002241;                 /* nav bar background (on-primary-container) */
   --primary: #00529b;
@@ -84,7 +122,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--navy);
+  background: var(--color-neutral-surface-bright);
   font-family: var(--font-plain);
   color: var(--on-surface);
   -webkit-font-smoothing: antialiased;
@@ -96,28 +134,28 @@ button { font-family: inherit; }
 /* ------------------------------------------------------------
    Navigation bar (mirrors ClientLayout / navigationMenu)
    ------------------------------------------------------------ */
-.appbar {
-  height: var(--nav-height);
-  background: var(--navy);
+/* Inner flex row placed inside the real navigationBarWrapper's centered child */
+.navbar-inner {
+  height: var(--sizing-navigation-bar-height);
   display: flex;
   align-items: center;
   gap: var(--sp7);
   padding: 0 var(--sp6);
-  position: sticky;
-  top: 0;
-  z-index: 6;
 }
 
-.brand {
+/* Logo art lives inside the real .thehub…logo span; drop its external bg image
+   (the shipped class points at /thehub.svg, which isn't shipped with this repo). */
+.thehub-module-scss-module__TSWhsq__logo {
+  background-image: none !important;
   display: flex;
   align-items: center;
-  flex-shrink: 0;
-  padding-right: var(--sp3);
-  background: transparent;
-  border: none;
-  cursor: pointer;
 }
-.brand .brand-logo { height: 38px; width: auto; display: block; }
+.thehub-module-scss-module__TSWhsq__logo .brand-logo {
+  width: 100%;
+  height: auto;
+  max-height: 36px;
+  display: block;
+}
 
 .nav-menu {
   display: flex;
@@ -204,12 +242,9 @@ button { font-family: inherit; }
 /* ------------------------------------------------------------
    Page content
    ------------------------------------------------------------ */
-.page {
-  background: var(--surface-bright);
-  min-height: calc(100vh - var(--nav-height));
-  padding: 20px var(--sp6) var(--sp8);
-}
-.page-inner { max-width: 1920px; margin: 0 auto; }
+/* The real Hub pageContent handles width, centering, and padding;
+   just add a little breathing room at the bottom. */
+.ClientLayout-module-scss-module__Skw-ja__pageContent { padding-bottom: var(--sp8); }
 
 .page-head {
   display: flex;

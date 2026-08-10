@@ -39,9 +39,15 @@ between visits on the same browser.
 
 | File | Purpose |
 |------|---------|
-| `index.html` | Page shell: Hub navigation bar, toolbar, board mount point, add/edit modal. |
-| `assets/styles.css` | Design tokens pulled from the shipped Hub CSS + all component styles. |
+| `index.html` | Page shell built on The Hub's real `ClientLayout` / `thehub` markup, plus the toolbar, board mount point, and add/edit modal. |
+| `assets/hub-shell.css` | The Hub's actual shipped layout/navigation CSS, imported verbatim (header/nav wrappers, logo button, page-content centering). |
+| `assets/styles.css` | The Hub design tokens + all Action-Plans component styles. |
 | `assets/app.js` | Board state, rendering, drag & drop, filtering/sorting, and persistence. |
+
+> **Logo note:** the shipped CSS loads the wordmark from `/thehub.svg`, which isn't
+> included here, so `index.html` uses a hand-built recreation of the "THE HUB"
+> wordmark (inline SVG). Drop the real `thehub.svg` into the repo and point the
+> `.thehub…logo` span at it to make the logo pixel-exact.
 
 ## How this maps onto the real Hub
 

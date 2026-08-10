@@ -9,13 +9,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Fustat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/hub-shell.css" />
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
-  <!-- ================= Navigation bar ================= -->
-  <header class="appbar">
-    <button class="brand" aria-label="The Hub">
-      <svg class="brand-logo" viewBox="0 0 150 46" role="img" aria-label="The Hub" fill="none">
+  <!-- ================= Navigation bar — real Hub ClientLayout shell ================= -->
+  <div class="ClientLayout-module-scss-module__Skw-ja__headerWrapper">
+    <div class="ClientLayout-module-scss-module__Skw-ja__navigationBarWrapper">
+      <div>
+        <div class="navbar-inner">
+          <button class="thehub-module-scss-module__TSWhsq__button" aria-label="The Hub">
+            <span class="thehub-module-scss-module__TSWhsq__logo" role="img" aria-label="The Hub logo">
+              <svg class="brand-logo" viewBox="0 0 150 46" aria-hidden="true" fill="none">
         <text x="3" y="13.5" fill="#fff" font-family="'Oswald','Arial Narrow',sans-serif" font-size="11" font-weight="600" letter-spacing="3">THE</text>
         <text x="1" y="41" fill="#fff" font-family="'Oswald','Arial Narrow',sans-serif" font-size="35" font-weight="700" letter-spacing="1">HUB</text>
         <!-- hub-and-spoke network over the wordmark -->
@@ -29,10 +34,11 @@
           <circle cx="92" cy="6" r="2.9" />
           <circle cx="108" cy="12" r="2.1" />
         </g>
-      </svg>
-    </button>
+              </svg>
+            </span>
+          </button>
 
-    <nav class="nav-menu" aria-label="Primary">
+          <nav class="nav-menu" aria-label="Primary">
       <button class="nav-item" data-label="Huddle Board"><span class="label">Huddle Board</span></button>
       <button class="nav-item" data-label="Summary"><span class="label">Summary</span></button>
       <button class="nav-item" data-label="CCC Report"><span class="label">CCC Report</span></button>
@@ -62,12 +68,16 @@
       <button class="icon-btn" aria-label="User profile">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2M7.35 18.5C8.66 17.56 10.26 17 12 17s3.34.56 4.65 1.5C15.34 19.44 13.74 20 12 20s-3.34-.56-4.65-1.5m10.79-1.38C16.45 15.8 14.32 15 12 15s-4.45.8-6.14 2.12C4.7 15.73 4 13.95 4 12c0-4.42 3.58-8 8-8s8 3.58 8 8c0 1.95-.7 3.73-1.86 5.12M12 6c-1.93 0-3.5 1.57-3.5 3.5S10.07 13 12 13s3.5-1.57 3.5-3.5S13.93 6 12 6"/></svg>
       </button>
+          </div>
+        </div>
+      </div>
     </div>
-  </header>
+    <div class="ClientLayout-module-scss-module__Skw-ja__bottomOverlappingElement"></div>
+  </div>
 
-  <!-- ================= Page ================= -->
-  <main class="page">
-    <div class="page-inner">
+  <!-- ================= Page — real Hub content wrappers ================= -->
+  <div class="ClientLayout-module-scss-module__Skw-ja__pageContentWrapper ClientLayout-module-scss-module__Skw-ja__huddleBoard">
+    <div class="ClientLayout-module-scss-module__Skw-ja__pageContent ClientLayout-module-scss-module__Skw-ja__withHeader ClientLayout-module-scss-module__Skw-ja__huddleBoard">
       <div class="page-head">
         <div class="page-title-wrap">
           <h1 class="page-title">Action Plans</h1>
@@ -125,7 +135,7 @@
 
       <div class="board" id="board" aria-label="Action plan board"></div>
     </div>
-  </main>
+  </div>
 
   <!-- ================= Add / Edit modal ================= -->
   <div class="overlay" id="overlay" role="presentation">
