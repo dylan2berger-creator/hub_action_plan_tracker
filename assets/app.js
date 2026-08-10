@@ -12,12 +12,13 @@
 
   var COLUMNS = [
     { key: 'identified', label: 'Identified',  accent: '#6a4c93' },
-    { key: 'planned',    label: 'Planned',     accent: '#00529b' },
     { key: 'inprogress', label: 'In Progress', accent: '#2b7a8e' },
     { key: 'blocked',    label: 'Blocked',     accent: '#ba1a1a' },
     { key: 'verifying',  label: 'Verifying',   accent: '#c1660f' },
     { key: 'closed',     label: 'Closed',      accent: '#36832f' }
   ];
+  // 'planned' was merged into 'identified'
+  function normColumn(c) { return c === 'planned' ? 'identified' : c; }
 
   var PRIORITIES = [
     { key: 'urgent', label: 'Urgent', chip: 'chip-red' },
@@ -49,6 +50,7 @@
       var item = shallow(t);
       item.planId = p.id;
       item.storeId = p.storeId;
+      item.column = normColumn(item.column);
       tasks.push(item);
     });
   });

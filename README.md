@@ -24,11 +24,12 @@ which drives all aging / overdue / behind-target logic.
 
 ## What it models
 
-**Six-stage Kanban** — a task moves left to right and does *not* jump straight to
+**Five-stage Kanban** — a task moves left to right and does *not* jump straight to
 Closed. `Verifying` is deliberate: most remediations lag 30–90 days before the
-signal shows up.
+signal shows up. (`Identified` holds both freshly diagnosed items and planned,
+not-yet-started work.)
 
-`Identified → Planned → In Progress → Blocked → Verifying → Closed`
+`Identified → In Progress → Blocked → Verifying → Closed`
 
 **Root-cause taxonomy** (every card is tagged with one):
 DRP Scorecard · DRP Participation · Personnel / Skill Mix · Equipment ·
