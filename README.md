@@ -1,65 +1,92 @@
 # hub_action_plan_tracker
 
-An **Action Plans** tab for *The Hub* — a self-contained, interactive Kanban board
-for tracking action items from the daily huddle through to done. Built to match The
-Hub's existing design system (navigation bar, colors, typography, chips, avatars) so
-it reads as a native part of the app.
+An **Action Plans** tab for *The Hub* — a self-contained prototype for tracking
+**challenged-store remediation** across a Boyd Group / Gerber Collision market. A
+Market Manager (CPM) or GM diagnoses *why* a store is missing revenue targets,
+builds an action plan, assigns tasks, and tracks whether the intervention actually
+moved the metric. Built on The Hub's real navigation shell and design system.
 
 ![Action Plans board](assets/preview.png)
 
 ## Run it
 
-No build step, no dependencies. Just open the page:
+No build step, no dependencies. Open the page:
 
 ```bash
-# from the repo root
 open index.html          # macOS
 xdg-open index.html      # Linux
 # or drag index.html into any browser
 ```
 
-The board seeds with sample action items on first load and saves every change to
-your browser's `localStorage` (key `hub.actionPlans.v1`), so your edits persist
-between visits on the same browser.
+State is held **in memory only** — drag, add, edit, and move changes reset on
+reload. The board is a snapshot **as of the dataset's reference date** (Aug 10, 2026),
+which drives all aging / overdue / behind-target logic.
 
-## Features
+## What it models
 
-- **Four status columns** — To Do, In Progress, Blocked, Done — each with a live count.
-- **Add / edit / delete** actions via a modal (title, details, owner, priority,
-  status, due date, tag).
-- **Drag & drop** cards between columns, or use the ◀ ▶ buttons (keyboard-accessible).
-- **Filter** by owner or priority, **search** across title/details/owner/tag, and
-  **sort** by due date, priority, or newest.
-- **Priority accents & chips** — Urgent / High / Medium / Low, color-coded to The Hub palette.
-- **Due-date awareness** — "Due today", "Due tomorrow", and red **Overdue** flags.
-- **Summary pills** — total actions, blocked, and overdue at a glance.
-- **Board options** menu — reset to sample data or clear the board.
+**Six-stage Kanban** — a task moves left to right and does *not* jump straight to
+Closed. `Verifying` is deliberate: most remediations lag 30–90 days before the
+signal shows up.
+
+`Identified → Planned → In Progress → Blocked → Verifying → Closed`
+
+**Root-cause taxonomy** (every card is tagged with one):
+DRP Scorecard · DRP Participation · Personnel / Skill Mix · Equipment ·
+Revenue Leakage · Market Demand.
+
+**Action plan** (attaches to a store): root cause, carrier (when carrier-specific),
+opened / target-close dates, owning persona (CPM, RDO, Shop GM, National Account
+Manager, RVP, Sales), a plain-language diagnosis, and 3–6 tasks.
+
+**Task**: owner + role, status column, priority, due date, a risk note, a blocked
+reason (when Blocked), a **verification signal** (the *name* of the metric expected
+to move + expected lag in days), and a dated **activity log** of the real
+back-and-forth.
+
+**Cross-linking** — plans carry a `parentPlanId` so several symptoms trace to one
+cause. Open **Aurora, IL** (the default store): a single downstream booth outage
+(Equipment) shows up as four separate symptom plans — cycle-time and CSI scorecard
+misses, sublet revenue leakage, and a refinish capacity gap. Cards show
+**▲ upstream of N** on the cause and **↳ linked** on the symptoms.
+
+## Using the board
+
+- **Switch stores** from the location selector in the top nav (defaults to the
+  Aurora cross-link cluster; choose **All stores** to see the whole market —
+  21 plans across 13 stores).
+- **Filters:** root cause, owner, and a **Behind target** toggle (tasks past their
+  due date or whose plan blew its target-close date).
+- **Search** across task, owner, store, carrier, diagnosis, and metric.
+- **Drag** cards between columns, or use the ◀ ▶ buttons.
+- **Click a card** to open it: editable task fields on the left; on the right, the
+  parent action plan (root cause, carrier, personas, dates, linked plan) and the
+  task's activity-log timeline (with add-note).
+- **New task** attaches to any plan via the plan picker.
+
+> **Data note:** no numeric KPI values, targets, scores, or dollar figures appear
+> anywhere — metrics are referenced by name only. All names are synthetic.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `index.html` | Page shell built on The Hub's real `ClientLayout` / `thehub` markup, plus the toolbar, board mount point, and add/edit modal. |
-| `assets/hub-shell.css` | The Hub's actual shipped layout/navigation CSS, imported verbatim (header/nav wrappers, logo button, page-content centering). |
+| `index.html` | Page shell on The Hub's real `ClientLayout` / `thehub` markup, toolbar, board, and the task modal. |
+| `assets/hub-shell.css` | The Hub's actual shipped layout/navigation CSS, imported verbatim. |
 | `assets/styles.css` | The Hub design tokens + all Action-Plans component styles. |
-| `assets/app.js` | Board state, rendering, drag & drop, filtering/sorting, and persistence. |
-
-> **Logo note:** the shipped CSS loads the wordmark from `/thehub.svg`, which isn't
-> included here, so `index.html` uses a hand-built recreation of the "THE HUB"
-> wordmark (inline SVG). Drop the real `thehub.svg` into the repo and point the
-> `.thehub…logo` span at it to make the logo pixel-exact.
+| `assets/thehub.svg` | The official "THE HUB" logo. |
+| `assets/data.js` | The mock dataset — stores, plans, tasks, cross-links (`window.HUB_DATA`). |
+| `assets/app.js` | Board state, rendering, drag & drop, store switching, filters, and the task modal. |
 
 ## How this maps onto the real Hub
 
-The Hub is a Next.js app whose menu items live in a navigation-menu component and
-route to pages. To promote this prototype into the app:
+The Hub is a Next.js app. To promote this prototype:
 
-1. **Nav entry** — add an `Action Plans` `MenuElement` beside `KPI's`, pointing at a
-   new route (e.g. `/action-plans`), reusing the same selected/icon treatment.
-2. **Page/route** — port `index.html`'s content region into a Hub page component.
-3. **State** — swap the `localStorage` layer in `assets/app.js` for the app's data
-   layer / API; the render and interaction logic can move into a React component
-   largely as-is.
+1. **Nav entry** — the `Action Plans` `MenuElement` beside `KPI's` is already on the
+   real shell; point it at a new route (e.g. `/action-plans`).
+2. **Data** — replace `assets/data.js` with the app's data layer / API. The render
+   and interaction logic in `assets/app.js` ports to a React component largely as-is.
+3. **Store scope** — the nav store selector already drives the board's scope; wire it
+   to the app's shop context.
 
-The visual layer already uses the app's tokens (`--color-*`, spacing, corners,
-Oswald/Fustat), so it should drop in without restyling.
+The visual layer uses the app's own tokens (`--color-*`, spacing, corners,
+Oswald/Fustat), so it drops in without restyling.
