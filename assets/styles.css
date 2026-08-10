@@ -73,6 +73,10 @@
   --nav-height: 64px;
   --shadow-1: 0 1px 2px #0000004d, 0 1px 3px 1px #00000026;
   --shadow-2: 0 4px 8px #00000026, 0 2px 4px #0000001f;
+
+  /* The Hub is a light UI; keep native controls (date picker, selects) light
+     regardless of the host/OS theme. */
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
