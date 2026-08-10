@@ -57,6 +57,7 @@
   var taskSeq = 1000;
 
   var state = {
+    view: 'plans',
     store: DATA.defaultStoreId || 'all',
     root: 'all',
     owner: 'all',
@@ -434,6 +435,7 @@
     document.getElementById('shopName').textContent = s ? s.name : 'All stores';
     buildStoreMenu();
     render();
+    if (state.view === 'kpis') renderKpis(id);
   }
 
   /* ---------------- filters ---------------- */
@@ -450,6 +452,148 @@
   function populate(sel, opts, allLabel) {
     sel.innerHTML = '<option value="all">' + esc(allLabel) + '</option>' +
       opts.map(function (o) { return '<option value="' + esc(o.key) + '">' + esc(o.label) + '</option>'; }).join('');
+  }
+
+  /* ---------------- KPI dashboard (KPIs tab) ---------------- */
+  var KPI_METRICS = DATA.kpiMetrics || [];
+  var KPI_GROUPS = DATA.kpiGroups || [];
+  var KPIS_BY_STORE = DATA.kpisByStore || {};
+
+  function kpiValuesFor(storeId) {
+    if (storeId && storeId !== 'all' && KPIS_BY_STORE[storeId]) return KPIS_BY_STORE[storeId];
+    var acc = {}, n = 0;
+    Object.keys(KPIS_BY_STORE).forEach(function (sid) {
+      n++; KPI_METRICS.forEach(function (m) { acc[m.key] = (acc[m.key] || 0) + KPIS_BY_STORE[sid][m.key]; });
+    });
+    var out = {}; KPI_METRICS.forEach(function (m) { out[m.key] = n ? acc[m.key] / n : 0; });
+    return out;
+  }
+  function trimNum(x) { return String(parseFloat(x.toFixed(2))); }
+  function fmtVal(v, unit) {
+    if (unit === '%') return Math.round(v) + '%';
+    if (unit === 'days') { var s = parseFloat(v.toFixed(2)); return trimNum(s) + ' ' + (s === 1 ? 'day' : 'days'); }
+    if (unit === '$') return '$' + Math.round(v / 1000) + 'K';
+    return String(Math.round(v));
+  }
+  function deltaMag(unit, g) {
+    if (unit === '%') return Math.round(g) + '%';
+    if (unit === 'days') { var s = parseFloat(g.toFixed(1)); return trimNum(s) + ' ' + (s < 2 ? 'day' : 'days'); }
+    if (unit === '$') return '$' + Math.round(g / 1000) + 'K';
+    if (unit === 'pts') return Math.round(g) + ' pts';
+    return String(Math.round(g));
+  }
+  function kpiDelta(m, v) {
+    var gap = Math.abs(v - m.goal);
+    var ahead = m.dir === 'higher' ? v >= m.goal : v <= m.goal;
+    var zero = m.unit === 'days' ? parseFloat(gap.toFixed(1)) === 0
+             : m.unit === '$' ? Math.round(gap / 1000) === 0
+             : Math.round(gap) === 0;
+    return { ahead: ahead, gap: gap, zero: zero, mag: deltaMag(m.unit, gap) };
+  }
+  function chipSeverity(m, d) {
+    if (d.ahead) return 'good';
+    var big = m.unit === '%' ? d.gap >= 5 : m.unit === 'days' ? d.gap >= 1.5 : m.unit === '$' ? d.gap >= 60000 : d.gap >= 5;
+    return big ? 'serious' : 'warn';
+  }
+  function infoIcon(text) {
+    return '<span class="kpi-info" tabindex="0" role="img" aria-label="' + esc(text) + '" title="' + esc(text) + '">' +
+      '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8"/></svg></span>';
+  }
+  function arrowUp() { return '<svg class="mcb-arrow" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m4 12 1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8z"/></svg>'; }
+  function arrowDown() { return '<svg class="mcb-arrow" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m20 12-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8z"/></svg>'; }
+
+  function funnelBoxHTML(m, v) {
+    var d = kpiDelta(m, v), cls = d.ahead ? 'ahead' : 'behind';
+    return '<div class="mcb" data-name="' + esc(m.label) + '">' +
+      '<div class="mcb-label"><span>' + esc(m.label) + '</span>' + infoIcon(m.info) + '</div>' +
+      '<div class="mcb-boxes">' +
+        '<div class="mcb-box actual"><b>' + esc(fmtVal(v, m.unit)) + '</b><span>Actual</span></div>' +
+        '<div class="mcb-box goal ' + cls + '"><b>' + esc(fmtVal(m.goal, m.unit)) + '</b><span>Monthly Goal</span></div>' +
+      '</div>' +
+      '<div class="mcb-msg ' + (d.zero ? 'ahead' : cls) + '">' + ((d.ahead || d.zero) ? arrowUp() : arrowDown()) +
+        '<span>' + esc(d.zero ? 'On goal' : (d.mag + (d.ahead ? ' above goal' : ' below goal'))) + '</span></div>' +
+    '</div>';
+  }
+
+  // seeded 6-month trend ending on the current value (deterministic per store+metric)
+  function hashStr(s) { var h = 2166136261 >>> 0; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; }
+  function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function sparkPoints(seed, end, m) {
+    var rnd = mulberry(hashStr(seed)), n = 6, pts = [];
+    var amp = m.unit === 'days' ? 0.8 : m.unit === '%' ? 3.5 : m.unit === '$' ? Math.max(end * 0.05, 15000) : m.unit === 'pts' ? 3 : end * 0.04;
+    var drift = 1.2 * amp * (m.dir === 'higher' ? -1 : 1);
+    for (var i = 0; i < n; i++) { var t = i / (n - 1); pts.push(end + drift * (1 - t) + (rnd() - 0.5) * amp); }
+    pts[n - 1] = end;
+    return pts;
+  }
+  function sparkSVG(seed, end, m) {
+    var pts = sparkPoints(seed, end, m), w = 200, h = 44, pad = 5;
+    var all = pts.concat([m.goal]);
+    var min = Math.min.apply(null, all), max = Math.max.apply(null, all);
+    if (max === min) max = min + 1;
+    var rng = max - min, stepX = (w - 2 * pad) / (pts.length - 1);
+    var xy = pts.map(function (v, i) { return [pad + i * stepX, pad + (1 - (v - min) / rng) * (h - 2 * pad)]; });
+    var line = xy.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' ');
+    var area = line + ' L' + (w - pad).toFixed(1) + ' ' + (h - pad).toFixed(1) + ' L' + pad.toFixed(1) + ' ' + (h - pad).toFixed(1) + ' Z';
+    var last = xy[xy.length - 1];
+    var gy = pad + (1 - (m.goal - min) / rng) * (h - 2 * pad);
+    var tip = 'Trailing 6 mo: ' + pts.map(function (v) { return fmtVal(v, m.unit); }).join(', ');
+    return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + esc(tip) + '"><title>' + esc(tip) + '</title>' +
+      '<path class="spark-area" d="' + area + '"/>' +
+      '<line class="spark-goal" x1="' + pad + '" x2="' + (w - pad) + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '"/>' +
+      '<path class="spark-line" d="' + line + '"/>' +
+      '<circle class="spark-dot" cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="3.2"/></svg>';
+  }
+
+  function tileHTML(m, v, storeId) {
+    var d = kpiDelta(m, v), cls = chipSeverity(m, d);
+    var spark = m.spark ? '<div class="kpi-spark">' + sparkSVG(storeId + ':' + m.key, v, m) + '</div>' : '';
+    var goalTxt = 'Goal ' + (m.dir === 'lower' ? '≤ ' : '≥ ') + fmtVal(m.goal, m.unit);
+    var chip = d.zero
+      ? '<span class="delta-chip good"><span class="arw" aria-hidden="true">✓</span>On goal</span>'
+      : '<span class="delta-chip ' + cls + '"><span class="arw" aria-hidden="true">' + (d.ahead ? '▲' : '▼') + '</span>' + esc(d.mag + (d.ahead ? ' above' : ' below')) + '</span>';
+    return '<div class="kpi-tile">' +
+      '<div class="kpi-name">' + esc(m.label) + infoIcon(m.info) + '</div>' +
+      '<div class="kpi-main"><div class="kpi-value">' + esc(fmtVal(v, m.unit)) + '</div>' + chip + '</div>' +
+      spark +
+      '<div class="kpi-goal">' + esc(goalTxt) + '</div>' +
+    '</div>';
+  }
+
+  function possessive(name) { return name.charAt(name.length - 1).toLowerCase() === 's' ? name + "'" : name + "'s"; }
+  function shortStore(name) { return name.replace(/,\s*[A-Z]{2}$/, ''); }
+
+  function renderKpis(storeId) {
+    var root = document.getElementById('kpiRoot');
+    if (!root) return;
+    var vals = kpiValuesFor(storeId);
+    var name = storeId === 'all' ? 'All stores' : (STORE_BY_ID[storeId] ? shortStore(STORE_BY_ID[storeId].name) : 'All stores');
+    var funnel = KPI_METRICS.filter(function (m) { return m.group === 'funnel'; });
+    var html = '';
+    html += '<div class="kpi-head"><p class="kpi-title" data-testid="kpi-page-title">' + esc(possessive(name) + ' KPIs') + '</p>' +
+      '<p class="kpi-sub" data-testid="kpi-page-subtitle">80/70/7</p></div>';
+    html += '<div class="kpi-funnel" data-testid="capture-rate-metrics">' +
+      funnel.map(function (m) { return funnelBoxHTML(m, vals[m.key]); }).join('') + '</div>';
+    KPI_GROUPS.forEach(function (g) {
+      if (g.key === 'funnel') return;
+      var ms = KPI_METRICS.filter(function (m) { return m.group === g.key; });
+      if (!ms.length) return;
+      html += '<div class="kpi-section"><div class="kpi-section-title">' + esc(g.label) + '</div>' +
+        '<div class="kpi-tiles">' + ms.map(function (m) { return tileHTML(m, vals[m.key], storeId); }).join('') + '</div></div>';
+    });
+    root.innerHTML = html;
+  }
+
+  function setView(view) {
+    state.view = view;
+    document.getElementById('viewActionPlans').hidden = (view !== 'plans');
+    document.getElementById('viewKpis').hidden = (view !== 'kpis');
+    Array.prototype.forEach.call(document.querySelectorAll('.nav-item[data-view]'), function (b) {
+      var sel = b.getAttribute('data-view') === view;
+      b.classList.toggle('selected', sel);
+      if (sel) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    if (view === 'kpis') renderKpis(state.store);
   }
 
   /* ---------------- init ---------------- */
@@ -538,9 +682,11 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal(); });
     fTitle.addEventListener('input', function () { fTitle.closest('.form-row').classList.remove('invalid'); });
 
-    // inert nav tabs
-    Array.prototype.forEach.call(document.querySelectorAll('.nav-item:not(.selected)'), function (btn) {
-      btn.addEventListener('click', function () { toast(btn.getAttribute('data-label') + ' isn’t part of this prototype'); });
+    // nav: Action Plans / KPI's switch views; other tabs are inert
+    Array.prototype.forEach.call(document.querySelectorAll('.nav-item'), function (btn) {
+      var view = btn.getAttribute('data-view');
+      if (view) { btn.addEventListener('click', function () { setView(view); }); }
+      else { btn.addEventListener('click', function () { toast(btn.getAttribute('data-label') + ' isn’t part of this prototype'); }); }
     });
 
     setStore(state.store);

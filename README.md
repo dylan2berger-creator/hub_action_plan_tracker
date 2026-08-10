@@ -6,6 +6,9 @@ Market Manager (CPM) or GM diagnoses *why* a store is missing revenue targets,
 builds an action plan, assigns tasks, and tracks whether the intervention actually
 moved the metric. Built on The Hub's real navigation shell and design system.
 
+The prototype spans two working tabs — **Action Plans** and a per-store **KPIs**
+dashboard — switched from the nav and both driven by the shared store selector.
+
 ![Action Plans board](assets/preview.png)
 
 ## Run it
@@ -67,6 +70,27 @@ misses, sublet revenue leakage, and a refinish capacity gap. Cards show
 > **Data note:** no numeric KPI values, targets, scores, or dollar figures appear
 > anywhere — metrics are referenced by name only. All names are synthetic.
 
+## KPIs tab
+
+Click **KPI's** in the nav to switch to the per-store KPI dashboard (the store
+selector drives both tabs). It recreates the shipped capture-funnel boxes —
+**Opportunity to Estimate / RO / Arrive** (the 80/70/7 targets), with the Actual
+box, a Monthly Goal box that turns green when ahead / orange when behind, and an
+above-/below-goal message — then extends into three more sections:
+
+- **Production & cycle** — Cycle Time (keys-to-keys), Touch Time, Length of Rental, Sales (MTD)
+- **Quality & customer** — CSI Score, Net Promoter Score, Rework / Comeback Rate
+- **DRP scorecard** — Estimate Accuracy, Supplement Frequency, Alternative Parts Usage, Severity & Cost Index
+
+Each tile shows the actual value, an above/below-goal delta chip (green / amber /
+red, always with an arrow + label — never color alone), the goal, and — for headline
+metrics — a trailing-six-month sparkline with a dashed goal reference line.
+Challenged stores read weaker on the metric their action plan is about (e.g. Aurora's
+booth outage shows up as elevated cycle time and depressed CSI), so the two tabs tell
+one story.
+
+![KPIs tab](assets/preview-kpis.png)
+
 ## Files
 
 | File | Purpose |
@@ -75,8 +99,8 @@ misses, sublet revenue leakage, and a refinish capacity gap. Cards show
 | `assets/hub-shell.css` | The Hub's actual shipped layout/navigation CSS, imported verbatim. |
 | `assets/styles.css` | The Hub design tokens + all Action-Plans component styles. |
 | `assets/thehub.svg` | The official "THE HUB" logo. |
-| `assets/data.js` | The mock dataset — stores, plans, tasks, cross-links (`window.HUB_DATA`). |
-| `assets/app.js` | Board state, rendering, drag & drop, store switching, filters, and the task modal. |
+| `assets/data.js` | The mock dataset — stores, plans, tasks, cross-links, and per-store KPI snapshots (`window.HUB_DATA`). |
+| `assets/app.js` | Tab switching, board state, drag & drop, store switching, filters, the task modal, and the KPI dashboard (funnel boxes, tiles, sparklines). |
 
 ## How this maps onto the real Hub
 

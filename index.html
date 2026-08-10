@@ -26,8 +26,11 @@
       <button class="nav-item" data-label="Huddle Board"><span class="label">Huddle Board</span></button>
       <button class="nav-item" data-label="Summary"><span class="label">Summary</span></button>
       <button class="nav-item" data-label="CCC Report"><span class="label">CCC Report</span></button>
-      <button class="nav-item" data-label="KPI's"><span class="label">KPI's</span></button>
-      <button class="nav-item selected" aria-current="page" data-label="Action Plans">
+      <button class="nav-item" data-view="kpis" data-label="KPI's">
+        <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 14h3v6H4zm5-6h3v12H9zm5 3h3v9h-3zm5-7h3v16h-3z"/></svg></span>
+        <span class="label">KPI's</span>
+      </button>
+      <button class="nav-item selected" aria-current="page" data-view="plans" data-label="Action Plans">
         <span class="icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2m-7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2m-1.06 14L7.4 13.46l1.42-1.42 2.12 2.12 4.24-4.24 1.42 1.42z"/></svg>
         </span>
@@ -65,6 +68,7 @@
   <!-- ================= Page — real Hub content wrappers ================= -->
   <div class="ClientLayout-module-scss-module__Skw-ja__pageContentWrapper ClientLayout-module-scss-module__Skw-ja__huddleBoard">
     <div class="ClientLayout-module-scss-module__Skw-ja__pageContent ClientLayout-module-scss-module__Skw-ja__withHeader ClientLayout-module-scss-module__Skw-ja__huddleBoard">
+      <div id="viewActionPlans">
       <div class="page-head">
         <div class="page-title-wrap">
           <h1 class="page-title">Action Plans</h1>
@@ -116,6 +120,11 @@
       </div>
 
       <div class="board" id="board" aria-label="Action plan board"></div>
+      </div><!-- /viewActionPlans -->
+
+      <div id="viewKpis" hidden>
+        <div id="kpiRoot" data-testid="kpi-page"></div>
+      </div>
     </div>
   </div>
 

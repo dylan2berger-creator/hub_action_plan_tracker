@@ -701,3 +701,53 @@ window.HUB_DATA = {
     }
   ]
 };
+
+/* ============================================================
+   KPI dashboard data (KPIs tab)
+   Synthetic monthly KPI snapshots per store. Goals reflect the
+   80/70/7 capture-funnel targets plus production, quality, and
+   DRP-scorecard measures. Challenged stores (those carrying
+   action plans) read weaker on the metric their plan is about.
+   ============================================================ */
+window.HUB_DATA.kpiMetrics = [
+  { key: "estimate",       label: "Opportunity to Estimate", group: "funnel",     unit: "%",     goal: 80,     dir: "higher", info: "Write an estimate on at least 80% of all opportunities" },
+  { key: "ro",             label: "Opportunity to RO",       group: "funnel",     unit: "%",     goal: 70,     dir: "higher", info: "Capture / arrive at least 70% of all opportunities" },
+  { key: "arrive",         label: "Opportunity to Arrive",   group: "funnel",     unit: "days",  goal: 7,      dir: "lower",  info: "Maximum of 7 days between opportunity and arrived" },
+
+  { key: "cycleTime",      label: "Cycle Time (keys-to-keys)", group: "production", unit: "days", goal: 5.5,   dir: "lower",  spark: true, info: "Average days from keys-in to keys-out" },
+  { key: "touchTime",      label: "Touch Time",              group: "production", unit: "days",  goal: 2.5,    dir: "lower",  info: "Average days of active work per repair" },
+  { key: "lor",            label: "Length of Rental",        group: "production", unit: "days",  goal: 8,      dir: "lower",  info: "Average rental days per repair" },
+  { key: "sales",          label: "Sales (MTD)",             group: "production", unit: "$",     goal: 525000, dir: "higher", spark: true, info: "Month-to-date sales" },
+
+  { key: "csi",            label: "CSI Score",               group: "quality",    unit: "pts",   goal: 95,     dir: "higher", spark: true, info: "Customer satisfaction index" },
+  { key: "nps",            label: "Net Promoter Score",      group: "quality",    unit: "pts",   goal: 80,     dir: "higher", info: "Net promoter score" },
+  { key: "rework",         label: "Rework / Comeback Rate",  group: "quality",    unit: "%",     goal: 2,      dir: "lower",  info: "Share of ROs returning for rework" },
+
+  { key: "estAccuracy",    label: "Estimate Accuracy",       group: "drp",        unit: "%",     goal: 92,     dir: "higher", info: "First-estimate accuracy vs final" },
+  { key: "supplementFreq", label: "Supplement Frequency",    group: "drp",        unit: "%",     goal: 45,     dir: "lower",  info: "Share of ROs requiring a supplement" },
+  { key: "altParts",       label: "Alternative Parts Usage", group: "drp",        unit: "%",     goal: 30,     dir: "higher", info: "Recycled / aftermarket parts usage" },
+  { key: "severity",       label: "Severity & Cost Index",   group: "drp",        unit: "index", goal: 100,    dir: "lower",  info: "Severity vs peer benchmark (100 = peer)" }
+];
+
+window.HUB_DATA.kpiGroups = [
+  { key: "funnel",     label: "Capture funnel" },
+  { key: "production", label: "Production & cycle" },
+  { key: "quality",    label: "Quality & customer" },
+  { key: "drp",        label: "DRP scorecard" }
+];
+
+window.HUB_DATA.kpisByStore = {
+  s1:  { estimate: 84, ro: 72,   arrive: 6.1,  cycleTime: 5.2, touchTime: 2.3, lor: 7.6, sales: 548000, csi: 96, nps: 82, rework: 1.8, estAccuracy: 93, supplementFreq: 42, altParts: 33, severity: 98 },
+  s2:  { estimate: 81, ro: 64,   arrive: 7.4,  cycleTime: 7.8, touchTime: 3.1, lor: 10.2, sales: 486000, csi: 88, nps: 71, rework: 2.6, estAccuracy: 90, supplementFreq: 47, altParts: 29, severity: 104 },
+  s3:  { estimate: 82, ro: 69,   arrive: 6.8,  cycleTime: 6.0, touchTime: 2.7, lor: 8.4, sales: 512000, csi: 93, nps: 78, rework: 2.3, estAccuracy: 86, supplementFreq: 58, altParts: 31, severity: 101 },
+  s4:  { estimate: 83, ro: 66,   arrive: 6.37, cycleTime: 5.7, touchTime: 2.6, lor: 8.1, sales: 505000, csi: 94, nps: 79, rework: 2.1, estAccuracy: 91, supplementFreq: 46, altParts: 30, severity: 106 },
+  s5:  { estimate: 82, ro: 68,   arrive: 7.1,  cycleTime: 6.6, touchTime: 2.9, lor: 9.0, sales: 498000, csi: 92, nps: 77, rework: 2.2, estAccuracy: 92, supplementFreq: 44, altParts: 32, severity: 99 },
+  s6:  { estimate: 83, ro: 67,   arrive: 6.5,  cycleTime: 5.6, touchTime: 2.5, lor: 7.9, sales: 452000, csi: 94, nps: 80, rework: 1.9, estAccuracy: 92, supplementFreq: 43, altParts: 31, severity: 100 },
+  s7:  { estimate: 82, ro: 69,   arrive: 6.6,  cycleTime: 5.5, touchTime: 2.5, lor: 8.0, sales: 470000, csi: 95, nps: 81, rework: 1.7, estAccuracy: 93, supplementFreq: 41, altParts: 34, severity: 97 },
+  s8:  { estimate: 80, ro: 68,   arrive: 7.2,  cycleTime: 6.9, touchTime: 3.0, lor: 9.3, sales: 489000, csi: 91, nps: 76, rework: 2.5, estAccuracy: 90, supplementFreq: 48, altParts: 30, severity: 102 },
+  s9:  { estimate: 81, ro: 67,   arrive: 7.3,  cycleTime: 7.1, touchTime: 3.0, lor: 9.6, sales: 494000, csi: 90, nps: 75, rework: 2.4, estAccuracy: 91, supplementFreq: 45, altParts: 30, severity: 103 },
+  s10: { estimate: 82, ro: 70,   arrive: 6.4,  cycleTime: 5.8, touchTime: 2.6, lor: 8.2, sales: 516000, csi: 93, nps: 79, rework: 2.0, estAccuracy: 88, supplementFreq: 47, altParts: 27, severity: 100 },
+  s11: { estimate: 84, ro: 68,   arrive: 6.9,  cycleTime: 5.9, touchTime: 2.7, lor: 8.5, sales: 438000, csi: 94, nps: 80, rework: 1.9, estAccuracy: 92, supplementFreq: 43, altParts: 32, severity: 99 },
+  s12: { estimate: 82, ro: 66,   arrive: 6.7,  cycleTime: 5.7, touchTime: 2.6, lor: 8.3, sales: 501000, csi: 89, nps: 73, rework: 2.7, estAccuracy: 91, supplementFreq: 46, altParts: 31, severity: 101 },
+  s13: { estimate: 83, ro: 69,   arrive: 6.5,  cycleTime: 5.6, touchTime: 2.5, lor: 8.0, sales: 508000, csi: 93, nps: 78, rework: 2.0, estAccuracy: 90, supplementFreq: 49, altParts: 26, severity: 100 }
+};

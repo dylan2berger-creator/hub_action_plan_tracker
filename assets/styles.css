@@ -615,3 +615,65 @@ button { font-family: inherit; }
   border: 1px solid var(--outline-variant); border-radius: var(--corner-sm); outline: none; }
 .note-add input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px #00529b22; }
 .note-add .btn { height: 36px; }
+
+/* ============================================================
+   KPIs tab
+   ============================================================ */
+.kpi-head { margin-bottom: var(--sp6); }
+.kpi-title { font-family: var(--font-brand); font-weight: 700; font-size: 40px; letter-spacing: .3px; color: #111; margin: 0; }
+.kpi-sub { font-family: var(--font-brand); font-weight: 700; font-size: 24px; color: #111; margin: 6px 0 0; }
+
+/* capture-funnel comparison boxes (recreates MetricComparisonBox) */
+.kpi-funnel { display: flex; gap: var(--sp5); flex-wrap: wrap; margin-bottom: var(--sp7); }
+.mcb {
+  flex: 1 1 300px; min-width: 300px;
+  background: var(--elevated);
+  border-radius: 8px;
+  box-shadow: var(--shadow-1);
+  padding: var(--sp5);
+  display: flex; flex-direction: column; gap: var(--sp4);
+}
+.mcb-label { display: flex; align-items: center; gap: 8px; }
+.mcb-label > span { font-family: var(--font-brand); font-weight: 700; font-size: 19px; color: #111; }
+.mcb-boxes { display: flex; border-radius: var(--corner-sm); overflow: hidden; }
+.mcb-box { flex: 1; padding: 16px 12px; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+.mcb-box b { font-family: var(--font-brand); font-weight: 700; font-size: 26px; font-variant-numeric: tabular-nums; }
+.mcb-box span { font-size: 13px; font-weight: 500; }
+.mcb-box.actual { background: var(--primary); color: #fff; }
+.mcb-box.goal.ahead { background: var(--success-subtle); color: var(--on-success-subtle); }
+.mcb-box.goal.behind { background: var(--orange-strong); color: var(--on-orange); }
+.mcb-msg { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; }
+.mcb-msg.ahead { color: #2e7d32; }
+.mcb-msg.behind { color: #8a4b00; }
+.mcb-arrow { width: 18px; height: 18px; flex-shrink: 0; }
+.kpi-info { display: inline-flex; align-items: center; color: var(--secondary); cursor: help; }
+.kpi-info svg { width: 16px; height: 16px; }
+
+/* metric sections + stat tiles */
+.kpi-section { margin-top: var(--sp7); }
+.kpi-section-title { font-family: var(--font-brand); font-weight: 700; font-size: 14px; letter-spacing: .5px;
+  text-transform: uppercase; color: var(--on-surface-variant); margin-bottom: var(--sp4); }
+.kpi-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: var(--sp5); }
+.kpi-tile {
+  background: #fff; border: 1px solid #e6e9ef; border-radius: var(--corner-md);
+  box-shadow: var(--shadow-1); padding: var(--sp5);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.kpi-name { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--on-surface-variant); }
+.kpi-main { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.kpi-value { font-family: var(--font-brand); font-weight: 700; font-size: 30px; color: #111; font-variant-numeric: tabular-nums; line-height: 1; }
+.delta-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700;
+  border-radius: var(--corner-full); padding: 3px 9px; font-variant-numeric: tabular-nums; }
+.delta-chip .arw { font-size: 10px; }
+.delta-chip.good    { background: var(--success-subtle); color: var(--on-success-subtle); }
+.delta-chip.warn    { background: #ffedd8; color: #6b3f10; }
+.delta-chip.serious { background: var(--error-subtle); color: var(--on-error-subtle); }
+.kpi-goal { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* sparkline */
+.kpi-spark { margin: 2px 0; }
+.spark { width: 100%; height: auto; display: block; }
+.spark-area { fill: #00529b1a; stroke: none; }
+.spark-line { fill: none; stroke: var(--primary); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.spark-goal { stroke: #9aa5b1; stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.spark-dot { fill: var(--primary); stroke: #fff; stroke-width: 2; vector-effect: non-scaling-stroke; }
