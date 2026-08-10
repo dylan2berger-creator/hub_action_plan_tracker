@@ -143,18 +143,11 @@ button { font-family: inherit; }
   padding: 0 var(--sp6);
 }
 
-/* Logo art lives inside the real .thehub…logo span; drop its external bg image
-   (the shipped class points at /thehub.svg, which isn't shipped with this repo). */
+/* Point the shipped .thehub…logo class at the real logo file in this repo.
+   (The shipped CSS hardcodes an absolute /thehub.svg that won't resolve here;
+   this url() is relative to styles.css, i.e. assets/thehub.svg.) */
 .thehub-module-scss-module__TSWhsq__logo {
-  background-image: none !important;
-  display: flex;
-  align-items: center;
-}
-.thehub-module-scss-module__TSWhsq__logo .brand-logo {
-  width: 100%;
-  height: auto;
-  max-height: 36px;
-  display: block;
+  background-image: url(thehub.svg) !important;
 }
 
 .nav-menu {
