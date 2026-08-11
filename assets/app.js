@@ -1017,7 +1017,8 @@
       '<div class="carr-chips" id="carrChips" role="group" aria-label="Filter carriers">' + chips + '</div>' +
       '<div class="carr-cards" id="carrCards">' + cards + '</div>' +
       trendHTML +
-      '<div class="ro-detail">' + repairOrderPanelHTML(d) + '</div>';
+      '<div class="ro-detail">' + repairOrderPanelHTML(d) + '</div>' +
+      '<div class="cluster-detail">' + rulesClusterHTML(d) + '</div>';
   }
   /* Repair-order-level detail — one row per RO. Row count per carrier equals that
      carrier's repair volume, so the totals match the carrier cards. Columns carry
@@ -1034,7 +1035,9 @@
         var cyc = Math.round(clamp(c.vars.cycleTime + (rr() * 8 - 4), 2, 30) * 10) / 10;
         var csi = Math.round(clamp(c.vars.csi + (rr() * 14 - 7), 60, 100));
         var triggered = 3 + Math.floor(rr() * 6), notAdh = Math.max(0, Math.round(triggered * (1 - adh / 100)));
-        out.push({ id: 'RO-' + (seq++), carrier: c.name, score: c.score, estAcc: estAcc, adh: adh, notAdh: notAdh, cyc: cyc, csi: csi });
+        var rules = [], guard = 0;   // which specific rules were not adhered to (distinct)
+        while (rules.length < notAdh && guard++ < 40) { var ri = Math.floor(rr() * RULE_TEXTS.length); if (rules.indexOf(ri) < 0) rules.push(ri); }
+        out.push({ id: 'RO-' + (seq++), carrier: c.name, score: c.score, estAcc: estAcc, adh: adh, notAdh: notAdh, cyc: cyc, csi: csi, rules: rules });
       }
     });
     _roCache[d.id] = out;
@@ -1065,6 +1068,37 @@
       '<label class="ro-filter">Carrier <select id="roCarrier">' + options + '</select></label></div>' +
       '<div class="mk-table-wrap ro-scroll">' + table + '</div>' +
       '<div class="ro-note ctx-sub">' + note + '</div>';
+  }
+  /* Rules-adherence cluster map — heatmap of rule (row) × carrier (column); each
+     cell is the count of ROs where that carrier did not adhere to that rule. */
+  function rulesClusterHTML(d) {
+    var ros = repairOrders(d), carriers = d.carriers.map(function (c) { return c.name; });
+    var counts = RULE_TEXTS.map(function () { var o = {}; carriers.forEach(function (n) { o[n] = 0; }); return o; });
+    var rowTotal = RULE_TEXTS.map(function () { return 0; }), colTotal = {}, grand = 0;
+    carriers.forEach(function (n) { colTotal[n] = 0; });
+    ros.forEach(function (r) { r.rules.forEach(function (ri) { counts[ri][r.carrier]++; rowTotal[ri]++; colTotal[r.carrier]++; grand++; }); });
+    var maxCell = 1; counts.forEach(function (row) { carriers.forEach(function (n) { if (row[n] > maxCell) maxCell = row[n]; }); });
+    var ruleOrder = RULE_TEXTS.map(function (t, i) { return i; }).sort(function (a, b) { return rowTotal[b] - rowTotal[a]; });      // most-missed first
+    var carrierOrder = carriers.slice().sort(function (a, b) { return colTotal[b] - colTotal[a]; });                              // worst carrier first
+    function cell(count) {
+      if (!count) return '<td class="cm-cell cm-zero"></td>';
+      var t = count / maxCell, a = (0.14 + 0.82 * t).toFixed(2), fg = t > 0.5 ? '#fff' : '#5a3410';
+      return '<td class="cm-cell" style="background:rgba(193,102,15,' + a + ');color:' + fg + '">' + count + '</td>';
+    }
+    var headCols = carrierOrder.map(function (n) { return '<th class="cm-carrier">' + esc(n) + '</th>'; }).join('');
+    var bodyRows = ruleOrder.map(function (ri) {
+      return '<tr><td class="cm-rule">' + esc(RULE_TEXTS[ri]) + '</td>' +
+        carrierOrder.map(function (n) { return cell(counts[ri][n]); }).join('') +
+        '<td class="cm-total">' + rowTotal[ri] + '</td></tr>';
+    }).join('');
+    var footRow = '<tr class="cm-foot"><td class="cm-rule">All rules</td>' +
+      carrierOrder.map(function (n) { return '<td class="cm-total">' + colTotal[n] + '</td>'; }).join('') +
+      '<td class="cm-total">' + grand + '</td></tr>';
+    var table = '<table class="cluster-map"><thead><tr><th class="cm-rule">Rule not adhered to</th>' + headCols + '<th class="cm-total">Total</th></tr></thead>' +
+      '<tbody>' + bodyRows + footRow + '</tbody></table>';
+    return '<div class="cluster-head"><div class="kpi-section-title sub">Rules adherence cluster map <span class="ctx-sub">(ROs where the rule was not adhered to · by carrier · ' + esc(MONTH_ABBR[CUR_MONTH]) + ')</span></div>' +
+      '<div class="cm-legend"><span>Fewer</span><span class="cm-ramp"></span><span>More ROs</span></div></div>' +
+      '<div class="mk-table-wrap cm-wrap">' + table + '</div>';
   }
   /* carrier metrics that can be trended over time (one at a time) */
   var CARRIER_METRICS = [
