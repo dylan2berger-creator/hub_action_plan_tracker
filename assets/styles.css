@@ -838,11 +838,23 @@ button { font-family: inherit; }
 .rev-v.muted { color: var(--muted); } .rev-v.ok { color: #2e7d32; } .rev-v.warn { color: #c1660f; } .rev-v.bad { color: var(--error-strong); }
 .rev-period { margin-bottom: 10px; }
 .rev-chart { background: #fff; border: 1px solid #e6e9ef; border-radius: var(--corner-md); box-shadow: var(--shadow-1); padding: 12px 14px 6px; }
+.rc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.rc-title { font-family: var(--font-brand); font-weight: 700; font-size: 14px; letter-spacing: .3px; color: #1e2a33; }
+.rc-title-sub { color: var(--muted); font-weight: 600; font-size: 11px; }
+.kser-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.kser { display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--font-plain); color: #41505c; background: #fff; border: 1px solid #d7dde5; border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+.kser:hover { border-color: #9fb0c0; }
+.kser.on { border-color: #00529b; color: #0a2c4d; background: #eef4fb; }
+.kser-dot { width: 9px; height: 9px; border-radius: 50%; opacity: .3; }
+.kser.on .kser-dot { opacity: 1; }
 .rc-svg { width: 100%; height: auto; display: block; }
 .rc-x { font-size: 10px; fill: var(--muted); text-anchor: middle; font-family: var(--font-plain); }
-.rc-legend { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.rc-ax { font-size: 10px; fill: var(--muted); font-family: var(--font-plain); }
+.rc-legend { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+.rc-item { display: inline-flex; align-items: center; gap: 6px; }
 .rc-k { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
-.rc-k.actual { background: #00529b; } .rc-k.target { background: #9aa7b4; }
+.rc-k.tgt { background: repeating-linear-gradient(90deg, #9aa7b4 0 3px, transparent 3px 6px); }
+.rc-side { font-style: italic; color: var(--muted); }
 
 /* funnel trends row */
 .fun-trends { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 10px; }

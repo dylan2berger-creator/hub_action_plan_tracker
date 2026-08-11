@@ -558,7 +558,7 @@
   var CUR_MONTH = TODAY.getMonth();
   var RA_MIN = -0.35, RA_MAX = 0.25;   // fixed revenue-variance chart domain
 
-  var kpiState = { view: 'dashboard', shopId: null, period: 'prev', gran: 'shops', market: 'all', carriers: null };
+  var kpiState = { view: 'dashboard', shopId: null, period: 'prev', gran: 'shops', market: 'all', carriers: null, chartKpis: ['revenue'] };
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function pctStr(p) { return (p >= 0 ? '+' : '−') + Math.abs(Math.round(p * 100)) + '%'; }
@@ -857,7 +857,7 @@
         '<div class="rev-tile"><span class="rev-l">Variance %</span><b class="rev-v ' + varClass(rv.variancePct) + '">' + pctStr(rv.variancePct) + '</b></div>' +
       '</div>' +
       '<div class="seg-group rev-period" id="detailPeriod" role="group" aria-label="Period">' + periodBtns + '</div>' +
-      '<div class="rev-chart">' + revChartHTML(d) + '</div>' +
+      '<div class="rev-chart" id="revChart">' + trendChartHTML(d) + '</div>' +
       '</div>';
 
     // carrier panel
@@ -867,23 +867,102 @@
     wireShopDetail(d);
   }
 
-  function revChartHTML(d) {
+  /* shop-level trend chart — revenue plus optional funnel KPIs.
+     Up to two series at once; when the two use different units a second
+     y-axis is drawn on the right so each keeps its own scale. */
+  var SHOP_KPIS = [
+    { key: 'revenue',  label: 'Revenue',        unit: '$', color: '#00529b',
+      series: function (d) { return d.months.map(function (m) { return { label: m.label, value: m.actual }; }); },
+      target: function (d) { return d.months.map(function (m) { return m.target; }); } },
+    { key: 'estimate', label: 'Opp → Estimate', unit: '%', color: '#2e7d32',
+      series: function (d) { return d.funnel.trend.estimate; } },
+    { key: 'ro',       label: 'Opp → RO',       unit: '%', color: '#c1660f',
+      series: function (d) { return d.funnel.trend.ro; } },
+    { key: 'arrive',   label: 'Opp → Arrive',   unit: 'd', color: '#7a5ea8',
+      series: function (d) { return d.funnel.trend.arrive; } }
+  ];
+  // axis tick label — precision adapts to the axis span so a narrow % band doesn't print duplicate ticks
+  function fmtAxis(unit, v, span) {
+    if (unit === '$') return money(v);
+    if (unit === 'd') return (Math.round(v * 10) / 10) + 'd';
+    return (span < 6 ? (Math.round(v * 10) / 10) : Math.round(v)) + '%';
+  }
+  function kpiByKey(k) { for (var i = 0; i < SHOP_KPIS.length; i++) if (SHOP_KPIS[i].key === k) return SHOP_KPIS[i]; return null; }
+  function chartKeys() {
+    var sel = (kpiState.chartKpis && kpiState.chartKpis.length ? kpiState.chartKpis : ['revenue']).slice(0, 2);
+    sel = sel.filter(function (k) { return kpiByKey(k); });
+    return sel.length ? sel : ['revenue'];
+  }
+  function chartWindow() {
     var pd = PERIODS.filter(function (p) { return p.key === kpiState.period; })[0] || PERIODS[0];
-    var end = 12 - (pd.offset || 0), n = Math.max(pd.months, 3);  // show at least 3 months of context, ending at the period
-    var slice = d.months.slice(Math.max(0, end - n), end);
-    var W = 620, H = 150, pad = 8, mL = 30, mR = 30, mB = 16;
-    var vals = []; slice.forEach(function (p) { vals.push(p.actual, p.target); });
-    var lo = Math.min.apply(null, vals) * 0.96, hi = Math.max.apply(null, vals) * 1.04, rng = (hi - lo) || 1;
-    function X(i) { return mL + (W - mL - mR) * (slice.length < 2 ? 0.5 : i / (slice.length - 1)); }
-    function Y(v) { return pad + (H - pad - mB) * (1 - (v - lo) / rng); }
-    var aPts = slice.map(function (p, i) { return X(i) + ',' + Y(p.actual); }).join(' ');
-    var tPts = slice.map(function (p, i) { return X(i) + ',' + Y(p.target); }).join(' ');
-    var labels = slice.map(function (p, i) { return '<text x="' + X(i) + '" y="' + (H - 4) + '" class="rc-x">' + p.label + '</text>'; }).join('');
-    var dots = slice.map(function (p, i) { return '<circle cx="' + X(i) + '" cy="' + Y(p.actual) + '" r="2.5" fill="#00529b"/>'; }).join('');
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="rc-svg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Revenue actual versus target trend">' +
-      '<polyline fill="none" stroke="#9aa7b4" stroke-width="1.4" stroke-dasharray="4 3" points="' + tPts + '"/>' +
-      '<polyline fill="none" stroke="#00529b" stroke-width="2" points="' + aPts + '"/>' + dots + labels + '</svg>' +
-      '<div class="rc-legend"><span class="rc-k actual"></span>Actual <span class="rc-k target"></span>Target</div>';
+    var end = 12 - (pd.offset || 0), n = Math.max(pd.months, 3);  // at least 3 months of context, ending at the period
+    return { start: Math.max(0, end - n), end: end };
+  }
+
+  function trendChartHTML(d) {
+    var win = chartWindow(), keys = chartKeys();
+    var series = keys.map(function (k) { var def = kpiByKey(k); return { def: def, pts: def.series(d).slice(win.start, win.end) }; });
+    var labels = series[0].pts.map(function (p) { return p.label; });
+    var W = 640, H = 172, padT = 10, mB = 18;
+    var dual = series.length === 2 && series[0].def.unit !== series[1].def.unit;  // right axis only when units differ
+    var mL = 52, mR = dual ? 52 : 16;
+    function X(i) { return mL + (W - mL - mR) * (labels.length < 2 ? 0.5 : i / (labels.length - 1)); }
+
+    var showTarget = keys.length === 1 && keys[0] === 'revenue';
+    var targetVals = showTarget ? kpiByKey('revenue').target(d).slice(win.start, win.end) : null;
+
+    function rangeOf(ptsArrays, extra) {
+      var vs = []; ptsArrays.forEach(function (pts) { pts.forEach(function (p) { vs.push(p.value); }); });
+      if (extra) extra.forEach(function (v) { vs.push(v); });
+      var lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs), span = hi - lo;
+      var pad = span ? span * 0.12 : (Math.abs(hi) * 0.1 || 1);
+      return { lo: lo - pad, hi: hi + pad };
+    }
+    var leftPts = dual ? [series[0].pts] : series.map(function (s) { return s.pts; });
+    var L = rangeOf(leftPts, targetVals);
+    var R = dual ? rangeOf([series[1].pts], null) : null;
+    function Y(range, v) { return padT + (H - padT - mB) * (1 - (v - range.lo) / ((range.hi - range.lo) || 1)); }
+    function yFor(si, v) { return Y((dual && si === 1) ? R : L, v); }
+
+    var svg = '';
+    if (showTarget) {
+      var tp = targetVals.map(function (v, i) { return X(i) + ',' + Y(L, v); }).join(' ');
+      svg += '<polyline fill="none" stroke="#9aa7b4" stroke-width="1.4" stroke-dasharray="4 3" points="' + tp + '"/>';
+    }
+    series.forEach(function (s, si) {
+      var pts = s.pts.map(function (p, i) { return X(i) + ',' + yFor(si, p.value); }).join(' ');
+      svg += '<polyline fill="none" stroke="' + s.def.color + '" stroke-width="2" points="' + pts + '"/>';
+      svg += s.pts.map(function (p, i) { return '<circle cx="' + X(i) + '" cy="' + yFor(si, p.value) + '" r="2.5" fill="' + s.def.color + '"/>'; }).join('');
+    });
+    svg += labels.map(function (lab, i) { return '<text x="' + X(i) + '" y="' + (H - 4) + '" class="rc-x">' + esc(lab) + '</text>'; }).join('');
+    function axis(range, unit, xText, anchor, color) {
+      var out = '', span = range.hi - range.lo;
+      for (var t = 0; t <= 2; t++) {
+        var frac = t / 2, val = range.hi - span * frac, y = padT + (H - padT - mB) * frac;
+        out += '<text x="' + xText + '" y="' + (y + 3) + '" class="rc-ax" text-anchor="' + anchor + '"' + (color ? ' fill="' + color + '"' : '') + '>' + esc(fmtAxis(unit, val, span)) + '</text>';
+      }
+      return out;
+    }
+    svg += axis(L, series[0].def.unit, mL - 6, 'end', dual ? series[0].def.color : null);
+    if (dual) svg += axis(R, series[1].def.unit, W - mR + 6, 'start', series[1].def.color);
+
+    var titleTxt = series.map(function (s) { return s.def.label; }).join(' vs ');
+    var subTxt = (win.end - win.start) + '-mo trend';
+    var btns = SHOP_KPIS.map(function (k) {
+      var on = keys.indexOf(k.key) >= 0;
+      return '<button type="button" class="kser' + (on ? ' on' : '') + '" data-kpi="' + k.key + '" aria-pressed="' + on + '">' +
+        '<span class="kser-dot" style="background:' + k.color + '"></span>' + esc(k.label) + '</button>';
+    }).join('');
+    var legend = series.map(function (s, i) {
+      return '<span class="rc-item"><span class="rc-k" style="background:' + s.def.color + '"></span>' + esc(s.def.label) +
+        (dual && i === 1 ? ' <span class="rc-side">right axis</span>' : '') + '</span>';
+    }).join('');
+    if (showTarget) legend += '<span class="rc-item"><span class="rc-k tgt"></span>Target</span>';
+
+    return '<div class="rc-head"><div class="rc-title">' + esc(titleTxt) + ' <span class="rc-title-sub">· ' + subTxt + '</span></div>' +
+      '<div class="kser-group" id="chartKpis" role="group" aria-label="Add KPIs to the trend chart">' + btns + '</div></div>' +
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" class="rc-svg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' + esc(titleTxt) + ' trend">' + svg + '</svg>' +
+      '<div class="rc-legend">' + legend + '</div>';
   }
 
   /* ====================== carrier scorecard panel ====================== */
@@ -930,6 +1009,15 @@
     if (back) back.addEventListener('click', backToDashboard);
     var pg = document.getElementById('detailPeriod');
     if (pg) pg.addEventListener('click', function (e) { var b = e.target.closest('[data-period]'); if (b) { kpiState.period = b.getAttribute('data-period'); renderKpiTab(); } });
+    var kg = document.getElementById('chartKpis');
+    if (kg) kg.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-kpi]'); if (!b) return;
+      var k = b.getAttribute('data-kpi'), sel = chartKeys().slice(), i = sel.indexOf(k);
+      if (i >= 0) { if (sel.length > 1) sel.splice(i, 1); }      // keep at least one series shown
+      else { sel.push(k); if (sel.length > 2) sel.shift(); }     // cap at two, drop the oldest
+      kpiState.chartKpis = sel;
+      renderKpiTab();
+    });
     var chips = document.getElementById('carrChips');
     if (chips) chips.addEventListener('click', function (e) {
       var b = e.target.closest('[data-carrier]'); if (!b) return;
