@@ -920,7 +920,9 @@ button { font-family: inherit; }
 .cluster-map .cm-rule { position: sticky; left: 0; z-index: 1; background: #fff; text-align: left; white-space: normal; min-width: 220px; color: #1e2a33; font-weight: 600; }
 .cluster-map thead th.cm-rule { z-index: 3; }
 .cm-cell { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 40px; }
-.cm-zero { background: #fafafa; color: transparent; }
+.cm-zero { background: #fafafa; color: #c2c7ce; font-weight: 600; }
+.cm-na { background: repeating-linear-gradient(45deg, #f4f5f7, #f4f5f7 4px, #eaecef 4px, #eaecef 8px); color: #b4b9c0; font-weight: 400; }
+.cm-na-key { color: var(--muted); }
 .cm-total { font-weight: 800; background: #f4f6f9; color: #1e2a33; font-variant-numeric: tabular-nums; }
 .cm-foot td { border-top: 2px solid #e6e9ef; }
 .cm-foot .cm-rule { font-weight: 800; color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: .3px; }
