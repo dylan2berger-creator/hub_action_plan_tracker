@@ -1081,7 +1081,7 @@
     var html = '';
     html += '<div class="kpi-head"><p class="kpi-title" data-testid="kpi-page-title">' + esc(region.name + ' — Region KPIs') + '</p>' +
       '<p class="kpi-sub" data-testid="kpi-page-subtitle">80/70/7</p>' +
-      '<p class="mk-lead">Regional Manager · ' + esc(region.manager) + ' · ' + region.markets.length + ' markets · ' +
+      '<p class="mk-lead">Regional Manager · ' + esc(region.manager) + ' · ' + esc(region.division) + ' · ' + region.markets.length + ' markets · ' +
       '<b>' + behindCount + '</b> behind · <b>' + openPlans + '</b> open action plans</p></div>';
     html += '<div class="kpi-funnel">' + KPI_FUNNEL.map(function (m) { return funnelBoxHTML(m, fvals[m.key]); }).join('') + '</div>';
     html += '<div class="kpi-section"><div class="kpi-section-title">Markets in region</div>' +
@@ -1112,7 +1112,7 @@
       note.textContent = role === 'market'
         ? MARKET.name + ' — a roll-up across the book of ' + MARKET.storeIds.length + ' shops, with a shop-by-shop scorecard. Drill into any shop from the selector.'
         : role === 'regional'
-        ? rg.name + ' region — a roll-up across ' + rg.markets.length + ' markets, with a market-by-market scorecard. Drill into any market from the selector.'
+        ? rg.name + ' · ' + rg.division + ' — a roll-up across ' + rg.markets.length + ' markets, with a market-by-market scorecard. Drill into any market from the selector.'
         : 'One shop’s Action Plans and KPIs. Use the location selector to choose the shop.';
     }
     state.store = role === 'market' ? 'book' : role === 'regional' ? 'region' : (DATA.defaultStoreId || (DATA.stores[0] && DATA.stores[0].id));

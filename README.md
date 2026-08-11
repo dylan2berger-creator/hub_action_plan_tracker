@@ -24,18 +24,22 @@ each a wider scope than the last (shop → market → region):
   Closed MTD, % to Budget, Days Behind, open plans, at-risk tasks, and a
   Behind / Watch / On-track status) — click any shop to drill into its dashboard.
   The trends chart rolls up to the book.
-- **Regional Manager (region of ~20 markets)** — scope becomes the manager's
-  **region**: one of nine logical geographic regions that group the full market
-  taxonomy (125 markets → Pacific, Mountain West, South Central, Gulf South,
-  Southeast, Florida, Great Lakes, Heartland, Northeast). The demo defaults to the
-  20-market **Heartland** region. The location selector switches to **All my
-  markets** + the region's markets, and the **KPIs tab becomes a region roll-up**:
-  a region-average funnel, a summary (markets behind / open action plans), and a
-  sortable **market scorecard** (same columns, one row per market) — click any
-  market to drill into its dashboard. Per-market KPIs are generated deterministically
-  from the market name (this prototype instruments one market with real shop data;
-  the rest are modeled roll-ups). The Action Plans board shows the region's active
-  plans.
+- **Regional Manager (a region of markets)** — scope becomes the manager's
+  **region**. The full 125-market taxonomy is grouped into **twelve regions**
+  under **three divisions**:
+  - **North** — Michiana · Midwest · Northeast · Tennessee Valley
+  - **South** — Carolinas · Florida · Georgia · Gulf
+  - **West** — Great Plains · Northwest · Southwest · Texas
+
+  The demo defaults to the 16-market **Midwest** region (North Division — the
+  Chicago-area markets that match the instrumented stores). The location selector
+  switches to **All my markets** + the region's markets, and the **KPIs tab becomes
+  a region roll-up**: a region-average funnel, a summary (division · markets behind ·
+  open action plans), and a sortable **market scorecard** (same columns, one row per
+  market) — click any market to drill into its dashboard. Per-market KPIs are
+  generated deterministically from the market name (this prototype instruments one
+  market with real shop data; the rest are modeled roll-ups). The Action Plans board
+  shows the region's active plans.
 
 ![Regional Manager region roll-up](assets/preview-region.png)
 

@@ -759,70 +759,84 @@ window.HUB_DATA.market = {
 
 /* ============================================================
    Regions — the Regional Manager scope. Every market below is
-   grouped into one of nine logical geographic regions. Market
-   names are the real Boyd/Gerber market taxonomy; per-market
-   KPIs are generated deterministically at render time (see the
-   market* generators in app.js). The Heartland region is the
-   demo default (Chicago-area markets, matching the instrumented
-   stores). Manager names are synthetic.
+   grouped into one of twelve regions, organized under three
+   divisions (North / South / West). Market names are the real
+   Boyd/Gerber market taxonomy; per-market KPIs are generated
+   deterministically at render time (see the market* generators
+   in app.js). The Midwest region is the demo default (Chicago-area
+   markets, matching the instrumented stores). Manager names are
+   synthetic.
    ============================================================ */
-window.HUB_DATA.defaultRegionId = "rg-heartland";
+window.HUB_DATA.defaultRegionId = "rg-midwest";
+window.HUB_DATA.divisions = [
+  { id: "dv-north", name: "North Division", regionIds: ["rg-michiana", "rg-midwest", "rg-northeast", "rg-tnvalley"] },
+  { id: "dv-south", name: "South Division", regionIds: ["rg-carolinas", "rg-florida", "rg-georgia", "rg-gulf"] },
+  { id: "dv-west",  name: "West Division",  regionIds: ["rg-greatplains", "rg-northwest", "rg-southwest", "rg-texas"] }
+];
 window.HUB_DATA.regions = [
-  { id: "rg-pacific", name: "Pacific", manager: "Dana Whitfield", markets: [
-    "CA Central Valley Market", "CA North Valley Market", "CA-LA Market",
-    "Inland Empire I Market", "Inland Empire II Market", "Sacramento Market",
-    "Seattle Central", "Seattle East", "Seattle North", "Seattle South",
-    "Eastern Washington", "Oregon Market", "Hawaii Market"
+  /* ---- North Division ---- */
+  { id: "rg-michiana", name: "Michiana Region", division: "North Division", manager: "Dwight Ferraro", markets: [
+    "MI Ann Arbor", "MI Detroit East", "MI Detroit North", "MI Detroit South",
+    "MI Grand Rapids", "MI Lansing", "MI Northwest", "MI Southwest",
+    "IN Central City", "IN North Central", "IN Northeast", "IN Northwest"
   ] },
-  { id: "rg-mountain", name: "Mountain West", manager: "Cal Jorgensen", markets: [
-    "Arizona East", "Arizona South", "Arizona West",
-    "Colorado North", "Colorado South", "Colorado Western Slope",
-    "Utah Market", "North Vegas", "South Vegas"
+  { id: "rg-midwest", name: "Midwest Region", division: "North Division", manager: "Curtis Lindgren", markets: [
+    "Central East", "Central Illinois", "Central Suburban", "City Market",
+    "North Suburban", "South Suburban", "West Suburban",
+    "Central Wisconsin", "East Wisconsin", "West Wisconsin",
+    "NE Wisconsin & Upper Michigan", "NW Wisconsin & Minnesota", "MN West Market",
+    "Missouri & Kansas City", "Missouri St Louis", "Iowa market"
   ] },
-  { id: "rg-southcentral", name: "South Central", manager: "Marisol Vega", markets: [
-    "Texas Austin", "Texas Central", "Texas Dallas East", "Texas Dallas North",
-    "Texas Dallas South", "Texas Dallas West", "Texas Houston North",
-    "Texas Houston South", "Texas South", "Texas West",
-    "Oklahoma City East", "Oklahoma City West", "Oklahoma South",
-    "Oklahoma Tulsa North", "Oklahoma Tulsa South"
+  { id: "rg-northeast", name: "Northeast Region", division: "North Division", manager: "Sophia Almeida", markets: [
+    "Ohio Central", "Ohio Cincinnati North", "Ohio Cincinnati South",
+    "Ohio Northeast", "Ohio Northwest",
+    "New York Albany", "New York Central", "New York Syracuse", "New York West",
+    "Pennsylvania Northeast", "Pennsylvania West",
+    "Maryland East", "Maryland West", "Virginia North", "Virginia South"
   ] },
-  { id: "rg-gulfsouth", name: "Gulf South", manager: "Terrence Boudreaux", markets: [
+  { id: "rg-tnvalley", name: "Tennessee Valley", division: "North Division", manager: "Wade Sutton", markets: [
+    "Tennessee East", "Tennessee North", "Tennessee South",
+    "Kentucky East", "Kentucky West"
+  ] },
+  /* ---- South Division ---- */
+  { id: "rg-carolinas", name: "Carolinas Region", division: "South Division", manager: "Janelle Carter", markets: [
+    "North Carolina Central", "North Carolina Charlotte Metro", "North Carolina East",
+    "North Carolina North", "North Carolina West",
+    "SC South", "South Carolina East", "South Carolina North", "South Carolina West"
+  ] },
+  { id: "rg-florida", name: "Florida Region", division: "South Division", manager: "Rafael Ortiz", markets: [
+    "FL Panhandle", "Jacksonville North", "Jacksonville West", "Northwest Florida",
+    "Ocala Market", "Orlando North", "Orlando South", "Southwest Florida",
+    "Tampa North", "Tampa South", "West Florida"
+  ] },
+  { id: "rg-georgia", name: "Georgia Region", division: "South Division", manager: "Marcus Bell", markets: [
+    "GA Atlanta East", "GA Atlanta North", "GA Atlanta South", "GA Central", "GA East"
+  ] },
+  { id: "rg-gulf", name: "Gulf Region", division: "South Division", manager: "Terrence Boudreaux", markets: [
     "AL Central East", "AL Central West", "AL East", "AL Huntsville", "AL South",
     "MS and AL Gulf Coast", "MS North",
     "LA Central", "LA East", "LA West", "Louisiana North",
     "Arkansas Central", "Arkansas North & Missouri South"
   ] },
-  { id: "rg-southeast", name: "Southeast", manager: "Janelle Carter", markets: [
-    "GA Atlanta East", "GA Atlanta North", "GA Atlanta South", "GA Central", "GA East",
-    "North Carolina Central", "North Carolina Charlotte Metro", "North Carolina East",
-    "North Carolina North", "North Carolina West",
-    "SC South", "South Carolina East", "South Carolina North", "South Carolina West",
-    "Tennessee East", "Tennessee North", "Tennessee South"
+  /* ---- West Division ---- */
+  { id: "rg-greatplains", name: "Great Plains Region", division: "West Division", manager: "Cal Jorgensen", markets: [
+    "Colorado North", "Colorado South", "Colorado Western Slope", "Utah Market",
+    "Kansas Wichita", "Nebraska Omaha",
+    "Oklahoma City East", "Oklahoma City West", "Oklahoma South",
+    "Oklahoma Tulsa North", "Oklahoma Tulsa South"
   ] },
-  { id: "rg-florida", name: "Florida", manager: "Rafael Ortiz", markets: [
-    "FL Panhandle", "Jacksonville North", "Jacksonville West", "Northwest Florida",
-    "Ocala Market", "Orlando North", "Orlando South", "Southwest Florida",
-    "Tampa North", "Tampa South", "West Florida"
+  { id: "rg-northwest", name: "Northwest Region", division: "West Division", manager: "Dana Whitfield", markets: [
+    "Seattle Central", "Seattle East", "Seattle North", "Seattle South",
+    "Eastern Washington", "Oregon Market",
+    "CA North Valley Market", "CA Central Valley Market", "Sacramento Market"
   ] },
-  { id: "rg-greatlakes", name: "Great Lakes", manager: "Bernadette Kowalski", markets: [
-    "MI Ann Arbor", "MI Detroit East", "MI Detroit North", "MI Detroit South",
-    "MI Grand Rapids", "MI Lansing", "MI Northwest", "MI Southwest",
-    "Ohio Central", "Ohio Cincinnati North", "Ohio Cincinnati South",
-    "Ohio Northeast", "Ohio Northwest",
-    "IN Central City", "IN North Central", "IN Northeast", "IN Northwest"
+  { id: "rg-southwest", name: "Southwest Region", division: "West Division", manager: "Priya Nair", markets: [
+    "Arizona East", "Arizona South", "Arizona West", "North Vegas", "South Vegas",
+    "CA-LA Market", "Inland Empire I Market", "Inland Empire II Market", "Hawaii Market"
   ] },
-  { id: "rg-heartland", name: "Heartland", manager: "Curtis Lindgren", markets: [
-    "Central East", "Central Illinois", "Central Suburban", "City Market",
-    "North Suburban", "South Suburban", "West Suburban",
-    "Central Wisconsin", "East Wisconsin", "West Wisconsin",
-    "NE Wisconsin & Upper Michigan", "NW Wisconsin & Minnesota", "MN West Market",
-    "Iowa market", "Missouri & Kansas City", "Missouri St Louis",
-    "Kansas Wichita", "Nebraska Omaha", "Kentucky East", "Kentucky West"
-  ] },
-  { id: "rg-northeast", name: "Northeast", manager: "Sophia Almeida", markets: [
-    "Maryland East", "Maryland West",
-    "New York Albany", "New York Central", "New York Syracuse", "New York West",
-    "Pennsylvania Northeast", "Pennsylvania West",
-    "Virginia North", "Virginia South"
+  { id: "rg-texas", name: "Texas Region", division: "West Division", manager: "Marisol Vega", markets: [
+    "Texas Austin", "Texas Central", "Texas Dallas East", "Texas Dallas North",
+    "Texas Dallas South", "Texas Dallas West", "Texas Houston North",
+    "Texas Houston South", "Texas South", "Texas West"
   ] }
 ];
