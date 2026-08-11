@@ -96,9 +96,8 @@ misses, sublet revenue leakage, and a refinish capacity gap. Cards show
 - **Move a task** two ways: **drag** its card between columns, or open the card
   and change its **Status** in the task detail view (then Save).
 - **Click a card** to open it: editable task fields on the left — including the
-  **Status** control that moves the task between columns — and on the right the
-  parent action plan (root cause, carrier, personas, dates, linked plan) and the
-  task's activity-log timeline (with add-note).
+  **Status** control that moves the task between columns — and the task's
+  activity-log timeline (with add-note) on the right.
 - **New task** attaches to any plan via the plan picker, and carries its own
   **Root cause** field (defaults to the chosen plan's root cause).
 

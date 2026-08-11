@@ -238,7 +238,6 @@
     );
   }
 
-  function ctxRow(k, v) { return '<div class="ctx-row"><span class="k">' + esc(k) + '</span><span class="v">' + v + '</span></div>'; }
   function outcomeClass(o) { if (o === 'Improved') return 'chip-green'; if (o === 'Superseded') return 'chip-blue'; return 'chip-gray'; }
   function avatarHTML(name) { return '<span class="avatar" style="background:' + avatarColor(name) + '">' + esc(initials(name)) + '</span>'; }
 
@@ -279,7 +278,7 @@
   /* ---------------- modal (edit + context) ---------------- */
   var overlay, modalTitle, deleteBtn,
       fPlan, fTitle, fDesc, fOwner, fRole, fRoot, fStatus, fPriority, fDue, fRisk, fBlocked, fMetric, fLag,
-      ctxWrap, logWrap, noteInput;
+      logWrap, noteInput;
 
   function planOptionsHTML(selectedPlanId) {
     var plans = (DATA.plans || []).slice().sort(function (a, b) {
@@ -325,26 +324,6 @@
   function closeModal() { overlay.classList.remove('open'); editingId = null; }
 
   function renderContext(planId, t) {
-    var p = PLAN_BY_ID[planId];
-    if (!p) { ctxWrap.innerHTML = ''; logWrap.innerHTML = ''; return; }
-    var s = STORE_BY_ID[p.storeId], r = ROOT_BY_KEY[p.rootCauseCategory];
-    var parent = p.parentPlanId ? PLAN_BY_ID[p.parentPlanId] : null;
-    var parentRoot = parent ? ROOT_BY_KEY[parent.rootCauseCategory] : null;
-
-    var rows = '';
-    rows += ctxRow('Store', esc(s ? s.name : '') + (s ? ' <span class="ctx-sub">' + esc(s.cbsa) + '</span>' : ''));
-    rows += ctxRow('Root cause', catChip(r));
-    if (p.carrier) rows += ctxRow('Carrier', esc(p.carrier));
-    rows += ctxRow('Owning persona', esc(p.owningPersona));
-    rows += ctxRow('Opened', fmtDateY(p.openedDate) + ' · <span class="ctx-sub">target ' + fmtDateY(p.targetCloseDate) + '</span>');
-    if (parent) rows += ctxRow('Linked', '<span class="link-chip chip">↳ Downstream of ' + esc(parentRoot ? parentRoot.label : '') + ' · ' + esc(parent.id) + '</span>');
-    if (CHILD_COUNT[p.id]) rows += ctxRow('Linked', '<span class="link-chip chip up">▲ Upstream cause of ' + CHILD_COUNT[p.id] + ' plan' + (CHILD_COUNT[p.id] === 1 ? '' : 's') + '</span>');
-
-    ctxWrap.innerHTML =
-      '<div class="ctx-head">Action plan <span class="ctx-id">' + esc(p.id) + '</span></div>' +
-      '<div class="ctx-diag">' + esc(p.diagnosis) + '</div>' +
-      '<div class="ctx-grid">' + rows + '</div>';
-
     var log = (t && t.activityLog) ? t.activityLog : [];
     logWrap.innerHTML =
       '<div class="ctx-head">Activity log</div>' +
@@ -1221,7 +1200,6 @@
     fBlocked = document.getElementById('fBlocked');
     fMetric = document.getElementById('fMetric');
     fLag = document.getElementById('fLag');
-    ctxWrap = document.getElementById('ctxWrap');
     logWrap = document.getElementById('logWrap');
 
     fStatus.innerHTML = COLUMNS.map(function (c) { return '<option value="' + c.key + '">' + esc(c.label) + '</option>'; }).join('');
