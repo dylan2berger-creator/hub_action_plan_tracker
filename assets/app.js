@@ -535,17 +535,18 @@
   function addDaysD(d, n) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; }
   function weekStartMonday(d) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return addDaysD(x, -((x.getDay() + 6) % 7)); }
   function mdShort(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
-  var WEEK_HISTORY = 16;               // weeks generated back from the current week (selector history)
-  var weeklyState = { asOfKey: null }; // anchor week (ISO Monday); null → current week
+  var PAST_WEEKS = 12, FUTURE_WEEKS = 3;   // selector history back + forecast weeks forward
+  var CUR_WEEK_KEY = iso(weekStartMonday(TODAY));
+  var weeklyState = { asOfKey: null };     // beginning week (ISO Monday); null → current week
   function weekSeries(storeId, weeklyTarget) {
     var cur = weekStartMonday(TODAY), out = [];
-    for (var i = WEEK_HISTORY - 1; i >= 0; i--) {
-      var start = addDaysD(cur, -7 * i), key = iso(start);
+    for (var i = -PAST_WEEKS; i <= FUTURE_WEEKS; i++) {
+      var start = addDaysD(cur, 7 * i), key = iso(start);
       var wr = mulberry(hashStr(storeId + ':wk:' + key));
       var f = weeklyTarget * (0.86 + wr() * 0.26);
       out.push({ start: start, key: key, label: 'Wk of ' + mdShort(start), forecast: f, target: weeklyTarget, variance: f - weeklyTarget });
     }
-    return out; // chronological ascending; last entry = current week
+    return out; // chronological ascending; series[PAST_WEEKS] = current week
   }
 
   function avgPacingOver(ids) {
@@ -627,32 +628,35 @@
       '<div class="kpi-subline">' + esc(money(value)) + ' delivered, not yet closed</div></div>';
   }
   function weeklyWindow(series) {
-    var sel = series.length - 1;
+    var last = series.length - 4;               // last beginning index that still has four weeks forward
+    var sel = -1;
     if (weeklyState.asOfKey) {
       for (var i = 0; i < series.length; i++) { if (series[i].key === weeklyState.asOfKey) { sel = i; break; } }
     }
-    if (sel < 3) sel = 3;                       // always keep four weeks available
-    return { sel: sel, win: series.slice(sel - 3, sel + 1) };
+    if (sel < 0) { for (var j = 0; j < series.length; j++) { if (series[j].key === CUR_WEEK_KEY) { sel = j; break; } } }
+    if (sel < 0) sel = last;
+    sel = Math.max(0, Math.min(sel, last));
+    return { sel: sel, win: series.slice(sel, sel + 4) };
   }
   function weeklyInnerHTML(series) {
-    var w = weeklyWindow(series), win = w.win;
+    var w = weeklyWindow(series), win = w.win, last = series.length - 4;
     var opts = '';
-    for (var i = series.length - 1; i >= 3; i--) {
+    for (var i = last; i >= 0; i--) {           // selectable beginning weeks, most recent first
       opts += '<option value="' + esc(series[i].key) + '"' + (i === w.sel ? ' selected' : '') + '>' +
-        esc(series[i].label) + (i === series.length - 1 ? ' · current' : '') + '</option>';
+        esc(mdShort(series[i].start)) + (series[i].key === CUR_WEEK_KEY ? ' · current' : '') + '</option>';
     }
     var rows = win.map(function (wk, idx) {
-      var pos = wk.variance >= 0, isSel = idx === win.length - 1;
+      var pos = wk.variance >= 0, isSel = idx === 0;
       return '<tr' + (isSel ? ' class="wk-sel"' : '') + '><td>' + esc(wk.label) +
-        (isSel ? ' <span class="wk-badge">anchor</span>' : '') + '</td>' +
+        (isSel ? ' <span class="wk-badge">begins</span>' : '') + '</td>' +
         '<td class="num">' + esc(money(wk.forecast)) + '</td><td class="num">' + esc(money(wk.target)) + '</td>' +
         '<td class="num var ' + (pos ? 'pos' : 'neg') + '">' + esc(moneySigned(wk.variance)) + '</td></tr>';
     }).join('');
     var spanEnd = addDaysD(win[win.length - 1].start, 6);
     var span = mdShort(win[0].start) + ' – ' + spanEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    return '<div class="wk-head"><label class="wk-pick">Ending week ' +
-      '<span class="wk-select"><select id="wkSelect" aria-label="Anchor week for the trailing four-week view">' + opts + '</select></span></label>' +
-      '<span class="wk-caption">Trailing 4 weeks · ' + esc(span) + '</span></div>' +
+    return '<div class="wk-head"><label class="wk-pick">Week beginning ' +
+      '<span class="wk-select"><select id="wkSelect" aria-label="Beginning week for the four-week forecast">' + opts + '</select></span></label>' +
+      '<span class="wk-caption">Four weeks · ' + esc(span) + '</span></div>' +
       '<table class="wk-table"><thead><tr><th>Week</th><th class="num">Forecast</th><th class="num">Target</th><th class="num">Variance</th></tr></thead><tbody>' + rows + '</tbody></table>';
   }
   function tileWeekly(label, info, series) {
@@ -699,7 +703,7 @@
       '</div></div>';
 
     html += '<div class="kpi-section"><div class="kpi-section-title">CCC weekly forecast</div><div class="kpi-tiles">' +
-      tileWeekly('Weekly forecast & variance', 'CCC weekly forecast vs target for the four weeks ending the selected week — pick any week to shift the window', p.weeks) +
+      tileWeekly('Weekly forecast & variance', 'CCC weekly forecast vs target for the four weeks beginning the selected week — pick any week to shift the window', p.weeks) +
       '</div></div>';
 
     html += trendsSectionHTML();
