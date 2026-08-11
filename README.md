@@ -101,7 +101,7 @@ above-/below-goal message — then adds sales-forecast pacing:
 - **Closed sales — month to date** — Closed Sales MTD (actual), MTD Closed Sales Target
   (straight-line for today), Closed Sales MTD Variance (actual − target), and
   **DNC (Delivered Not Closed)**.
-- **CCC weekly forecast** — a selectable **beginning week** (defaults to the current
+- **Weekly forecast** — a selectable **beginning week** (defaults to the current
   week) showing the **four weeks from it** — each week's forecast, target, and
   variance, with the beginning week highlighted. Pick any week from the **Week
   beginning** selector to shift the forward four-week window.

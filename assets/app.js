@@ -531,7 +531,7 @@
   function money(v) { var a = Math.abs(v); var s = a >= 1000000 ? '$' + (a / 1000000).toFixed(a >= 10000000 ? 0 : 1) + 'M' : '$' + Math.round(a / 1000) + 'K'; return (v < 0 ? '−' : '') + s; }
   function moneySigned(v) { return (v > 0 ? '+' : v < 0 ? '−' : '') + money(Math.abs(v)); }
 
-  /* ---- CCC weekly forecast: a trailing 4-week window with a selectable anchor week ---- */
+  /* ---- Weekly forecast: a four-week window running forward from a selectable beginning week ---- */
   function addDaysD(d, n) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; }
   function weekStartMonday(d) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return addDaysD(x, -((x.getDay() + 6) % 7)); }
   function mdShort(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
@@ -702,8 +702,8 @@
       tileDNC('DNC (Delivered Not Closed)', 'Vehicle has been delivered, but the file(s) has not been closed', p.dncCount, p.dncValue) +
       '</div></div>';
 
-    html += '<div class="kpi-section"><div class="kpi-section-title">CCC weekly forecast</div><div class="kpi-tiles">' +
-      tileWeekly('Weekly forecast & variance', 'CCC weekly forecast vs target for the four weeks beginning the selected week — pick any week to shift the window', p.weeks) +
+    html += '<div class="kpi-section"><div class="kpi-section-title">Weekly forecast</div><div class="kpi-tiles">' +
+      tileWeekly('Weekly forecast & variance', 'Weekly forecast vs target for the four weeks beginning the selected week — pick any week to shift the window', p.weeks) +
       '</div></div>';
 
     html += trendsSectionHTML();
