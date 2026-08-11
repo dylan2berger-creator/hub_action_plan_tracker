@@ -757,7 +757,7 @@
     carriers.forEach(function (c) { tot += c.volume; wEst += c.vars.estAccuracy * c.volume; wAdh += c.vars.rulesAdherence * c.volume; wCyc += c.vars.cycleTime * c.volume; wCsi += c.vars.csi * c.volume; });
     var shopAvg = { estAccuracy: tot ? wEst / tot : 0, rulesAdherence: tot ? wAdh / tot : 0, cycleTime: tot ? wCyc / tot : 0, csi: tot ? wCsi / tot : 0 };
     carriers.forEach(function (c) { c.shopAvg = shopAvg; c.trend = c.trends.score; });
-    var d = { id: 'scope:' + key, name: scopeTitle(), scoped: true, shopCount: ids.length, carriers: carriers };
+    var d = { id: 'scope:' + key, name: scopeTitle(), scoped: true, shopCount: ids.length, shopIds: ids, carriers: carriers };
     _scopeCarrierCache[key] = d;
     return d;
   }
@@ -1066,8 +1066,56 @@
       '<div class="carr-chips" id="carrChips" role="group" aria-label="Filter carriers">' + chips + '</div>' +
       '<div class="carr-cards" id="carrCards">' + cards + '</div>' +
       trendHTML +
-      '<div class="ro-detail">' + repairOrderPanelHTML(d) + '</div>' +
+      '<div class="ro-detail">' + (d.scoped ? shopsPanelHTML(d) : repairOrderPanelHTML(d)) + '</div>' +
       '<div class="cluster-detail">' + rulesClusterHTML(d) + '</div>';
+  }
+  // Scope views (market / region) list SHOPS instead of individual repair orders.
+  function shopCarrierAgg(id, carrierName) {
+    var sd = shopData(id); if (!sd) return null;
+    var cs = carrierName ? sd.carriers.filter(function (c) { return c.name === carrierName; }) : sd.carriers;
+    if (!cs.length) return null;   // shop has no volume with the selected carrier
+    var vol = 0, sScore = 0, sEst = 0, sAdh = 0, sCyc = 0, sCsi = 0, notAdh = 0;
+    cs.forEach(function (c) {
+      vol += c.volume;
+      sScore += c.score * c.volume; sEst += c.vars.estAccuracy * c.volume; sAdh += c.vars.rulesAdherence * c.volume;
+      sCyc += c.vars.cycleTime * c.volume; sCsi += c.vars.csi * c.volume;
+      notAdh += c.volume * 5.5 * (1 - c.vars.rulesAdherence / 100);   // ≈ avg rules triggered × miss rate
+    });
+    var v = vol || 1;
+    return { volume: Math.round(vol), score: Math.round(sScore / v), estAccuracy: sEst / v, rulesAdherence: sAdh / v, cycleTime: sCyc / v, csi: sCsi / v, notAdhered: Math.round(notAdh) };
+  }
+  function shopsPanelHTML(d) {
+    var roCarrier = kpiState.roCarrier;
+    if (roCarrier && !d.carriers.some(function (c) { return c.name === roCarrier; })) roCarrier = null;
+    var rows = (d.shopIds || []).map(function (id) {
+      var sd = shopData(id), a = sd ? shopCarrierAgg(id, roCarrier) : null;
+      return a ? { id: id, name: sd.name, market: sd.market, a: a } : null;
+    }).filter(Boolean).sort(function (x, y) { return x.a.rulesAdherence - y.a.rulesAdherence; });   // worst adherence first
+    var total = rows.length, CAP = 200, shown = rows.slice(0, CAP);
+    var showMkt = state.role === 'regional';
+    var avgAdh = (d.carriers[0] && d.carriers[0].shopAvg) ? d.carriers[0].shopAvg.rulesAdherence : 70;
+    var f1 = function (x) { return Math.round(x * 10) / 10; };
+    var options = '<option value="">All carriers</option>' + d.carriers.map(function (c) {
+      return '<option value="' + esc(c.name) + '"' + (roCarrier === c.name ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+    }).join('');
+    var body = shown.map(function (r) {
+      var a = r.a;
+      return '<tr data-shop="' + esc(r.id) + '" role="button" tabindex="0" aria-label="Open ' + esc(r.name) + '">' +
+        '<td class="ro-id">' + esc(r.name) + '</td>' + (showMkt ? '<td>' + esc(r.market) + '</td>' : '') +
+        '<td class="num">' + a.volume + '</td><td class="num">' + a.score + '</td><td class="num">' + f1(a.estAccuracy) + '%</td>' +
+        '<td class="num ' + (a.rulesAdherence >= avgAdh ? 'ok' : 'bad') + '">' + f1(a.rulesAdherence) + '%</td>' +
+        '<td class="num">' + a.notAdhered + '</td><td class="num">' + f1(a.cycleTime) + 'd</td><td class="num">' + Math.round(a.csi) + '</td></tr>';
+    }).join('') || '<tr><td colspan="' + (showMkt ? 9 : 8) + '" class="ctx-sub" style="padding:12px">No shops.</td></tr>';
+    var table = '<table class="mk-table ro-table shops-table"><thead><tr><th>Shop</th>' + (showMkt ? '<th>Market</th>' : '') +
+      '<th class="num">Repair volume</th><th class="num">Score</th><th class="num">Est. accuracy</th>' +
+      '<th class="num">Rules adherence</th><th class="num">Rules not adhered</th><th class="num">Cycle time</th><th class="num">CSI</th>' +
+      '</tr></thead><tbody>' + body + '</tbody></table>';
+    var note = 'Showing ' + shown.length + ' of ' + total + ' shops' + (roCarrier ? ' · ' + esc(roCarrier) : '') +
+      (shown.length < total ? ' — narrow with the carrier filter' : ' · click a row to open the shop');
+    return '<div class="ro-head"><div class="kpi-section-title sub">Shop breakdown <span class="ctx-sub">(' + total + ' shops · worst adherence first · ' + esc(MONTH_ABBR[CUR_MONTH]) + ')</span></div>' +
+      '<label class="ro-filter">Carrier <select id="roCarrier">' + options + '</select></label></div>' +
+      '<div class="mk-table-wrap ro-scroll">' + table + '</div>' +
+      '<div class="ro-note ctx-sub">' + note + '</div>';
   }
   /* Repair-order-level detail — one row per RO. Row count per carrier equals that
      carrier's repair volume, so the totals match the carrier cards. Columns carry

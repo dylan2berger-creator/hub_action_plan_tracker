@@ -902,6 +902,8 @@ button { font-family: inherit; }
 .ro-scroll { max-height: 460px; overflow: auto; }
 .ro-table thead th { position: sticky; top: 0; z-index: 1; background: #fff; box-shadow: inset 0 -1px 0 #e6e9ef; }
 .ro-table tbody tr { cursor: default; }
+.shops-table tbody tr { cursor: pointer; }
+.shops-table tbody tr:hover { background: #f4f8fc; }
 .ro-table td.ro-id { font-weight: 700; color: #00529b; }
 .ro-table td.num.warn { color: #c1660f; font-weight: 700; }
 .ro-note { margin-top: 6px; }
