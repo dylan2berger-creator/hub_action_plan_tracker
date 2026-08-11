@@ -854,8 +854,8 @@ button { font-family: inherit; }
 .vfunnel { display: flex; flex-direction: column; gap: 8px; background: #fff; border: 1px solid #e6e9ef; border-radius: var(--corner-md); box-shadow: var(--shadow-1); padding: 14px 16px; }
 .vf-stage { display: grid; grid-template-columns: 130px 1fr 150px; align-items: center; gap: 12px; }
 .vf-label { font-size: 13px; font-weight: 600; color: #1e2a33; }
-.vf-track { background: #eef1f5; border-radius: 5px; height: 22px; overflow: hidden; }
-.vf-bar { height: 100%; border-radius: 5px; }
+.vf-track { display: block; background: #eef1f5; border-radius: 5px; height: 22px; overflow: hidden; }
+.vf-bar { display: block; height: 100%; border-radius: 5px; }
 .vf-bar.s0 { background: #00529b; } .vf-bar.s1 { background: #2b7a8e; } .vf-bar.s2 { background: #2e7d32; } .vf-bar.s3 { background: #c1660f; }
 .vf-count { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: #111; }
 .vf-drop { font-weight: 500; font-size: 11px; color: var(--muted); }
