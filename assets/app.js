@@ -141,7 +141,7 @@
   }
 
   /* ---------------- rendering ---------------- */
-  var boardEl, statPlans, statBlocked, statBehind, pageSub;
+  var boardEl, statBlocked, statBehind, pageSub;
 
   function render() {
     var shown = visible();
@@ -172,7 +172,6 @@
       if (t.column === 'blocked') blocked++;
       if (isBehind(t)) behind++;
     });
-    statPlans.textContent = Object.keys(planIds).length;
     statBlocked.textContent = blocked;
     statBehind.textContent = behind;
     var nStores = Object.keys(storeIds).length;
@@ -1156,7 +1155,6 @@
   /* ---------------- init ---------------- */
   function init() {
     boardEl = document.getElementById('board');
-    statPlans = document.getElementById('statPlans');
     statBlocked = document.getElementById('statBlocked');
     statBehind = document.getElementById('statBehind');
     pageSub = document.getElementById('pageSub');
@@ -1169,7 +1167,7 @@
     var behindBtn = document.getElementById('behindBtn');
     var sortSelect = document.getElementById('sortSelect');
 
-    populate(rootFilter, DATA.rootCauses || [], 'All root causes');
+    populate(rootFilter, DATA.rootCauses || [], 'Root Causes');
     refreshOwnerFilter();
 
     search.addEventListener('input', function () { state.search = search.value; render(); });
