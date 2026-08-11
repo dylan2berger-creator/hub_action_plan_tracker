@@ -76,18 +76,21 @@ Click **KPI's** in the nav to switch to the per-store KPI dashboard (the store
 selector drives both tabs). It recreates the shipped capture-funnel boxes —
 **Opportunity to Estimate / RO / Arrive** (the 80/70/7 targets), with the Actual
 box, a Monthly Goal box that turns green when ahead / orange when behind, and an
-above-/below-goal message — then extends into three more sections:
+above-/below-goal message — then adds sales-forecast pacing:
 
-- **Production & cycle** — Cycle Time (keys-to-keys), Touch Time, Length of Rental, Sales (MTD)
-- **Quality & customer** — CSI Score, Net Promoter Score, Rework / Comeback Rate
-- **DRP scorecard** — Estimate Accuracy, Supplement Frequency, Alternative Parts Usage, Severity & Cost Index
+- **Sales forecast** — Funnel Status (forecast vs the Fill the Funnel target) and
+  Budget Funnel Status (forecast vs budget) as On Track / Behind / Ahead; **% Closed
+  to Budget** with a straight-line-pace marker; and **Days Behind** (ahead/behind pace).
+- **Closed sales — month to date** — Closed Sales MTD (actual), MTD Closed Sales Target
+  (straight-line for today), Closed Sales MTD Variance (actual − target), and
+  **DNC (Delivered Not Closed)**.
+- **CCC weekly forecast** — Week 1 / 2 / 3 forecast, target, and variance.
 
-Each tile shows the actual value, an above/below-goal delta chip (green / amber /
-red, always with an arrow + label — never color alone), the goal, and — for headline
-metrics — a trailing-six-month sparkline with a dashed goal reference line.
-Challenged stores read weaker on the metric their action plan is about (e.g. Aurora's
-booth outage shows up as elevated cycle time and depressed CSI), so the two tabs tell
-one story.
+Status and delta chips use semantic color (green / amber / red) always paired with an
+arrow + label — never color alone. Targets, variance, %, days-behind, DNC, and the
+weekly rows all derive at render time from a small per-store set of inputs (monthly
+budget, closed-sales pace, forecast factor) anchored to the dataset's MTD window, so
+challenged stores pace weaker and the two tabs tell one story.
 
 ![KPIs tab](assets/preview-kpis.png)
 

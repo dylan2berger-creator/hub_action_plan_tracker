@@ -677,3 +677,26 @@ button { font-family: inherit; }
 .spark-line { fill: none; stroke: var(--primary); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
 .spark-goal { stroke: #9aa5b1; stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
 .spark-dot { fill: var(--primary); stroke: #fff; stroke-width: 2; vector-effect: non-scaling-stroke; }
+
+/* sales-forecast pacing tiles */
+.kpi-tile-wide { grid-column: 1 / -1; }
+.kpi-status { font-family: var(--font-brand); font-weight: 700; font-size: 30px; line-height: 1; }
+.kpi-status.good { color: #2e7d32; }
+.kpi-status.warn { color: #b26a00; }
+.kpi-status.serious { color: var(--error-strong); }
+.kpi-subline { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.kpi-subline b { color: #111; font-weight: 700; }
+.kpi-unit { font-size: 15px; font-weight: 600; color: var(--muted); }
+.kpi-value.pos { color: #2e7d32; }
+.kpi-value.neg { color: var(--error-strong); }
+.kpi-value.muted { color: #5f5e5e; }
+.meter { position: relative; height: 8px; background: var(--surface-variant); border-radius: var(--corner-full); margin: 2px 0; }
+.meter-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--primary); border-radius: var(--corner-full); }
+.meter-mark { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #12333c; border-radius: 1px; }
+.wk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.wk-table th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; padding: 6px 8px; border-bottom: 1px solid var(--outline-variant); }
+.wk-table td { padding: 9px 8px; border-bottom: 1px solid #eef1f5; color: #1e2a33; }
+.wk-table tr:last-child td { border-bottom: none; }
+.wk-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.wk-table td.var.pos { color: #2e7d32; font-weight: 700; }
+.wk-table td.var.neg { color: var(--error-strong); font-weight: 700; }

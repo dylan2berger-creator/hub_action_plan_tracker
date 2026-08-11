@@ -455,45 +455,35 @@
   }
 
   /* ---------------- KPI dashboard (KPIs tab) ---------------- */
-  var KPI_METRICS = DATA.kpiMetrics || [];
-  var KPI_GROUPS = DATA.kpiGroups || [];
+  var KPI_FUNNEL = (DATA.kpiMetrics || []).filter(function (m) { return m.group === 'funnel'; });
   var KPIS_BY_STORE = DATA.kpisByStore || {};
+  var PACING_BY_STORE = DATA.pacingByStore || {};
+  var MTD = DATA.mtd || { day: 10, daysInMonth: 31 };
 
-  function kpiValuesFor(storeId) {
+  function kpiFunnelValuesFor(storeId) {
     if (storeId && storeId !== 'all' && KPIS_BY_STORE[storeId]) return KPIS_BY_STORE[storeId];
     var acc = {}, n = 0;
-    Object.keys(KPIS_BY_STORE).forEach(function (sid) {
-      n++; KPI_METRICS.forEach(function (m) { acc[m.key] = (acc[m.key] || 0) + KPIS_BY_STORE[sid][m.key]; });
-    });
-    var out = {}; KPI_METRICS.forEach(function (m) { out[m.key] = n ? acc[m.key] / n : 0; });
+    Object.keys(KPIS_BY_STORE).forEach(function (sid) { n++; KPI_FUNNEL.forEach(function (m) { acc[m.key] = (acc[m.key] || 0) + KPIS_BY_STORE[sid][m.key]; }); });
+    var out = {}; KPI_FUNNEL.forEach(function (m) { out[m.key] = n ? acc[m.key] / n : 0; });
     return out;
   }
+
   function trimNum(x) { return String(parseFloat(x.toFixed(2))); }
   function fmtVal(v, unit) {
     if (unit === '%') return Math.round(v) + '%';
     if (unit === 'days') { var s = parseFloat(v.toFixed(2)); return trimNum(s) + ' ' + (s === 1 ? 'day' : 'days'); }
-    if (unit === '$') return '$' + Math.round(v / 1000) + 'K';
     return String(Math.round(v));
   }
   function deltaMag(unit, g) {
     if (unit === '%') return Math.round(g) + '%';
     if (unit === 'days') { var s = parseFloat(g.toFixed(1)); return trimNum(s) + ' ' + (s < 2 ? 'day' : 'days'); }
-    if (unit === '$') return '$' + Math.round(g / 1000) + 'K';
-    if (unit === 'pts') return Math.round(g) + ' pts';
     return String(Math.round(g));
   }
   function kpiDelta(m, v) {
     var gap = Math.abs(v - m.goal);
     var ahead = m.dir === 'higher' ? v >= m.goal : v <= m.goal;
-    var zero = m.unit === 'days' ? parseFloat(gap.toFixed(1)) === 0
-             : m.unit === '$' ? Math.round(gap / 1000) === 0
-             : Math.round(gap) === 0;
+    var zero = m.unit === 'days' ? parseFloat(gap.toFixed(1)) === 0 : Math.round(gap) === 0;
     return { ahead: ahead, gap: gap, zero: zero, mag: deltaMag(m.unit, gap) };
-  }
-  function chipSeverity(m, d) {
-    if (d.ahead) return 'good';
-    var big = m.unit === '%' ? d.gap >= 5 : m.unit === 'days' ? d.gap >= 1.5 : m.unit === '$' ? d.gap >= 60000 : d.gap >= 5;
-    return big ? 'serious' : 'warn';
   }
   function infoIcon(text) {
     return '<span class="kpi-info" tabindex="0" role="img" aria-label="' + esc(text) + '" title="' + esc(text) + '">' +
@@ -515,49 +505,97 @@
     '</div>';
   }
 
-  // seeded 6-month trend ending on the current value (deterministic per store+metric)
+  /* ---- sales-forecast pacing tiles ---- */
   function hashStr(s) { var h = 2166136261 >>> 0; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; }
   function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-  function sparkPoints(seed, end, m) {
-    var rnd = mulberry(hashStr(seed)), n = 6, pts = [];
-    var amp = m.unit === 'days' ? 0.8 : m.unit === '%' ? 3.5 : m.unit === '$' ? Math.max(end * 0.05, 15000) : m.unit === 'pts' ? 3 : end * 0.04;
-    var drift = 1.2 * amp * (m.dir === 'higher' ? -1 : 1);
-    for (var i = 0; i < n; i++) { var t = i / (n - 1); pts.push(end + drift * (1 - t) + (rnd() - 0.5) * amp); }
-    pts[n - 1] = end;
-    return pts;
+  function money(v) { var a = Math.abs(v); var s = a >= 1000000 ? '$' + (a / 1000000).toFixed(a >= 10000000 ? 0 : 1) + 'M' : '$' + Math.round(a / 1000) + 'K'; return (v < 0 ? '−' : '') + s; }
+  function moneySigned(v) { return (v > 0 ? '+' : v < 0 ? '−' : '') + money(Math.abs(v)); }
+
+  function avgPacing() {
+    var ids = Object.keys(PACING_BY_STORE), n = ids.length || 1, b = 0, cp = 0, ff = 0;
+    ids.forEach(function (id) { b += PACING_BY_STORE[id].budget; cp += PACING_BY_STORE[id].closedPace; ff += PACING_BY_STORE[id].forecastFactor; });
+    return { budget: b / n, closedPace: cp / n, forecastFactor: ff / n };
   }
-  function sparkSVG(seed, end, m) {
-    var pts = sparkPoints(seed, end, m), w = 200, h = 44, pad = 5;
-    var all = pts.concat([m.goal]);
-    var min = Math.min.apply(null, all), max = Math.max.apply(null, all);
-    if (max === min) max = min + 1;
-    var rng = max - min, stepX = (w - 2 * pad) / (pts.length - 1);
-    var xy = pts.map(function (v, i) { return [pad + i * stepX, pad + (1 - (v - min) / rng) * (h - 2 * pad)]; });
-    var line = xy.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' ');
-    var area = line + ' L' + (w - pad).toFixed(1) + ' ' + (h - pad).toFixed(1) + ' L' + pad.toFixed(1) + ' ' + (h - pad).toFixed(1) + ' Z';
-    var last = xy[xy.length - 1];
-    var gy = pad + (1 - (m.goal - min) / rng) * (h - 2 * pad);
-    var tip = 'Trailing 6 mo: ' + pts.map(function (v) { return fmtVal(v, m.unit); }).join(', ');
-    return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + esc(tip) + '"><title>' + esc(tip) + '</title>' +
-      '<path class="spark-area" d="' + area + '"/>' +
-      '<line class="spark-goal" x1="' + pad + '" x2="' + (w - pad) + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '"/>' +
-      '<path class="spark-line" d="' + line + '"/>' +
-      '<circle class="spark-dot" cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="3.2"/></svg>';
+  function computePacing(storeId) {
+    var base = (storeId && storeId !== 'all' && PACING_BY_STORE[storeId]) ? PACING_BY_STORE[storeId] : avgPacing();
+    var frac = MTD.day / MTD.daysInMonth;
+    var budget = base.budget;
+    var mtdTarget = budget * frac;
+    var closedMTD = mtdTarget * base.closedPace;
+    var forecast = budget * base.forecastFactor;
+    var fillTarget = budget * 0.985;
+    var closedVariance = closedMTD - mtdTarget;
+    var pctClosedToBudget = closedMTD / budget * 100;
+    var pacePct = frac * 100;
+    var daysBehind = (mtdTarget - closedMTD) / (budget / 22);
+    var dr = mulberry(hashStr(storeId + ':dnc'));
+    var dncCount = 3 + Math.floor(dr() * 6);
+    var dncValue = dncCount * (12000 + dr() * 9000);
+    var weeklyTarget = budget / (MTD.daysInMonth / 7);
+    var wr = mulberry(hashStr(storeId + ':wk')), weeks = [];
+    for (var i = 1; i <= 3; i++) { var f = weeklyTarget * (0.9 + wr() * 0.18); weeks.push({ week: i, forecast: f, target: weeklyTarget, variance: f - weeklyTarget }); }
+    return { budget: budget, mtdTarget: mtdTarget, closedMTD: closedMTD, forecast: forecast, fillTarget: fillTarget,
+      closedVariance: closedVariance, pctClosedToBudget: pctClosedToBudget, pacePct: pacePct, daysBehind: daysBehind,
+      dncCount: dncCount, dncValue: dncValue, weeks: weeks };
+  }
+  function statusOf(actual, target) {
+    var r = actual / target;
+    if (r >= 1.01) return { word: 'Ahead', cls: 'good' };
+    if (r >= 0.99) return { word: 'On Track', cls: 'good' };
+    if (r >= 0.95) return { word: 'Behind', cls: 'warn' };
+    return { word: 'Behind', cls: 'serious' };
   }
 
-  function tileHTML(m, v, storeId) {
-    var d = kpiDelta(m, v), cls = chipSeverity(m, d);
-    var spark = m.spark ? '<div class="kpi-spark">' + sparkSVG(storeId + ':' + m.key, v, m) + '</div>' : '';
-    var goalTxt = 'Goal ' + (m.dir === 'lower' ? '≤ ' : '≥ ') + fmtVal(m.goal, m.unit);
-    var chip = d.zero
-      ? '<span class="delta-chip good"><span class="arw" aria-hidden="true">✓</span>On goal</span>'
-      : '<span class="delta-chip ' + cls + '"><span class="arw" aria-hidden="true">' + (d.ahead ? '▲' : '▼') + '</span>' + esc(d.mag + (d.ahead ? ' above' : ' below')) + '</span>';
-    return '<div class="kpi-tile">' +
-      '<div class="kpi-name">' + esc(m.label) + infoIcon(m.info) + '</div>' +
-      '<div class="kpi-main"><div class="kpi-value">' + esc(fmtVal(v, m.unit)) + '</div>' + chip + '</div>' +
-      spark +
-      '<div class="kpi-goal">' + esc(goalTxt) + '</div>' +
-    '</div>';
+  function tileStatus(label, info, forecast, target, targetLabel) {
+    var st = statusOf(forecast, target);
+    return '<div class="kpi-tile"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
+      '<div class="kpi-status ' + st.cls + '">' + esc(st.word) + '</div>' +
+      '<div class="kpi-subline">Forecast <b>' + esc(money(forecast)) + '</b> vs ' + esc(targetLabel) + ' ' + esc(money(target)) + '</div></div>';
+  }
+  function tileMoney(label, info, value, sub, muted) {
+    return '<div class="kpi-tile"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
+      '<div class="kpi-value' + (muted ? ' muted' : '') + '">' + esc(money(value)) + '</div>' +
+      '<div class="kpi-subline">' + esc(sub) + '</div></div>';
+  }
+  function tileVariance(label, info, value, sub) {
+    var pos = value >= 0, cls = pos ? 'good' : (Math.abs(value) >= 20000 ? 'serious' : 'warn');
+    return '<div class="kpi-tile"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
+      '<div class="kpi-value ' + (pos ? 'pos' : 'neg') + '">' + esc(moneySigned(value)) + '</div>' +
+      '<div class="kpi-subline">' + esc(sub) + '</div>' +
+      '<span class="delta-chip ' + cls + '"><span class="arw" aria-hidden="true">' + (pos ? '▲' : '▼') + '</span>' + (pos ? 'ahead of target' : 'behind target') + '</span></div>';
+  }
+  function tileDays(label, info, days) {
+    var behind = days > 0.05, ahead = days < -0.05;
+    var cls = ahead ? 'good' : (days > 1.5 ? 'serious' : behind ? 'warn' : 'good');
+    var word = behind ? 'behind' : ahead ? 'ahead' : 'on pace';
+    return '<div class="kpi-tile"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
+      '<div class="kpi-main"><div class="kpi-value">' + esc(Math.abs(days).toFixed(1)) + ' <span class="kpi-unit">days</span></div>' +
+      '<span class="delta-chip ' + cls + '"><span class="arw" aria-hidden="true">' + (ahead ? '▲' : behind ? '▼' : '✓') + '</span>' + esc(word) + '</span></div>' +
+      '<div class="kpi-subline">Against straight-line pace</div></div>';
+  }
+  function tileMeter(label, info, pct, pacePct) {
+    var ahead = pct >= pacePct, cls = ahead ? 'good' : (pacePct - pct > 6 ? 'serious' : 'warn');
+    var p = Math.max(0, Math.min(100, pct)), mk = Math.max(0, Math.min(100, pacePct));
+    return '<div class="kpi-tile"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
+      '<div class="kpi-main"><div class="kpi-value">' + Math.round(pct) + '%</div>' +
+      '<span class="delta-chip ' + cls + '"><span class="arw" aria-hidden="true">' + (ahead ? '▲' : '▼') + '</span>' + (ahead ? 'ahead of pace' : 'behind pace') + '</span></div>' +
+      '<div class="meter" role="img" aria-label="' + Math.round(pct) + '% closed versus ' + Math.round(pacePct) + '% straight-line pace"><div class="meter-fill" style="width:' + p.toFixed(1) + '%"></div><div class="meter-mark" style="left:' + mk.toFixed(1) + '%"></div></div>' +
+      '<div class="kpi-subline">' + Math.round(pct) + '% closed &middot; ' + Math.round(pacePct) + '% straight-line pace</div></div>';
+  }
+  function tileDNC(label, info, count, value) {
+    return '<div class="kpi-tile"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
+      '<div class="kpi-main"><div class="kpi-value">' + count + ' <span class="kpi-unit">files</span></div>' +
+      '<span class="delta-chip warn"><span class="arw" aria-hidden="true">●</span>open</span></div>' +
+      '<div class="kpi-subline">' + esc(money(value)) + ' delivered, not yet closed</div></div>';
+  }
+  function tileWeekly(label, info, weeks) {
+    var rows = weeks.map(function (w) {
+      var pos = w.variance >= 0;
+      return '<tr><td>Week ' + w.week + '</td><td class="num">' + esc(money(w.forecast)) + '</td><td class="num">' + esc(money(w.target)) + '</td>' +
+        '<td class="num var ' + (pos ? 'pos' : 'neg') + '">' + esc(moneySigned(w.variance)) + '</td></tr>';
+    }).join('');
+    return '<div class="kpi-tile kpi-tile-wide"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
+      '<table class="wk-table"><thead><tr><th>CCC weekly</th><th class="num">Forecast</th><th class="num">Target</th><th class="num">Variance</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
   function possessive(name) { return name.charAt(name.length - 1).toLowerCase() === 's' ? name + "'" : name + "'s"; }
@@ -566,21 +604,33 @@
   function renderKpis(storeId) {
     var root = document.getElementById('kpiRoot');
     if (!root) return;
-    var vals = kpiValuesFor(storeId);
+    var fvals = kpiFunnelValuesFor(storeId);
+    var p = computePacing(storeId);
     var name = storeId === 'all' ? 'All stores' : (STORE_BY_ID[storeId] ? shortStore(STORE_BY_ID[storeId].name) : 'All stores');
-    var funnel = KPI_METRICS.filter(function (m) { return m.group === 'funnel'; });
     var html = '';
     html += '<div class="kpi-head"><p class="kpi-title" data-testid="kpi-page-title">' + esc(possessive(name) + ' KPIs') + '</p>' +
       '<p class="kpi-sub" data-testid="kpi-page-subtitle">80/70/7</p></div>';
     html += '<div class="kpi-funnel" data-testid="capture-rate-metrics">' +
-      funnel.map(function (m) { return funnelBoxHTML(m, vals[m.key]); }).join('') + '</div>';
-    KPI_GROUPS.forEach(function (g) {
-      if (g.key === 'funnel') return;
-      var ms = KPI_METRICS.filter(function (m) { return m.group === g.key; });
-      if (!ms.length) return;
-      html += '<div class="kpi-section"><div class="kpi-section-title">' + esc(g.label) + '</div>' +
-        '<div class="kpi-tiles">' + ms.map(function (m) { return tileHTML(m, vals[m.key], storeId); }).join('') + '</div></div>';
-    });
+      KPI_FUNNEL.map(function (m) { return funnelBoxHTML(m, fvals[m.key]); }).join('') + '</div>';
+
+    html += '<div class="kpi-section"><div class="kpi-section-title">Sales forecast</div><div class="kpi-tiles">' +
+      tileStatus('Funnel Status', 'Status for the current sales forecast versus the Fill the Funnel target', p.forecast, p.fillTarget, 'Fill the Funnel') +
+      tileStatus('Budget Funnel Status', 'Status for the current sales forecast versus budget', p.forecast, p.budget, 'Budget') +
+      tileMeter('% Closed to Budget', 'Total closed and delivered against budget', p.pctClosedToBudget, p.pacePct) +
+      tileDays('Days Behind', 'How many days of work the shop is ahead or behind', p.daysBehind) +
+      '</div></div>';
+
+    html += '<div class="kpi-section"><div class="kpi-section-title">Closed sales — month to date</div><div class="kpi-tiles">' +
+      tileMoney('Closed Sales MTD', 'Actual sales delivered and closed for the current month', p.closedMTD, 'Delivered & closed, MTD', false) +
+      tileMoney('MTD Closed Sales Target', 'Straight-line sales target for today', p.mtdTarget, 'Straight-line target for today', true) +
+      tileVariance('Closed Sales MTD Variance', 'Closed Sales MTD actuals minus MTD closed sales target', p.closedVariance, 'Actual − target') +
+      tileDNC('DNC (Delivered Not Closed)', 'Vehicle has been delivered, but the file(s) has not been closed', p.dncCount, p.dncValue) +
+      '</div></div>';
+
+    html += '<div class="kpi-section"><div class="kpi-section-title">CCC weekly forecast</div><div class="kpi-tiles">' +
+      tileWeekly('Weekly forecast & variance', 'Weekly forecasts from CCC and variance from target', p.weeks) +
+      '</div></div>';
+
     root.innerHTML = html;
   }
 
