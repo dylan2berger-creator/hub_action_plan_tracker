@@ -9,6 +9,23 @@ moved the metric. Built on The Hub's real navigation shell and design system.
 The prototype spans two working tabs — **Action Plans** and a per-store **KPIs**
 dashboard — switched from the nav and both driven by the shared store selector.
 
+## Prototype view switcher (roles)
+
+A **Prototype** banner across the top lets you see the same tabs through two roles:
+
+- **General Manager (shop level)** — the default. One shop at a time; the location
+  selector picks the shop, and both tabs show just that store.
+- **Market Manager (book of ~10 shops)** — scope becomes the manager's book (a
+  10-shop *Chicago Metro* market). Action Plans span the whole book, the location
+  selector switches to **All my shops** + the book's shops, and the **KPIs tab
+  becomes a market roll-up**: a book-average capture funnel, a summary
+  (shops behind / open action plans), and a sortable **shop scorecard** (Opp. to RO,
+  Closed MTD, % to Budget, Days Behind, open plans, at-risk tasks, and a
+  Behind / Watch / On-track status) — click any shop to drill into its dashboard.
+  The trends chart rolls up to the book.
+
+![Market Manager roll-up](assets/preview-market.png)
+
 ![Action Plans board](assets/preview.png)
 
 ## Run it

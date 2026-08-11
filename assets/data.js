@@ -32,7 +32,8 @@ window.HUB_DATA = {
     { id: "s10", name: "Schererville, IN",      cbsa: "Chicago–Naperville CBSA" },
     { id: "s11", name: "Grand Rapids, MI",      cbsa: "Grand Rapids–Kentwood CBSA" },
     { id: "s12", name: "Brandon, FL",           cbsa: "Tampa–St. Petersburg CBSA" },
-    { id: "s13", name: "Mesa, AZ",              cbsa: "Phoenix–Mesa CBSA" }
+    { id: "s13", name: "Mesa, AZ",              cbsa: "Phoenix–Mesa CBSA" },
+    { id: "s14", name: "Orland Park, IL",       cbsa: "Chicago–Naperville CBSA" }
   ],
 
   /* Default the board to the flagship cross-link store (Aurora). */
@@ -726,7 +727,8 @@ window.HUB_DATA.kpisByStore = {
   s10: { estimate: 82, ro: 70, arrive: 6.4 },
   s11: { estimate: 84, ro: 68, arrive: 6.9 },
   s12: { estimate: 82, ro: 66, arrive: 6.7 },
-  s13: { estimate: 83, ro: 69, arrive: 6.5 }
+  s13: { estimate: 83, ro: 69, arrive: 6.5 },
+  s14: { estimate: 83, ro: 71, arrive: 6.3 }
 };
 
 /* MTD pacing window ("as of" the reference date) and per-store sales-forecast
@@ -746,5 +748,12 @@ window.HUB_DATA.pacingByStore = {
   s10: { budget: 525000, closedPace: 0.99, forecastFactor: 1.00 },
   s11: { budget: 455000, closedPace: 0.93, forecastFactor: 0.95 },
   s12: { budget: 510000, closedPace: 0.96, forecastFactor: 0.97 },
-  s13: { budget: 515000, closedPace: 1.00, forecastFactor: 1.01 }
+  s13: { budget: 515000, closedPace: 1.00, forecastFactor: 1.01 },
+  s14: { budget: 495000, closedPace: 1.02, forecastFactor: 1.01 }
+};
+
+/* Market Manager's book — ~10 shops in one market (Chicago metro). */
+window.HUB_DATA.market = {
+  id: "m-chi", name: "Chicago Metro", manager: "Marcus Delgado",
+  storeIds: ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s10", "s14"]
 };

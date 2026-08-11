@@ -56,8 +56,19 @@
   });
   var taskSeq = 1000;
 
+  var MARKET = DATA.market || { name: 'Market', manager: '', storeIds: [] };
+  var ALL_STORE_IDS = (DATA.stores || []).map(function (s) { return s.id; });
+  function resolveIds(storeId) {
+    if (storeId === 'book') return MARKET.storeIds.slice();
+    if (storeId === 'all') return ALL_STORE_IDS.slice();
+    return [storeId];
+  }
+  function scopeIds() { return resolveIds(state.store); }
+  function inScope(sid) { return scopeIds().indexOf(sid) >= 0; }
+
   var state = {
     view: 'plans',
+    role: 'gm',
     store: DATA.defaultStoreId || 'all',
     root: 'all',
     owner: 'all',
@@ -100,7 +111,7 @@
   function visible() {
     var q = state.search.trim().toLowerCase();
     return tasks.filter(function (t) {
-      if (state.store !== 'all' && t.storeId !== state.store) return false;
+      if (!inScope(t.storeId)) return false;
       var p = planOf(t);
       if (state.root !== 'all' && (!p || p.rootCauseCategory !== state.root)) return false;
       if (state.owner !== 'all' && t.ownerName !== state.owner) return false;
@@ -151,7 +162,7 @@
     }).join('');
 
     // stats reflect the current store scope
-    var scope = tasks.filter(function (t) { return state.store === 'all' || t.storeId === state.store; });
+    var scope = tasks.filter(function (t) { return inScope(t.storeId); });
     var planIds = {}, storeIds = {}, blocked = 0, behind = 0;
     scope.forEach(function (t) {
       planIds[t.planId] = 1; storeIds[t.storeId] = 1;
@@ -175,7 +186,7 @@
   function cardHTML(t) {
     var p = planOf(t), s = storeOf(t), root = rootOf(t), pm = priorityMeta(t.priority);
     var idx = colIndex(t.column);
-    var eyebrow = (state.store === 'all' && s) ? '<div class="card-eyebrow">' + esc(s.name) + '</div>' : '';
+    var eyebrow = (scopeIds().length > 1 && s) ? '<div class="card-eyebrow">' + esc(s.name) + '</div>' : '';
 
     var dueHTML = '';
     if (t.dueDate) {
@@ -422,20 +433,28 @@
     var menu = document.getElementById('storeMenu');
     var counts = {};
     (DATA.plans || []).forEach(function (p) { counts[p.storeId] = (counts[p.storeId] || 0) + 1; });
-    var items = [{ id: 'all', name: 'All stores', count: (DATA.plans || []).length }]
-      .concat((DATA.stores || []).map(function (s) { return { id: s.id, name: s.name, count: counts[s.id] || 0 }; }));
+    var items;
+    if (state.role === 'market') {
+      var bookPlans = (DATA.plans || []).filter(function (p) { return MARKET.storeIds.indexOf(p.storeId) >= 0; }).length;
+      items = [{ id: 'book', name: 'All my shops', count: bookPlans, sub: MARKET.storeIds.length + ' shops' }]
+        .concat(MARKET.storeIds.map(function (id) { var s = STORE_BY_ID[id]; return { id: id, name: s ? s.name : id, count: counts[id] || 0 }; }));
+    } else {
+      items = (DATA.stores || []).map(function (s) { return { id: s.id, name: s.name, count: counts[s.id] || 0 }; });
+    }
     menu.innerHTML = items.map(function (it) {
       return '<button type="button" role="option" class="store-item' + (it.id === state.store ? ' active' : '') + '" data-store="' + esc(it.id) + '">' +
-        '<span class="store-name">' + esc(it.name) + '</span><span class="store-count">' + it.count + '</span></button>';
+        '<span class="store-name">' + esc(it.name) + (it.sub ? ' <span class="store-sub">' + esc(it.sub) + '</span>' : '') + '</span><span class="store-count">' + it.count + '</span></button>';
     }).join('');
   }
   function setStore(id) {
     state.store = id;
-    var s = id === 'all' ? { name: 'All stores' } : STORE_BY_ID[id];
-    document.getElementById('shopName').textContent = s ? s.name : 'All stores';
+    var label = id === 'book' ? MARKET.name + ' · all shops'
+      : id === 'all' ? 'All stores'
+      : (STORE_BY_ID[id] ? STORE_BY_ID[id].name : id);
+    document.getElementById('shopName').textContent = label;
     buildStoreMenu();
     render();
-    if (state.view === 'kpis') renderKpis(id);
+    if (state.view === 'kpis') renderKpiTab(id);
   }
 
   /* ---------------- filters ---------------- */
@@ -461,9 +480,10 @@
   var MTD = DATA.mtd || { day: 10, daysInMonth: 31 };
 
   function kpiFunnelValuesFor(storeId) {
-    if (storeId && storeId !== 'all' && KPIS_BY_STORE[storeId]) return KPIS_BY_STORE[storeId];
-    var acc = {}, n = 0;
-    Object.keys(KPIS_BY_STORE).forEach(function (sid) { n++; KPI_FUNNEL.forEach(function (m) { acc[m.key] = (acc[m.key] || 0) + KPIS_BY_STORE[sid][m.key]; }); });
+    var ids = resolveIds(storeId).filter(function (id) { return KPIS_BY_STORE[id]; });
+    if (ids.length === 1) return KPIS_BY_STORE[ids[0]];
+    var acc = {}, n = ids.length;
+    ids.forEach(function (id) { KPI_FUNNEL.forEach(function (m) { acc[m.key] = (acc[m.key] || 0) + KPIS_BY_STORE[id][m.key]; }); });
     var out = {}; KPI_FUNNEL.forEach(function (m) { out[m.key] = n ? acc[m.key] / n : 0; });
     return out;
   }
@@ -511,13 +531,15 @@
   function money(v) { var a = Math.abs(v); var s = a >= 1000000 ? '$' + (a / 1000000).toFixed(a >= 10000000 ? 0 : 1) + 'M' : '$' + Math.round(a / 1000) + 'K'; return (v < 0 ? '−' : '') + s; }
   function moneySigned(v) { return (v > 0 ? '+' : v < 0 ? '−' : '') + money(Math.abs(v)); }
 
-  function avgPacing() {
-    var ids = Object.keys(PACING_BY_STORE), n = ids.length || 1, b = 0, cp = 0, ff = 0;
+  function avgPacingOver(ids) {
+    ids = ids.filter(function (id) { return PACING_BY_STORE[id]; });
+    var n = ids.length || 1, b = 0, cp = 0, ff = 0;
     ids.forEach(function (id) { b += PACING_BY_STORE[id].budget; cp += PACING_BY_STORE[id].closedPace; ff += PACING_BY_STORE[id].forecastFactor; });
     return { budget: b / n, closedPace: cp / n, forecastFactor: ff / n };
   }
   function computePacing(storeId) {
-    var base = (storeId && storeId !== 'all' && PACING_BY_STORE[storeId]) ? PACING_BY_STORE[storeId] : avgPacing();
+    var ids = resolveIds(storeId);
+    var base = (ids.length === 1 && PACING_BY_STORE[ids[0]]) ? PACING_BY_STORE[ids[0]] : avgPacingOver(ids);
     var frac = MTD.day / MTD.daysInMonth;
     var budget = base.budget;
     var mtdTarget = budget * frac;
@@ -858,6 +880,132 @@
     });
   }
 
+  /* ---- Market Manager roll-up (book of shops) ---- */
+  var marketSort = { key: 'risk', dir: 'desc' };
+
+  function shopRow(id) {
+    var s = STORE_BY_ID[id] || { name: id }, k = KPIS_BY_STORE[id] || {}, pc = computePacing(id);
+    var openPlans = 0, atRisk = 0;
+    (DATA.plans || []).forEach(function (pl) {
+      if (pl.storeId !== id) return;
+      if ((pl.tasks || []).some(function (t) { return t.column !== 'closed'; })) openPlans++;
+    });
+    tasks.forEach(function (t) { if (t.storeId === id && isBehind(t)) atRisk++; });
+    var pctBudget = pc.pctClosedToBudget, pace = pc.pacePct, daysBehind = pc.daysBehind, ro = k.ro;
+    var risk = 0;
+    if (daysBehind > 1.5) risk += 2; else if (daysBehind > 0.5) risk += 1;
+    if (pctBudget < pace - 5) risk += 2; else if (pctBudget < pace - 2) risk += 1;
+    if (ro < 68) risk += 1;
+    if (atRisk >= 3) risk += 1;
+    var status = risk >= 3 ? { w: 'Behind', c: 'serious' } : risk >= 1 ? { w: 'Watch', c: 'warn' } : { w: 'On track', c: 'good' };
+    return { id: id, name: s.name, ro: ro, closed: pc.closedMTD, pctBudget: pctBudget, pace: pace, daysBehind: daysBehind, openPlans: openPlans, atRisk: atRisk, risk: risk, status: status };
+  }
+
+  function marketRowsSorted() {
+    var rows = MARKET.storeIds.map(shopRow), k = marketSort.key, dir = marketSort.dir === 'asc' ? 1 : -1;
+    rows.sort(function (a, b) {
+      var va = k === 'status' ? a.risk : a[k], vb = k === 'status' ? b.risk : b[k];
+      if (va < vb) return -1 * dir; if (va > vb) return 1 * dir; return 0;
+    });
+    return rows;
+  }
+
+  function marketTableHTML() {
+    var cols = [
+      { k: 'name', label: 'Shop', num: false },
+      { k: 'ro', label: 'Opp. to RO', num: true },
+      { k: 'closed', label: 'Closed MTD', num: true },
+      { k: 'pctBudget', label: '% to Budget', num: true },
+      { k: 'daysBehind', label: 'Days Behind', num: true },
+      { k: 'openPlans', label: 'Open plans', num: true },
+      { k: 'atRisk', label: 'At-risk', num: true },
+      { k: 'status', label: 'Status', num: false }
+    ];
+    var thead = '<tr>' + cols.map(function (c) {
+      var arrow = marketSort.key === c.k ? (marketSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+      return '<th class="' + (c.num ? 'num' : '') + '" data-sort="' + c.k + '" tabindex="0">' + esc(c.label) + arrow + '</th>';
+    }).join('') + '</tr>';
+    var rows = marketRowsSorted().map(function (r) {
+      var roCls = r.ro >= 70 ? 'ok' : 'bad';
+      var budCls = r.pctBudget >= r.pace ? 'ok' : 'bad';
+      var dbCls = r.daysBehind > 0.5 ? 'bad' : (r.daysBehind < -0.05 ? 'ok' : '');
+      var arCls = r.atRisk > 0 ? 'bad' : '';
+      return '<tr data-store="' + r.id + '" tabindex="0" role="button" aria-label="Open ' + esc(r.name) + ' dashboard">' +
+        '<td class="shop">' + esc(r.name) + '</td>' +
+        '<td class="num ' + roCls + '">' + Math.round(r.ro) + '%</td>' +
+        '<td class="num">' + esc(money(r.closed)) + '</td>' +
+        '<td class="num ' + budCls + '">' + Math.round(r.pctBudget) + '%</td>' +
+        '<td class="num ' + dbCls + '">' + (r.daysBehind < -0.05 ? '−' : '') + Math.abs(r.daysBehind).toFixed(1) + '</td>' +
+        '<td class="num">' + r.openPlans + '</td>' +
+        '<td class="num ' + arCls + '">' + r.atRisk + '</td>' +
+        '<td><span class="mk-status ' + r.status.c + '">' + esc(r.status.w) + '</span></td>' +
+      '</tr>';
+    }).join('');
+    return '<table class="mk-table"><thead>' + thead + '</thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  function wireMarketTable() {
+    var wrap = document.getElementById('mkTableWrap'); if (!wrap) return;
+    wrap.addEventListener('click', function (e) {
+      var th = e.target.closest('th[data-sort]');
+      if (th) {
+        var k = th.getAttribute('data-sort');
+        if (marketSort.key === k) marketSort.dir = marketSort.dir === 'asc' ? 'desc' : 'asc';
+        else { marketSort.key = k; marketSort.dir = (k === 'name') ? 'asc' : 'desc'; }
+        wrap.innerHTML = marketTableHTML();
+        return;
+      }
+      var tr = e.target.closest('tr[data-store]');
+      if (tr) setStore(tr.getAttribute('data-store'));
+    });
+    wrap.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      var tr = e.target.closest('tr[data-store]'); if (tr) { setStore(tr.getAttribute('data-store')); return; }
+      var th = e.target.closest('th[data-sort]'); if (th) th.click();
+    });
+  }
+
+  function renderMarketKpis() {
+    var root = document.getElementById('kpiRoot'); if (!root) return;
+    var fvals = kpiFunnelValuesFor('book');
+    var rows = MARKET.storeIds.map(shopRow);
+    var behindCount = rows.filter(function (r) { return r.status.w === 'Behind'; }).length;
+    var openPlans = rows.reduce(function (a, r) { return a + r.openPlans; }, 0);
+    var html = '';
+    html += '<div class="kpi-head"><p class="kpi-title" data-testid="kpi-page-title">' + esc(MARKET.name) + ' — Market KPIs</p>' +
+      '<p class="kpi-sub" data-testid="kpi-page-subtitle">80/70/7</p>' +
+      '<p class="mk-lead">Market Manager · ' + esc(MARKET.manager) + ' · ' + MARKET.storeIds.length + ' shops · ' +
+      '<b>' + behindCount + '</b> behind · <b>' + openPlans + '</b> open action plans</p></div>';
+    html += '<div class="kpi-funnel">' + KPI_FUNNEL.map(function (m) { return funnelBoxHTML(m, fvals[m.key]); }).join('') + '</div>';
+    html += '<div class="kpi-section"><div class="kpi-section-title">Shops in book</div>' +
+      '<div class="mk-table-wrap" id="mkTableWrap">' + marketTableHTML() + '</div>' +
+      '<div class="trend-hint">Sort by any column; click a shop to drill into its dashboard.</div></div>';
+    html += trendsSectionHTML();
+    root.innerHTML = html;
+    wireMarketTable();
+    drawTrends('book');
+    wireTrends('book');
+  }
+
+  function renderKpiTab(storeId) {
+    if (state.role === 'market' && storeId === 'book') renderMarketKpis();
+    else renderKpis(storeId);
+  }
+
+  function setRole(role) {
+    state.role = role;
+    Array.prototype.forEach.call(document.querySelectorAll('.proto-role'), function (b) {
+      var on = b.getAttribute('data-role') === role;
+      b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+    });
+    var note = document.getElementById('protoNote');
+    if (note) note.textContent = role === 'market'
+      ? MARKET.name + ' — a roll-up across the book of ' + MARKET.storeIds.length + ' shops, with a shop-by-shop scorecard. Drill into any shop from the selector.'
+      : 'One shop’s Action Plans and KPIs. Use the location selector to choose the shop.';
+    state.store = role === 'market' ? 'book' : (DATA.defaultStoreId || (DATA.stores[0] && DATA.stores[0].id));
+    setStore(state.store);
+  }
+
   function setView(view) {
     state.view = view;
     document.getElementById('viewActionPlans').hidden = (view !== 'plans');
@@ -867,7 +1015,7 @@
       b.classList.toggle('selected', sel);
       if (sel) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
-    if (view === 'kpis') renderKpis(state.store);
+    if (view === 'kpis') renderKpiTab(state.store);
   }
 
   /* ---------------- init ---------------- */
@@ -962,6 +1110,14 @@
       if (view) { btn.addEventListener('click', function () { setView(view); }); }
       else { btn.addEventListener('click', function () { toast(btn.getAttribute('data-label') + ' isn’t part of this prototype'); }); }
     });
+
+    // prototype persona banner
+    var protoRoles = document.getElementById('protoRoles');
+    if (protoRoles) protoRoles.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-role]'); if (b) setRole(b.getAttribute('data-role'));
+    });
+    var pn = document.getElementById('protoNote');
+    if (pn) pn.textContent = 'One shop’s Action Plans and KPIs. Use the location selector to choose the shop.';
 
     var rz; window.addEventListener('resize', function () { if (state.view !== 'kpis') return; clearTimeout(rz); rz = setTimeout(function () { drawTrends(state.store); }, 150); });
 
