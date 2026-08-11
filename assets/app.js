@@ -559,7 +559,7 @@
   var CUR_MONTH = TODAY.getMonth();
   var RA_MIN = -0.35, RA_MAX = 0.25;   // fixed revenue-variance chart domain
 
-  var kpiState = { view: 'dashboard', shopId: null, period: 'prev', gran: 'shops', market: 'all', carriers: null, chartKpis: ['revenue'], carrierOpen: null, carrierMetric: 'score' };
+  var kpiState = { view: 'dashboard', shopId: null, period: 'prev', gran: 'shops', market: 'all', carriers: null, chartKpis: ['revenue'], carrierOpen: null, carrierMetric: 'score', roCarrier: null };
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function pctStr(p) { return (p >= 0 ? '+' : '−') + Math.abs(Math.round(p * 100)) + '%'; }
@@ -839,7 +839,7 @@
     root.addEventListener('click', function (e) { var row = e.target.closest('[data-shop]'); if (row) openShop(row.getAttribute('data-shop')); });
     root.addEventListener('keydown', function (e) { if (e.key !== 'Enter') return; var row = e.target.closest('[data-shop]'); if (row) openShop(row.getAttribute('data-shop')); });
   }
-  function openShop(id) { kpiState.view = 'shop'; kpiState.shopId = id; kpiState.carriers = null; kpiState.carrierOpen = null; renderKpiTab(); }
+  function openShop(id) { kpiState.view = 'shop'; kpiState.shopId = id; kpiState.carriers = null; kpiState.carrierOpen = null; kpiState.roCarrier = null; renderKpiTab(); }
   function backToDashboard() { kpiState.view = 'dashboard'; kpiState.shopId = null; renderKpiTab(); }
 
   /* ====================== shop detail ====================== */
@@ -1010,14 +1010,6 @@
     var sel = selectedCarriers(d);
     var chips = d.carriers.map(function (c) { var on = sel.indexOf(c.name) >= 0; return '<button type="button" class="carr-chip' + (on ? ' on' : '') + '" data-carrier="' + esc(c.name) + '" aria-pressed="' + on + '">' + esc(c.name) + '</button>'; }).join('');
     var cards = d.carriers.filter(function (c) { return sel.indexOf(c.name) >= 0; }).map(function (c) { return carrierCardHTML(c); }).join('');
-    // rules aggregated across selected carriers
-    var ruleMap = {};
-    d.carriers.filter(function (c) { return sel.indexOf(c.name) >= 0; }).forEach(function (c) { c.rules.forEach(function (r) { ruleMap[r.text] = (ruleMap[r.text] || 0) + r.count; }); });
-    var ruleRows = Object.keys(ruleMap).map(function (t) { return { text: t, count: ruleMap[t] }; }).sort(function (a, b) { return b.count - a.count; });
-    var ruleTable = ruleRows.length
-      ? '<table class="mk-table rules-table"><thead><tr><th>Rule triggered &amp; not adhered to</th><th class="num">Count</th></tr></thead><tbody>' +
-        ruleRows.map(function (r) { return '<tr><td>' + esc(r.text) + '</td><td class="num">' + r.count + '</td></tr>'; }).join('') + '</tbody></table>'
-      : '<div class="ctx-sub" style="padding:10px">No rules for the selected carriers.</div>';
     // trend panel for the opened carrier (only while it is still in the selected set)
     var openCarrier = kpiState.carrierOpen ? d.carriers.filter(function (c) { return c.name === kpiState.carrierOpen && sel.indexOf(c.name) >= 0; })[0] : null;
     var trendHTML = openCarrier ? carrierTrendPanelHTML(openCarrier) : '';
@@ -1025,7 +1017,54 @@
       '<div class="carr-chips" id="carrChips" role="group" aria-label="Filter carriers">' + chips + '</div>' +
       '<div class="carr-cards" id="carrCards">' + cards + '</div>' +
       trendHTML +
-      '<div class="rules-detail"><div class="kpi-section-title sub">Rules not adhered to — actionable list</div><div class="mk-table-wrap">' + ruleTable + '</div></div>';
+      '<div class="ro-detail">' + repairOrderPanelHTML(d) + '</div>';
+  }
+  /* Repair-order-level detail — one row per RO. Row count per carrier equals that
+     carrier's repair volume, so the totals match the carrier cards. Columns carry
+     the same metrics as the trend charts, plus a rules-not-adhered count. */
+  var _roCache = {};
+  function repairOrders(d) {
+    if (_roCache[d.id]) return _roCache[d.id];
+    var out = [], seq = 100000 + (hashStr(d.id) % 800000);
+    d.carriers.forEach(function (c) {
+      var vol = Math.max(0, Math.round(c.volume)), rr = mulberry(hashStr('ro:' + d.id + ':' + c.name));
+      for (var i = 0; i < vol; i++) {
+        var estAcc = Math.round(clamp(c.vars.estAccuracy + (rr() * 12 - 6), 62, 100) * 10) / 10;
+        var adh = Math.round(clamp(c.vars.rulesAdherence + (rr() * 34 - 17), 30, 100) * 10) / 10;
+        var cyc = Math.round(clamp(c.vars.cycleTime + (rr() * 8 - 4), 2, 30) * 10) / 10;
+        var csi = Math.round(clamp(c.vars.csi + (rr() * 14 - 7), 60, 100));
+        var triggered = 3 + Math.floor(rr() * 6), notAdh = Math.max(0, Math.round(triggered * (1 - adh / 100)));
+        out.push({ id: 'RO-' + (seq++), carrier: c.name, score: c.score, estAcc: estAcc, adh: adh, notAdh: notAdh, cyc: cyc, csi: csi });
+      }
+    });
+    _roCache[d.id] = out;
+    return out;
+  }
+  function repairOrderPanelHTML(d) {
+    var all = repairOrders(d), roCarrier = kpiState.roCarrier;
+    if (roCarrier && !d.carriers.some(function (c) { return c.name === roCarrier; })) roCarrier = null;
+    var rows = (roCarrier ? all.filter(function (r) { return r.carrier === roCarrier; }) : all)
+      .slice().sort(function (a, b) { return (b.notAdh - a.notAdh) || (b.cyc - a.cyc); });   // worst first
+    var total = rows.length, CAP = 200, shown = rows.slice(0, CAP);
+    var options = '<option value="">All carriers</option>' + d.carriers.map(function (c) {
+      return '<option value="' + esc(c.name) + '"' + (roCarrier === c.name ? ' selected' : '') + '>' + esc(c.name) + ' (' + Math.round(c.volume) + ')</option>';
+    }).join('');
+    var body = shown.map(function (r) {
+      return '<tr><td class="ro-id">' + esc(r.id) + '</td><td>' + esc(r.carrier) + '</td>' +
+        '<td class="num">' + r.score + '</td><td class="num">' + r.estAcc + '%</td><td class="num">' + r.adh + '%</td>' +
+        '<td class="num' + (r.notAdh > 0 ? ' warn' : '') + '">' + r.notAdh + '</td>' +
+        '<td class="num">' + r.cyc + 'd</td><td class="num">' + r.csi + '</td></tr>';
+    }).join('') || '<tr><td colspan="8" class="ctx-sub" style="padding:12px">No repair orders.</td></tr>';
+    var table = '<table class="mk-table ro-table"><thead><tr>' +
+      '<th>Repair order</th><th>Carrier</th><th class="num">Score</th><th class="num">Est. accuracy</th>' +
+      '<th class="num">Rules adherence</th><th class="num">Rules not adhered</th><th class="num">Cycle time</th><th class="num">CSI</th>' +
+      '</tr></thead><tbody>' + body + '</tbody></table>';
+    var note = 'Showing ' + shown.length + ' of ' + total + ' repair orders' + (roCarrier ? ' · ' + esc(roCarrier) : ' this month') +
+      (shown.length < total ? ' — filter by a carrier to see the rest' : '');
+    return '<div class="ro-head"><div class="kpi-section-title sub">Repair order detail <span class="ctx-sub">(' + esc(MONTH_ABBR[CUR_MONTH]) + ' · key = repair order ID)</span></div>' +
+      '<label class="ro-filter">Carrier <select id="roCarrier">' + options + '</select></label></div>' +
+      '<div class="mk-table-wrap ro-scroll">' + table + '</div>' +
+      '<div class="ro-note ctx-sub">' + note + '</div>';
   }
   /* carrier metrics that can be trended over time (one at a time) */
   var CARRIER_METRICS = [
@@ -1151,6 +1190,9 @@
     });
     var cc = document.querySelector('[data-carrier-close]');
     if (cc) cc.addEventListener('click', function () { kpiState.carrierOpen = null; refreshPanel(); });
+    // filter the repair-order detail table by carrier
+    var roc = document.getElementById('roCarrier');
+    if (roc) roc.addEventListener('change', function () { kpiState.roCarrier = roc.value || null; refreshPanel(); });
   }
 
   /* ====================== dispatch ====================== */
