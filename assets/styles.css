@@ -714,7 +714,9 @@ button { font-family: inherit; }
 .trend-chip .sw { width: 10px; height: 10px; border-radius: 50%; opacity: .35; }
 .trend-chip.on { border-color: #12333c; color: #111; background: #eef4fa; }
 .trend-chip.on .sw { opacity: 1; }
+.trend-hint { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .trend-mode { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.trend-legend .axtag { font-size: 11px; color: var(--muted); background: var(--surface-variant); border-radius: var(--corner-full); padding: 1px 7px; margin-left: 4px; }
 .trend-plot { position: relative; width: 100%; background: #fff; border: 1px solid #e6e9ef; border-radius: var(--corner-md); box-shadow: var(--shadow-1); padding: 8px 6px 2px; }
 .trend-svg { display: block; width: 100%; height: auto; }
 .trend-svg .tg { stroke: #eef1f5; stroke-width: 1; }

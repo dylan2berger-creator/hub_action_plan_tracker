@@ -92,14 +92,15 @@ weekly rows all derive at render time from a small per-store set of inputs (mont
 budget, closed-sales pace, forecast factor) anchored to the dataset's MTD window, so
 challenged stores pace weaker and the two tabs tell one story.
 
-**Trends over time** — a line chart at the bottom lets you focus on one or many
-metrics over a **6 / 12 / 24-month** window. Because the metrics span different units
-(%, days, $), it never uses a dual axis: a **single** selected metric plots its actual
-values with its goal line; **multiple** metrics are indexed to each one's goal
-(100 = on goal) so they compare on one axis. Lines use a colorblind-safe palette with a
-legend, direct end-labels, and a hover crosshair + tooltip showing the real values
-(a screen-reader data table backs it). All series derive deterministically from each
-metric's current value, per store.
+**Trends over time** — a line chart lets you compare up to **two** metrics over a
+**6 / 12 / 24-month** window. A **single** metric plots its actual values with its goal
+line; **two same-unit** metrics (e.g. two %) share one axis; **two different-unit**
+metrics use a **left and a right axis**, each in its own real units with tick labels
+colored to match its line (selecting a third metric drops the oldest). Lines use a
+colorblind-safe palette with a legend that marks which axis each series reads against, a
+dashed goal reference, a hover crosshair + tooltip with the real values, and a
+screen-reader data table. Series derive deterministically from each metric's current
+value, per store.
 
 ![KPIs tab](assets/preview-kpis.png)
 

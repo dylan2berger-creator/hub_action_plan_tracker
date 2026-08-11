@@ -637,7 +637,7 @@
     wireTrends(storeId);
   }
 
-  /* ---- KPI trends chart: focus one or many metrics over a period ---- */
+  /* ---- KPI trends chart: focus up to two metrics over a period ---- */
   var TREND_COLORS = ['#0072b2', '#e69f00', '#009e73', '#cc79a7', '#56b4e9'];
   var TREND_METRICS = [
     { key: 'estimate',  label: 'Opportunity to Estimate', short: 'Estimate', unit: '%',    dir: 'higher', goal: function () { return 80; } },
@@ -649,7 +649,8 @@
   TREND_METRICS.forEach(function (m, i) { m.color = TREND_COLORS[i]; });
   var TREND_PERIODS = [6, 12, 24];
   var TREND_TOTAL = 24;
-  var trendState = { metrics: ['estimate', 'ro', 'arrive'], period: 12 };
+  var TREND_MAX = 2;
+  var trendState = { metrics: ['ro', 'closed'], period: 12 };
   var MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   function trendMonths() {
@@ -657,7 +658,7 @@
     for (var k = TREND_TOTAL - 1; k >= 0; k--) {
       var idx = am - k, y = ay;
       while (idx < 0) { idx += 12; y -= 1; }
-      out.push({ m: idx, y: y, label: MONTH_ABBR[idx] + (idx === 0 ? " '" + String(y).slice(2) : '') });
+      out.push({ label: MONTH_ABBR[idx] + (idx === 0 ? " '" + String(y).slice(2) : '') });
     }
     return out;
   }
@@ -678,13 +679,25 @@
     a[TREND_TOTAL - 1] = latest;
     return a;
   }
-  function idxValue(m, v, p) { var g = m.goal(p); return m.dir === 'higher' ? v / g * 100 : g / v * 100; }
   function fmtMetric(m, v) {
     if (m.unit === '$') return money(v);
     if (m.unit === '%') return Math.round(v) + '%';
     if (m.unit === 'days') return parseFloat(v.toFixed(1)) + ' days';
     return String(Math.round(v));
   }
+  function fmtAxis(m, v) {
+    if (m.unit === '$') return money(v);
+    if (m.unit === '%') return Math.round(v) + '%';
+    if (m.unit === 'days') return String(parseFloat(v.toFixed(1)));
+    return String(Math.round(v));
+  }
+  function rangeOf(vals) {
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    if (hi === lo) hi = lo + 1;
+    var s = hi - lo;
+    return { lo: lo - s * 0.12, hi: hi + s * 0.12 };
+  }
+  function unitWord(u) { return u === '$' ? 'dollars' : u === 'days' ? 'days' : 'percent'; }
 
   function trendsSectionHTML() {
     var chips = TREND_METRICS.map(function (m) {
@@ -699,6 +712,7 @@
       '<div class="kpi-section-title">Trends over time</div>' +
       '<div class="trend-period-group" id="trendPeriod" role="group" aria-label="Time range">' + periods + '</div></div>' +
       '<div class="trend-metrics" id="trendMetrics" role="group" aria-label="Metrics to plot">' + chips + '</div>' +
+      '<div class="trend-hint">Compare up to two metrics. Different units use a left and a right axis.</div>' +
       '<div class="trend-mode" id="trendMode"></div>' +
       '<div class="trend-plot" id="trendPlot"></div>' +
       '<div class="trend-legend" id="trendLegend"></div>' +
@@ -708,63 +722,93 @@
   function drawTrends(storeId) {
     var plot = document.getElementById('trendPlot'); if (!plot) return;
     var fvals = kpiFunnelValuesFor(storeId), p = computePacing(storeId);
-    var months = trendMonths();
-    var start = TREND_TOTAL - trendState.period;
+    var months = trendMonths(), start = TREND_TOTAL - trendState.period, n = trendState.period;
     var sel = TREND_METRICS.filter(function (m) { return trendState.metrics.indexOf(m.key) >= 0; });
     if (!sel.length) sel = [TREND_METRICS[0]];
-    var indexed = sel.length > 1;
+    var mode = sel.length === 1 ? 'single' : (sel[0].unit === sel[1].unit ? 'shared' : 'dual');
 
     var series = sel.map(function (m) {
-      var vis = seriesFull(m, storeId, metricLatest(m, fvals, p)).slice(start);
-      return { m: m, raw: vis, plot: vis.map(function (v) { return indexed ? idxValue(m, v, p) : v; }), latest: metricLatest(m, fvals, p) };
+      return { m: m, raw: seriesFull(m, storeId, metricLatest(m, fvals, p)).slice(start), latest: metricLatest(m, fvals, p), goal: m.goal(p) };
     });
 
-    var lo = Infinity, hi = -Infinity;
-    series.forEach(function (s) { s.plot.forEach(function (v) { if (v < lo) lo = v; if (v > hi) hi = v; }); });
-    var refY = indexed ? 100 : sel[0].goal(p);
-    if (refY < lo) lo = refY;
-    if (refY > hi) hi = refY;
-    var span = (hi - lo) || 1; lo -= span * 0.12; hi += span * 0.12;
-
-    var W = Math.max(plot.clientWidth || 760, 320), H = 320;
-    var mL = 54, mR = 62, mT = 14, mB = 34, iw = W - mL - mR, ih = H - mT - mB, n = trendState.period;
+    var W = Math.max(plot.clientWidth || 760, 320), H = 320, mT = 14, mB = 34;
+    var mL = 58, mR = mode === 'dual' ? 72 : 62, iw = W - mL - mR, ih = H - mT - mB;
     function X(i) { return mL + (n <= 1 ? iw / 2 : iw * i / (n - 1)); }
-    function Y(v) { return mT + ih * (1 - (v - lo) / (hi - lo)); }
 
+    var rA, rB, YA, YB, R, Y;
+    if (mode === 'dual') {
+      rA = rangeOf(series[0].raw.concat([series[0].goal]));
+      rB = rangeOf(series[1].raw.concat([series[1].goal]));
+      YA = function (v) { return mT + ih * (1 - (v - rA.lo) / (rA.hi - rA.lo)); };
+      YB = function (v) { return mT + ih * (1 - (v - rB.lo) / (rB.hi - rB.lo)); };
+    } else {
+      var allv = [];
+      series.forEach(function (s) { allv = allv.concat(s.raw, [s.goal]); });
+      R = rangeOf(allv);
+      Y = function (v) { return mT + ih * (1 - (v - R.lo) / (R.hi - R.lo)); };
+    }
+    function Yof(si, v) { return mode === 'dual' ? (si === 0 ? YA(v) : YB(v)) : Y(v); }
+
+    // gridlines + y axis labels
     var grid = '', ylab = '', ticks = 4;
     for (var t = 0; t <= ticks; t++) {
-      var gv = lo + (hi - lo) * t / ticks, gy = Y(gv);
+      var gy = mT + ih * (1 - t / ticks);
       grid += '<line class="tg" x1="' + mL + '" x2="' + (W - mR) + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '"/>';
-      var lab = indexed ? Math.round(gv) : (sel[0].unit === '$' ? money(gv) : sel[0].unit === '%' ? Math.round(gv) + '%' : parseFloat(gv.toFixed(1)));
-      ylab += '<text class="ax" x="' + (mL - 8) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end">' + esc(String(lab)) + '</text>';
+      if (mode === 'dual') {
+        var la = fmtAxis(series[0].m, rA.lo + (rA.hi - rA.lo) * t / ticks);
+        var lb = fmtAxis(series[1].m, rB.lo + (rB.hi - rB.lo) * t / ticks);
+        ylab += '<text class="ax" x="' + (mL - 8) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end" fill="' + series[0].m.color + '">' + esc(la) + '</text>';
+        ylab += '<text class="ax" x="' + (W - mR + 8) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="start" fill="' + series[1].m.color + '">' + esc(lb) + '</text>';
+      } else {
+        var lv = fmtAxis(series[0].m, R.lo + (R.hi - R.lo) * t / ticks);
+        ylab += '<text class="ax" x="' + (mL - 8) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end">' + esc(lv) + '</text>';
+      }
     }
+    // x axis labels
     var xlab = '', step = Math.ceil(n / 6);
     for (var i = 0; i < n; i++) { if (i % step === 0 || i === n - 1) { xlab += '<text class="ax" x="' + X(i).toFixed(1) + '" y="' + (H - 12) + '" text-anchor="middle">' + esc(months[start + i].label) + '</text>'; } }
 
-    var refLine = '<line class="ref" x1="' + mL + '" x2="' + (W - mR) + '" y1="' + Y(refY).toFixed(1) + '" y2="' + Y(refY).toFixed(1) + '"/>' +
-      '<text class="ref-lab" x="' + (W - mR + 4) + '" y="' + (Y(refY) + 3).toFixed(1) + '">' + (indexed ? 'Goal 100' : 'Goal') + '</text>';
+    // goal reference
+    var goalM = '';
+    if (mode === 'single') {
+      var gyy = Y(series[0].goal);
+      goalM = '<line class="ref" x1="' + mL + '" x2="' + (W - mR) + '" y1="' + gyy.toFixed(1) + '" y2="' + gyy.toFixed(1) + '"/>' +
+        '<text class="ref-lab" x="' + (W - mR + 4) + '" y="' + (gyy + 3).toFixed(1) + '">Goal</text>';
+    } else if (mode === 'shared') {
+      series.forEach(function (s) {
+        var gy2 = Y(s.goal);
+        goalM += '<line class="ref" x1="' + mL + '" x2="' + (W - mR) + '" y1="' + gy2.toFixed(1) + '" y2="' + gy2.toFixed(1) + '" stroke="' + s.m.color + '" opacity="0.55"/>';
+      });
+    } else {
+      goalM += '<line class="ref" x1="' + mL + '" x2="' + (mL + 12) + '" y1="' + YA(series[0].goal).toFixed(1) + '" y2="' + YA(series[0].goal).toFixed(1) + '" stroke="' + series[0].m.color + '"/>';
+      goalM += '<line class="ref" x1="' + (W - mR - 12) + '" x2="' + (W - mR) + '" y1="' + YB(series[1].goal).toFixed(1) + '" y2="' + YB(series[1].goal).toFixed(1) + '" stroke="' + series[1].m.color + '"/>';
+    }
 
-    var paths = '', ends = '', direct = sel.length <= 4;
-    series.forEach(function (s) {
-      var d = s.plot.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }).join(' ');
+    // lines + endpoints + (single/shared) end labels
+    var paths = '', ends = '';
+    series.forEach(function (s, si) {
+      var d = s.raw.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Yof(si, v).toFixed(1); }).join(' ');
       paths += '<path class="ln" d="' + d + '" stroke="' + s.m.color + '"/>';
-      var lx = X(n - 1), ly = Y(s.plot[n - 1]);
+      var lx = X(n - 1), ly = Yof(si, s.raw[n - 1]);
       paths += '<circle r="3.2" cx="' + lx.toFixed(1) + '" cy="' + ly.toFixed(1) + '" fill="' + s.m.color + '" stroke="#fff" stroke-width="1.5"/>';
-      if (direct) ends += '<text class="end" x="' + (lx + 7).toFixed(1) + '" y="' + (ly + 3).toFixed(1) + '" fill="' + s.m.color + '">' + esc(s.m.short) + '</text>';
+      if (mode !== 'dual') ends += '<text class="end" x="' + (lx + 7).toFixed(1) + '" y="' + (ly + 3).toFixed(1) + '" fill="' + s.m.color + '">' + esc(s.m.short) + '</text>';
     });
 
-    var svg = '<svg class="trend-svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Trend of ' + esc(sel.map(function (mm) { return mm.label; }).join(', ')) + ' over ' + n + ' months">' +
-      grid + refLine + ylab + xlab + paths + ends +
+    var svg = '<svg class="trend-svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Trend of ' + esc(sel.map(function (mm) { return mm.label; }).join(' and ')) + ' over ' + n + ' months">' +
+      grid + goalM + ylab + xlab + paths + ends +
       '<rect class="hit" x="' + mL + '" y="' + mT + '" width="' + iw + '" height="' + ih + '" fill="transparent"/>' +
       '<g class="cross" style="display:none"><line class="cx" y1="' + mT + '" y2="' + (mT + ih) + '"/></g></svg>';
     plot.innerHTML = svg + '<div class="trend-tip" id="trendTip" style="display:none"></div>';
 
-    document.getElementById('trendLegend').innerHTML = series.map(function (s) {
-      return '<span class="lg"><span class="sw" style="background:' + s.m.color + '"></span>' + esc(s.m.label) + ' <b>' + esc(fmtMetric(s.m, s.latest)) + '</b></span>';
+    document.getElementById('trendLegend').innerHTML = series.map(function (s, si) {
+      var ax = mode === 'dual' ? '<span class="axtag">' + (si === 0 ? 'left axis' : 'right axis') + '</span>' : '';
+      return '<span class="lg"><span class="sw" style="background:' + s.m.color + '"></span>' + esc(s.m.label) + ' <b>' + esc(fmtMetric(s.m, s.latest)) + '</b>' + ax + '</span>';
     }).join('');
-    document.getElementById('trendMode').textContent = indexed
-      ? 'Indexed to each metric’s goal (100 = on goal) so mixed units compare on one axis. Hover for actual values.'
-      : 'Actual values with the goal line.';
+    document.getElementById('trendMode').textContent = mode === 'single'
+      ? 'Actual values with the goal line.'
+      : mode === 'shared'
+        ? 'Both in ' + unitWord(sel[0].unit) + ' on one shared axis, with each goal line.'
+        : 'Two axes — ' + series[0].m.short + ' on the left, ' + series[1].m.short + ' on the right — each in its own units.';
 
     var thead = '<tr><th>Month</th>' + series.map(function (s) { return '<th>' + esc(s.m.label) + '</th>'; }).join('') + '</tr>';
     var trows = '';
@@ -790,16 +834,20 @@
     hit.addEventListener('mouseleave', function () { cross.style.display = 'none'; tip.style.display = 'none'; });
   }
 
+  function refreshTrendChips() {
+    Array.prototype.forEach.call(document.querySelectorAll('.trend-chip'), function (c) {
+      var on = trendState.metrics.indexOf(c.getAttribute('data-metric')) >= 0;
+      c.classList.toggle('on', on); c.setAttribute('aria-pressed', on);
+    });
+  }
   function wireTrends(storeId) {
     var mets = document.getElementById('trendMetrics'), per = document.getElementById('trendPeriod');
     if (mets) mets.addEventListener('click', function (e) {
       var b = e.target.closest('[data-metric]'); if (!b) return;
       var k = b.getAttribute('data-metric'), at = trendState.metrics.indexOf(k);
       if (at >= 0) { if (trendState.metrics.length > 1) trendState.metrics.splice(at, 1); }
-      else trendState.metrics.push(k);
-      trendState.metrics = TREND_METRICS.filter(function (m) { return trendState.metrics.indexOf(m.key) >= 0; }).map(function (m) { return m.key; });
-      var on = trendState.metrics.indexOf(k) >= 0;
-      b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+      else { trendState.metrics.push(k); if (trendState.metrics.length > TREND_MAX) trendState.metrics.shift(); }
+      refreshTrendChips();
       drawTrends(storeId);
     });
     if (per) per.addEventListener('click', function (e) {
