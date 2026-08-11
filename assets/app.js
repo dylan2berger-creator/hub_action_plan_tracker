@@ -717,6 +717,51 @@
     var sh = shopById(state.store); return sh ? sh.name : 'Shop';
   }
 
+  /* ---- carrier scorecard aggregated across a scope (market / region) ---- */
+  var _scopeCarrierCache = {};
+  function scopeMonth(i) { var mi = (CUR_MONTH - 11 + i + 1200) % 12; return { mi: mi, label: MONTH_ABBR[mi] }; }
+  function scopeCarrierData() {
+    var key = state.role + '|' + (kpiState.market || 'all') + '|' + (state.role === 'regional' ? currentRegion().id : MARKET.name);
+    if (_scopeCarrierCache[key]) return _scopeCarrierCache[key];
+    var ids = baseShopIds(), byName = {};
+    ids.forEach(function (id) {
+      var d = shopData(id); if (!d) return;
+      d.carriers.forEach(function (c) {
+        var a = byName[c.name];
+        if (!a) a = byName[c.name] = { name: c.name, vol: 0, sScore: 0, sEst: 0, sAdh: 0, sCyc: 0, sCsi: 0,
+          mVol: [], mScore: [], mEst: [], mAdh: [], mCyc: [], mCsi: [] };
+        a.vol += c.volume;
+        a.sScore += c.score * c.volume; a.sEst += c.vars.estAccuracy * c.volume;
+        a.sAdh += c.vars.rulesAdherence * c.volume; a.sCyc += c.vars.cycleTime * c.volume; a.sCsi += c.vars.csi * c.volume;
+        for (var m = 0; m < 12; m++) {
+          var w = c.trends.volume[m].value;   // month-volume weight
+          a.mVol[m] = (a.mVol[m] || 0) + w;
+          a.mScore[m] = (a.mScore[m] || 0) + c.trends.score[m].value * w;
+          a.mEst[m] = (a.mEst[m] || 0) + c.trends.estAccuracy[m].value * w;
+          a.mAdh[m] = (a.mAdh[m] || 0) + c.trends.rulesAdherence[m].value * w;
+          a.mCyc[m] = (a.mCyc[m] || 0) + c.trends.cycleTime[m].value * w;
+          a.mCsi[m] = (a.mCsi[m] || 0) + c.trends.csi[m].value * w;
+        }
+      });
+    });
+    function wTrend(weighted, weights) { return weighted.map(function (wv, i) { var mm = scopeMonth(i); return { mi: mm.mi, label: mm.label, value: weights[i] ? wv / weights[i] : 0 }; }); }
+    function sTrend(sum) { return sum.map(function (v, i) { var mm = scopeMonth(i); return { mi: mm.mi, label: mm.label, value: v }; }); }
+    var carriers = Object.keys(byName).map(function (name) {
+      var a = byName[name], v = a.vol || 1;
+      return { name: name, volume: Math.round(a.vol), score: Math.round(a.sScore / v),
+        vars: { estAccuracy: Math.round(a.sEst / v * 10) / 10, rulesAdherence: Math.round(a.sAdh / v * 10) / 10, cycleTime: Math.round(a.sCyc / v * 10) / 10, csi: Math.round(a.sCsi / v * 10) / 10 },
+        trends: { score: wTrend(a.mScore, a.mVol), volume: sTrend(a.mVol), estAccuracy: wTrend(a.mEst, a.mVol), rulesAdherence: wTrend(a.mAdh, a.mVol), cycleTime: wTrend(a.mCyc, a.mVol), csi: wTrend(a.mCsi, a.mVol) } };
+    }).sort(function (x, y) { return y.volume - x.volume; });
+    // scope-wide volume-weighted baseline for the card's "vs avg" comparison
+    var tot = 0, wEst = 0, wAdh = 0, wCyc = 0, wCsi = 0;
+    carriers.forEach(function (c) { tot += c.volume; wEst += c.vars.estAccuracy * c.volume; wAdh += c.vars.rulesAdherence * c.volume; wCyc += c.vars.cycleTime * c.volume; wCsi += c.vars.csi * c.volume; });
+    var shopAvg = { estAccuracy: tot ? wEst / tot : 0, rulesAdherence: tot ? wAdh / tot : 0, cycleTime: tot ? wCyc / tot : 0, csi: tot ? wCsi / tot : 0 };
+    carriers.forEach(function (c) { c.shopAvg = shopAvg; c.trend = c.trends.score; });
+    var d = { id: 'scope:' + key, name: scopeTitle(), scoped: true, shopCount: ids.length, carriers: carriers };
+    _scopeCarrierCache[key] = d;
+    return d;
+  }
+
   /* ---- aggregation for markets/region granularity ---- */
   function aggEntity(name, shopIds) {
     var a = 0, t = 0, ch = 0, est = 0, ro = 0, arr = 0, n = shopIds.length || 1;
@@ -782,8 +827,12 @@
     html += '<div class="kpi-section"><div class="kpi-section-title">Challenged shops <span class="ctx-sub">(' + challenged.length + ')</span></div>' +
       challengedListHTML(challenged) + '</div>';
 
+    // carrier scorecard aggregated across the whole scope (book / region), respecting the market filter
+    html += '<div class="kpi-section" id="carrierPanel">' + carrierPanelHTML(scopeCarrierData()) + '</div>';
+
     root.innerHTML = html;
     wireDashboard();
+    wireCarrierPanel(scopeCarrierData());
   }
   function roleWord() { return state.role === 'regional' ? 'Regional Manager · ' + currentRegion().division : state.role === 'market' ? 'Market Manager' : 'General Manager'; }
 
@@ -840,7 +889,7 @@
     root.addEventListener('keydown', function (e) { if (e.key !== 'Enter') return; var row = e.target.closest('[data-shop]'); if (row) openShop(row.getAttribute('data-shop')); });
   }
   function openShop(id) { kpiState.view = 'shop'; kpiState.shopId = id; kpiState.carriers = null; kpiState.carrierOpen = null; kpiState.roCarrier = null; renderKpiTab(); }
-  function backToDashboard() { kpiState.view = 'dashboard'; kpiState.shopId = null; renderKpiTab(); }
+  function backToDashboard() { kpiState.view = 'dashboard'; kpiState.shopId = null; kpiState.carriers = null; kpiState.carrierOpen = null; kpiState.roCarrier = null; renderKpiTab(); }
 
   /* ====================== shop detail ====================== */
   function renderShopDetail(id) {
@@ -1074,12 +1123,14 @@
   function rulesClusterHTML(d) {
     var ros = repairOrders(d), carriers = d.carriers.map(function (c) { return c.name; });
     var counts = RULE_TEXTS.map(function () { var o = {}; carriers.forEach(function (n) { o[n] = 0; }); return o; });
-    var rowTotal = RULE_TEXTS.map(function () { return 0; }), colTotal = {}, grand = 0;
+    var rowTotal = RULE_TEXTS.map(function () { return 0; });
+    ros.forEach(function (r) { r.rules.forEach(function (ri) { counts[ri][r.carrier]++; rowTotal[ri]++; }); });
+    // limit to the top 10 rules by volume (ROs not adhered to)
+    var ruleOrder = RULE_TEXTS.map(function (t, i) { return i; }).sort(function (a, b) { return rowTotal[b] - rowTotal[a]; }).slice(0, 10);
+    var colTotal = {}, grand = 0, maxCell = 1;
     carriers.forEach(function (n) { colTotal[n] = 0; });
-    ros.forEach(function (r) { r.rules.forEach(function (ri) { counts[ri][r.carrier]++; rowTotal[ri]++; colTotal[r.carrier]++; grand++; }); });
-    var maxCell = 1; counts.forEach(function (row) { carriers.forEach(function (n) { if (row[n] > maxCell) maxCell = row[n]; }); });
-    var ruleOrder = RULE_TEXTS.map(function (t, i) { return i; }).sort(function (a, b) { return rowTotal[b] - rowTotal[a]; });      // most-missed first
-    var carrierOrder = carriers.slice().sort(function (a, b) { return colTotal[b] - colTotal[a]; });                              // worst carrier first
+    ruleOrder.forEach(function (ri) { carriers.forEach(function (n) { var v = counts[ri][n]; colTotal[n] += v; grand += v; if (v > maxCell) maxCell = v; }); });
+    var carrierOrder = carriers.slice().sort(function (a, b) { return colTotal[b] - colTotal[a]; });   // worst carrier first
     function cell(count) {
       if (!count) return '<td class="cm-cell cm-zero"></td>';
       var t = count / maxCell, a = (0.14 + 0.82 * t).toFixed(2), fg = t > 0.5 ? '#fff' : '#5a3410';
@@ -1091,12 +1142,12 @@
         carrierOrder.map(function (n) { return cell(counts[ri][n]); }).join('') +
         '<td class="cm-total">' + rowTotal[ri] + '</td></tr>';
     }).join('');
-    var footRow = '<tr class="cm-foot"><td class="cm-rule">All rules</td>' +
+    var footRow = '<tr class="cm-foot"><td class="cm-rule">Top 10 rules</td>' +
       carrierOrder.map(function (n) { return '<td class="cm-total">' + colTotal[n] + '</td>'; }).join('') +
       '<td class="cm-total">' + grand + '</td></tr>';
     var table = '<table class="cluster-map"><thead><tr><th class="cm-rule">Rule not adhered to</th>' + headCols + '<th class="cm-total">Total</th></tr></thead>' +
       '<tbody>' + bodyRows + footRow + '</tbody></table>';
-    return '<div class="cluster-head"><div class="kpi-section-title sub">Rules adherence cluster map <span class="ctx-sub">(ROs where the rule was not adhered to · by carrier · ' + esc(MONTH_ABBR[CUR_MONTH]) + ')</span></div>' +
+    return '<div class="cluster-head"><div class="kpi-section-title sub">Rules adherence cluster map <span class="ctx-sub">(top 10 rules by ROs not adhered to · by carrier · ' + esc(MONTH_ABBR[CUR_MONTH]) + ')</span></div>' +
       '<div class="cm-legend"><span>Fewer</span><span class="cm-ramp"></span><span>More ROs</span></div></div>' +
       '<div class="mk-table-wrap cm-wrap">' + table + '</div>';
   }
@@ -1187,9 +1238,13 @@
       kpiState.chartKpis = sel;
       renderKpiTab();
     });
+    wireCarrierPanel(d);
+  }
+  // carrier scorecard interactions — shared by the shop detail and the market/region dashboard
+  function wireCarrierPanel(d) {
     function refreshPanel() {
       var panel = document.getElementById('carrierPanel');
-      if (panel) { panel.innerHTML = carrierPanelHTML(shopData(kpiState.shopId || d.id)); wireShopDetail(d); }
+      if (panel) { panel.innerHTML = carrierPanelHTML(d); wireCarrierPanel(d); }
     }
     var chips = document.getElementById('carrChips');
     if (chips) chips.addEventListener('click', function (e) {
@@ -1212,7 +1267,7 @@
         var b = e.target.closest('[data-carrier-card]'); if (b) { e.preventDefault(); toggleCard(b.getAttribute('data-carrier-card')); }
       });
     }
-    // time window inside the carrier view — shares the shop-detail period
+    // time window inside the carrier view — shares the page period
     var cpg = document.getElementById('carrPeriod');
     if (cpg) cpg.addEventListener('click', function (e) { var b = e.target.closest('[data-period]'); if (b) { kpiState.period = b.getAttribute('data-period'); renderKpiTab(); } });
     // pick which metric to trend
