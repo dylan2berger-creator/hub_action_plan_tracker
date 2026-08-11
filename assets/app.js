@@ -840,14 +840,10 @@
       '<p class="kpi-title" data-testid="kpi-page-title">' + esc(d.name) + (challenged ? ' <span class="chal-badge">Challenged</span>' : '') + '</p>' +
       '<p class="mk-lead">' + esc(d.market) + ' · ' + esc(d.region) + (d.carrierOnly ? ' · <b>funnel on target — carrier score is the likely cause</b>' : '') + '</p></div>';
 
-    // funnel metrics vs target + trend (shown first on the shop detail)
+    // funnel metrics vs target (shown first on the shop detail)
     html += '<div class="kpi-section"><div class="kpi-section-title">Opportunity funnel — vs target</div>' +
       '<div class="kpi-funnel">' + FUNNEL.map(function (f) {
         return funnelBoxHTML(funnelAsMetric(f), d.funnel[f.key]);
-      }).join('') + '</div>' +
-      '<div class="fun-trends">' + FUNNEL.map(function (f) {
-        var col = funnelPass(f, d.funnel[f.key]) ? '#2e7d32' : '#ba1a1a';
-        return '<div class="fun-trend"><span class="ft-l">' + esc(f.label.replace('Opportunity to ', 'Opp → ')) + '</span>' + svgSpark(d.funnel.trend[f.key].map(function (p) { return p.value; }), col, 120, 30) + '</div>';
       }).join('') + '</div>' +
       '</div>';
 
