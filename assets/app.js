@@ -531,6 +531,23 @@
   function money(v) { var a = Math.abs(v); var s = a >= 1000000 ? '$' + (a / 1000000).toFixed(a >= 10000000 ? 0 : 1) + 'M' : '$' + Math.round(a / 1000) + 'K'; return (v < 0 ? '−' : '') + s; }
   function moneySigned(v) { return (v > 0 ? '+' : v < 0 ? '−' : '') + money(Math.abs(v)); }
 
+  /* ---- CCC weekly forecast: a trailing 4-week window with a selectable anchor week ---- */
+  function addDaysD(d, n) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; }
+  function weekStartMonday(d) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return addDaysD(x, -((x.getDay() + 6) % 7)); }
+  function mdShort(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+  var WEEK_HISTORY = 16;               // weeks generated back from the current week (selector history)
+  var weeklyState = { asOfKey: null }; // anchor week (ISO Monday); null → current week
+  function weekSeries(storeId, weeklyTarget) {
+    var cur = weekStartMonday(TODAY), out = [];
+    for (var i = WEEK_HISTORY - 1; i >= 0; i--) {
+      var start = addDaysD(cur, -7 * i), key = iso(start);
+      var wr = mulberry(hashStr(storeId + ':wk:' + key));
+      var f = weeklyTarget * (0.86 + wr() * 0.26);
+      out.push({ start: start, key: key, label: 'Wk of ' + mdShort(start), forecast: f, target: weeklyTarget, variance: f - weeklyTarget });
+    }
+    return out; // chronological ascending; last entry = current week
+  }
+
   function avgPacingOver(ids) {
     ids = ids.filter(function (id) { return PACING_BY_STORE[id]; });
     var n = ids.length || 1, b = 0, cp = 0, ff = 0;
@@ -554,8 +571,7 @@
     var dncCount = 3 + Math.floor(dr() * 6);
     var dncValue = dncCount * (12000 + dr() * 9000);
     var weeklyTarget = budget / (MTD.daysInMonth / 7);
-    var wr = mulberry(hashStr(storeId + ':wk')), weeks = [];
-    for (var i = 1; i <= 3; i++) { var f = weeklyTarget * (0.9 + wr() * 0.18); weeks.push({ week: i, forecast: f, target: weeklyTarget, variance: f - weeklyTarget }); }
+    var weeks = weekSeries(storeId, weeklyTarget);
     return { budget: budget, mtdTarget: mtdTarget, closedMTD: closedMTD, forecast: forecast, fillTarget: fillTarget,
       closedVariance: closedVariance, pctClosedToBudget: pctClosedToBudget, pacePct: pacePct, daysBehind: daysBehind,
       monthlyClosed: budget * base.closedPace, dncCount: dncCount, dncValue: dncValue, weeks: weeks };
@@ -610,14 +626,47 @@
       '<span class="delta-chip warn"><span class="arw" aria-hidden="true">●</span>open</span></div>' +
       '<div class="kpi-subline">' + esc(money(value)) + ' delivered, not yet closed</div></div>';
   }
-  function tileWeekly(label, info, weeks) {
-    var rows = weeks.map(function (w) {
-      var pos = w.variance >= 0;
-      return '<tr><td>Week ' + w.week + '</td><td class="num">' + esc(money(w.forecast)) + '</td><td class="num">' + esc(money(w.target)) + '</td>' +
-        '<td class="num var ' + (pos ? 'pos' : 'neg') + '">' + esc(moneySigned(w.variance)) + '</td></tr>';
+  function weeklyWindow(series) {
+    var sel = series.length - 1;
+    if (weeklyState.asOfKey) {
+      for (var i = 0; i < series.length; i++) { if (series[i].key === weeklyState.asOfKey) { sel = i; break; } }
+    }
+    if (sel < 3) sel = 3;                       // always keep four weeks available
+    return { sel: sel, win: series.slice(sel - 3, sel + 1) };
+  }
+  function weeklyInnerHTML(series) {
+    var w = weeklyWindow(series), win = w.win;
+    var opts = '';
+    for (var i = series.length - 1; i >= 3; i--) {
+      opts += '<option value="' + esc(series[i].key) + '"' + (i === w.sel ? ' selected' : '') + '>' +
+        esc(series[i].label) + (i === series.length - 1 ? ' · current' : '') + '</option>';
+    }
+    var rows = win.map(function (wk, idx) {
+      var pos = wk.variance >= 0, isSel = idx === win.length - 1;
+      return '<tr' + (isSel ? ' class="wk-sel"' : '') + '><td>' + esc(wk.label) +
+        (isSel ? ' <span class="wk-badge">anchor</span>' : '') + '</td>' +
+        '<td class="num">' + esc(money(wk.forecast)) + '</td><td class="num">' + esc(money(wk.target)) + '</td>' +
+        '<td class="num var ' + (pos ? 'pos' : 'neg') + '">' + esc(moneySigned(wk.variance)) + '</td></tr>';
     }).join('');
+    var spanEnd = addDaysD(win[win.length - 1].start, 6);
+    var span = mdShort(win[0].start) + ' – ' + spanEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return '<div class="wk-head"><label class="wk-pick">Ending week ' +
+      '<span class="wk-select"><select id="wkSelect" aria-label="Anchor week for the trailing four-week view">' + opts + '</select></span></label>' +
+      '<span class="wk-caption">Trailing 4 weeks · ' + esc(span) + '</span></div>' +
+      '<table class="wk-table"><thead><tr><th>Week</th><th class="num">Forecast</th><th class="num">Target</th><th class="num">Variance</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+  function tileWeekly(label, info, series) {
     return '<div class="kpi-tile kpi-tile-wide"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
-      '<table class="wk-table"><thead><tr><th>CCC weekly</th><th class="num">Forecast</th><th class="num">Target</th><th class="num">Variance</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      '<div id="wkInner">' + weeklyInnerHTML(series) + '</div></div>';
+  }
+  function wireWeekly(storeId) {
+    var inner = document.getElementById('wkInner');
+    if (!inner) return;
+    inner.addEventListener('change', function (e) {
+      if (!e.target || e.target.id !== 'wkSelect') return;
+      weeklyState.asOfKey = e.target.value;
+      inner.innerHTML = weeklyInnerHTML(computePacing(storeId).weeks);
+    });
   }
 
   function possessive(name) { return name.charAt(name.length - 1).toLowerCase() === 's' ? name + "'" : name + "'s"; }
@@ -650,13 +699,14 @@
       '</div></div>';
 
     html += '<div class="kpi-section"><div class="kpi-section-title">CCC weekly forecast</div><div class="kpi-tiles">' +
-      tileWeekly('Weekly forecast & variance', 'Weekly forecasts from CCC and variance from target', p.weeks) +
+      tileWeekly('Weekly forecast & variance', 'CCC weekly forecast vs target for the four weeks ending the selected week — pick any week to shift the window', p.weeks) +
       '</div></div>';
 
     html += trendsSectionHTML();
     root.innerHTML = html;
     drawTrends(storeId);
     wireTrends(storeId);
+    wireWeekly(storeId);
   }
 
   /* ---- KPI trends chart: focus up to two metrics over a period ---- */

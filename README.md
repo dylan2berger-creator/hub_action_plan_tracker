@@ -101,7 +101,10 @@ above-/below-goal message — then adds sales-forecast pacing:
 - **Closed sales — month to date** — Closed Sales MTD (actual), MTD Closed Sales Target
   (straight-line for today), Closed Sales MTD Variance (actual − target), and
   **DNC (Delivered Not Closed)**.
-- **CCC weekly forecast** — Week 1 / 2 / 3 forecast, target, and variance.
+- **CCC weekly forecast** — a selectable **anchor week** (defaults to the current
+  week) showing the **trailing four weeks** ending at it — each week's forecast,
+  target, and variance, with the anchor week highlighted. Pick any week from the
+  **Ending week** selector to shift the four-week window.
 
 Status and delta chips use semantic color (green / amber / red) always paired with an
 arrow + label — never color alone. Targets, variance, %, days-behind, DNC, and the
