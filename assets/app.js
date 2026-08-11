@@ -664,12 +664,15 @@
     var r = mulberry(hashStr('carr:' + id)), n = 5 + Math.floor(r() * 4);
     var pool = CARRIERS.slice(), chosen = [];
     for (var k = 0; k < n && pool.length; k++) { chosen.push(pool.splice(Math.floor(r() * pool.length), 1)[0]); }
-    var shopAvg = { estAccuracy: 88 + r() * 6, rulesAdherence: 90 + r() * 7, cycleTime: 8 + r() * 4, csi: 90 + r() * 6 };
+    var shopAvg = { estAccuracy: 88 + r() * 6, rulesAdherence: 64 + r() * 12, cycleTime: 8 + r() * 4, csi: 90 + r() * 6 };
     return chosen.map(function (name) {
       var cr = mulberry(hashStr('carr:' + id + ':' + name));
       var score = Math.round(45 + cr() * 52), vol = 20 + Math.floor(cr() * 180);
-      var adherence = Math.round(clamp(shopAvg.rulesAdherence + (cr() * 9 - 4.5), 80, 99.5) * 10) / 10;
-      var triggered = 45 + Math.floor(cr() * 95);                                  // rule triggers over the period
+      // rules adherence is realistically ~70% on average; the 90s are a rare, standout carrier
+      var adherence = shopAvg.rulesAdherence + (cr() * 28 - 14);
+      if (cr() < 0.05) adherence = 86 + cr() * 10;                   // ~1 in 20 carriers is a standout (86–96%)
+      adherence = Math.round(clamp(adherence, 45, 96) * 10) / 10;
+      var triggered = 18 + Math.floor(cr() * 40);                                  // rule triggers over the period
       var notAdhered = Math.max(0, Math.round(triggered * (1 - adherence / 100))); // count feeding the actionable list
       var vars = {
         estAccuracy: Math.round(clamp(shopAvg.estAccuracy + (cr() * 8 - 4), 78, 98) * 10) / 10,
@@ -681,7 +684,7 @@
         score:          walk12(id + ':' + name, 'sc',  score,               4,   DRP.scoreMin, DRP.scoreMax),
         volume:         walk12(id + ':' + name, 'vol', vol,                  Math.max(3, vol * 0.05), 5, 260),
         estAccuracy:    walk12(id + ':' + name, 'ea',  vars.estAccuracy,    1.4, 74, 99),
-        rulesAdherence: walk12(id + ':' + name, 'ra',  vars.rulesAdherence, 1.3, 78, 100),
+        rulesAdherence: walk12(id + ':' + name, 'ra',  vars.rulesAdherence, 1.8, 40, 96),
         cycleTime:      walk12(id + ':' + name, 'ct',  vars.cycleTime,      0.5, 5,  18),
         csi:            walk12(id + ':' + name, 'cs',  vars.csi,            1.1, 78, 100)
       };
