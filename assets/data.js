@@ -18,21 +18,25 @@ window.HUB_DATA = {
     { key: "other",             label: "Other",                dot: "#5f6b7a", bg: "#e6e9ee", fg: "#333d49" }
   ],
 
+  /* `market` places each shop in the region → market → shop hierarchy used by
+     the KPIs dashboard. The Chicago-metro book shops sit in Midwest markets
+     (so GM ⊂ Market Manager book ⊂ Regional Manager region stays coherent);
+     the four out-of-market shops sit in their own region's markets. */
   stores: [
-    { id: "s1",  name: "Naperville, IL",        cbsa: "Chicago–Naperville CBSA" },
-    { id: "s2",  name: "Aurora, IL",            cbsa: "Chicago–Naperville CBSA" },
-    { id: "s3",  name: "Joliet, IL",            cbsa: "Chicago–Naperville CBSA" },
-    { id: "s4",  name: "Schaumburg–Woodfield, IL", cbsa: "Chicago–Naperville CBSA" },
-    { id: "s5",  name: "Elmhurst, IL",          cbsa: "Chicago–Naperville CBSA" },
-    { id: "s6",  name: "Hammond, IN",           cbsa: "Chicago–Naperville CBSA" },
-    { id: "s7",  name: "Munster, IN",           cbsa: "Chicago–Naperville CBSA" },
-    { id: "s8",  name: "Oak Forest, IL",        cbsa: "Chicago–Naperville CBSA" },
-    { id: "s9",  name: "Gambrills, MD",         cbsa: "Baltimore–Columbia CBSA" },
-    { id: "s10", name: "Schererville, IN",      cbsa: "Chicago–Naperville CBSA" },
-    { id: "s11", name: "Grand Rapids, MI",      cbsa: "Grand Rapids–Kentwood CBSA" },
-    { id: "s12", name: "Brandon, FL",           cbsa: "Tampa–St. Petersburg CBSA" },
-    { id: "s13", name: "Mesa, AZ",              cbsa: "Phoenix–Mesa CBSA" },
-    { id: "s14", name: "Orland Park, IL",       cbsa: "Chicago–Naperville CBSA" }
+    { id: "s1",  name: "Naperville, IL",        cbsa: "Chicago–Naperville CBSA",   market: "West Suburban" },
+    { id: "s2",  name: "Aurora, IL",            cbsa: "Chicago–Naperville CBSA",   market: "West Suburban" },
+    { id: "s3",  name: "Joliet, IL",            cbsa: "Chicago–Naperville CBSA",   market: "South Suburban" },
+    { id: "s4",  name: "Schaumburg–Woodfield, IL", cbsa: "Chicago–Naperville CBSA", market: "North Suburban" },
+    { id: "s5",  name: "Elmhurst, IL",          cbsa: "Chicago–Naperville CBSA",   market: "West Suburban" },
+    { id: "s6",  name: "Hammond, IN",           cbsa: "Chicago–Naperville CBSA",   market: "South Suburban" },
+    { id: "s7",  name: "Munster, IN",           cbsa: "Chicago–Naperville CBSA",   market: "South Suburban" },
+    { id: "s8",  name: "Oak Forest, IL",        cbsa: "Chicago–Naperville CBSA",   market: "South Suburban" },
+    { id: "s9",  name: "Gambrills, MD",         cbsa: "Baltimore–Columbia CBSA",   market: "Maryland East" },
+    { id: "s10", name: "Schererville, IN",      cbsa: "Chicago–Naperville CBSA",   market: "South Suburban" },
+    { id: "s11", name: "Grand Rapids, MI",      cbsa: "Grand Rapids–Kentwood CBSA", market: "MI Grand Rapids" },
+    { id: "s12", name: "Brandon, FL",           cbsa: "Tampa–St. Petersburg CBSA", market: "Tampa South" },
+    { id: "s13", name: "Mesa, AZ",              cbsa: "Phoenix–Mesa CBSA",         market: "Arizona East" },
+    { id: "s14", name: "Orland Park, IL",       cbsa: "Chicago–Naperville CBSA",   market: "South Suburban" }
   ],
 
   /* Default the board to the flagship cross-link store (Aurora). */
@@ -839,4 +843,33 @@ window.HUB_DATA.regions = [
     "Texas Dallas South", "Texas Dallas West", "Texas Houston North",
     "Texas Houston South", "Texas South", "Texas West"
   ] }
+];
+
+/* ============================================================
+   Carrier + rules seed for the DRP carrier scorecard. Carriers are
+   the top U.S. auto-insurance (casualty) providers; each shop gets a
+   deterministic subset (>= 5). Rule texts start from the three given
+   line-item prompts and continue in the same voice — the carrier
+   panel counts rules "triggered and not adhered to" per rule text.
+   ============================================================ */
+window.HUB_DATA.carriers = [
+  "State Farm", "GEICO", "Progressive", "Allstate", "USAA",
+  "Liberty Mutual", "Farmers", "Nationwide", "Travelers", "American Family"
+];
+window.HUB_DATA.ruleTexts = [
+  "More Cost Effective Recycled Lamp Available",
+  "Did You Consider Sublet Wheel Repair?",
+  "More Cost Effective Alternative Grille Available",
+  "More Cost Effective Recycled Quarter Panel Available",
+  "Did You Consider Aftermarket Bumper Cover?",
+  "More Cost Effective Recycled Headlamp Assembly Available",
+  "Did You Consider Repair vs Replace On This Door Shell?",
+  "More Cost Effective Alternative Fender Available",
+  "Did You Consider Sublet Glass Calibration?",
+  "More Cost Effective Recycled Mirror Available",
+  "Did You Consider Blending Adjacent Panels?",
+  "More Cost Effective Alternative Hood Available",
+  "Did You Consider Sublet ADAS Calibration?",
+  "More Cost Effective Recycled Tail Lamp Available",
+  "Did You Consider Alternative Wheel Refinish?"
 ];

@@ -405,9 +405,9 @@
     var items;
     if (state.role === 'regional') {
       var region = currentRegion();
-      var regionOpen = region.markets.reduce(function (a, nm) { return a + marketPlanActivity(nm).open; }, 0);
-      items = [{ id: 'region', name: 'All my markets', count: regionOpen, sub: region.markets.length + ' markets' }]
-        .concat(region.markets.map(function (nm) { return { id: 'mkt::' + nm, name: nm, count: marketPlanActivity(nm).open }; }));
+      var regionShops = region.markets.reduce(function (a, nm) { return a + shopsOfMarket(nm).length; }, 0);
+      items = [{ id: 'region', name: 'All my markets', count: regionShops, sub: region.markets.length + ' markets' }]
+        .concat(region.markets.map(function (nm) { return { id: 'mkt::' + nm, name: nm, count: shopsOfMarket(nm).length }; }));
     } else if (state.role === 'market') {
       var bookPlans = (DATA.plans || []).filter(function (p) { return MARKET.storeIds.indexOf(p.storeId) >= 0; }).length;
       items = [{ id: 'book', name: 'All my shops', count: bookPlans, sub: MARKET.storeIds.length + ' shops' }]
@@ -430,7 +430,14 @@
     document.getElementById('shopName').textContent = label;
     buildStoreMenu();
     render();
-    if (state.view === 'kpis') renderKpiTab(id);
+    if (state.view === 'kpis') {
+      if (state.role !== 'gm') {
+        if (id === 'region' || id === 'book' || id === 'all') { kpiState.market = 'all'; kpiState.view = 'dashboard'; kpiState.shopId = null; }
+        else if (isMarketScope(id)) { kpiState.market = id.slice(5); kpiState.view = 'dashboard'; kpiState.shopId = null; }
+        else if (shopById(id)) { kpiState.view = 'shop'; kpiState.shopId = id; }
+      }
+      renderKpiTab();
+    }
   }
 
   /* ---------------- filters ---------------- */
@@ -534,570 +541,430 @@
   function money(v) { var a = Math.abs(v); var s = a >= 1000000 ? '$' + (a / 1000000).toFixed(a >= 10000000 ? 0 : 1) + 'M' : '$' + Math.round(a / 1000) + 'K'; return (v < 0 ? '−' : '') + s; }
   function moneySigned(v) { return (v > 0 ? '+' : v < 0 ? '−' : '') + money(Math.abs(v)); }
 
-  /* ---- Weekly forecast: a four-week window running forward from a selectable beginning week ---- */
-  function addDaysD(d, n) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; }
-  function weekStartMonday(d) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return addDaysD(x, -((x.getDay() + 6) % 7)); }
-  function mdShort(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
-  var PAST_WEEKS = 12, FUTURE_WEEKS = 3;   // selector history back + forecast weeks forward
-  var CUR_WEEK_KEY = iso(weekStartMonday(TODAY));
-  var weeklyState = { asOfKey: null };     // beginning week (ISO Monday); null → current week
-  function weekSeries(storeId, weeklyTarget) {
-    var cur = weekStartMonday(TODAY), out = [];
-    for (var i = -PAST_WEEKS; i <= FUTURE_WEEKS; i++) {
-      var start = addDaysD(cur, 7 * i), key = iso(start);
-      var wr = mulberry(hashStr(storeId + ':wk:' + key));
-      var f = weeklyTarget * (0.86 + wr() * 0.26);
-      out.push({ start: start, key: key, label: 'Wk of ' + mdShort(start), forecast: f, target: weeklyTarget, variance: f - weeklyTarget });
-    }
-    return out; // chronological ascending; series[PAST_WEEKS] = current week
-  }
-
-  function avgPacingOver(ids) {
-    ids = ids.filter(function (id) { return PACING_BY_STORE[id]; });
-    var n = ids.length || 1, b = 0, cp = 0, ff = 0;
-    ids.forEach(function (id) { b += PACING_BY_STORE[id].budget; cp += PACING_BY_STORE[id].closedPace; ff += PACING_BY_STORE[id].forecastFactor; });
-    return { budget: b / n, closedPace: cp / n, forecastFactor: ff / n };
-  }
-  function pacingFromBase(base, seedKey) {
-    var frac = MTD.day / MTD.daysInMonth;
-    var budget = base.budget;
-    var mtdTarget = budget * frac;
-    var closedMTD = mtdTarget * base.closedPace;
-    var forecast = budget * base.forecastFactor;
-    var fillTarget = budget * 0.985;
-    var closedVariance = closedMTD - mtdTarget;
-    var pctClosedToBudget = closedMTD / budget * 100;
-    var pacePct = frac * 100;
-    var daysBehind = (mtdTarget - closedMTD) / (budget / 22);
-    var dr = mulberry(hashStr(seedKey + ':dnc'));
-    var dncCount = 3 + Math.floor(dr() * 6);
-    var dncValue = dncCount * (12000 + dr() * 9000);
-    var weeklyTarget = budget / (MTD.daysInMonth / 7);
-    var weeks = weekSeries(seedKey, weeklyTarget);
-    return { budget: budget, mtdTarget: mtdTarget, closedMTD: closedMTD, forecast: forecast, fillTarget: fillTarget,
-      closedVariance: closedVariance, pctClosedToBudget: pctClosedToBudget, pacePct: pacePct, daysBehind: daysBehind,
-      monthlyClosed: budget * base.closedPace, dncCount: dncCount, dncValue: dncValue, weeks: weeks };
-  }
-  function computeMarketPacing(name) { return pacingFromBase(marketPacingObj(name), 'mkt::' + name); }
-  function computeRegionPacing(region) {
-    var ids = region.markets, n = ids.length || 1, b = 0, cp = 0, ff = 0;
-    ids.forEach(function (nm) { var mp = marketPacingObj(nm); b += mp.budget; cp += mp.closedPace; ff += mp.forecastFactor; });
-    return pacingFromBase({ budget: b, closedPace: cp / n, forecastFactor: ff / n }, 'region:' + region.id);
-  }
-  function computePacing(storeId) {
-    if (isMarketScope(storeId)) return computeMarketPacing(storeId.slice(5));
-    if (storeId === 'region') return computeRegionPacing(currentRegion());
-    var ids = resolveIds(storeId);
-    var base = (ids.length === 1 && PACING_BY_STORE[ids[0]]) ? PACING_BY_STORE[ids[0]] : avgPacingOver(ids);
-    return pacingFromBase(base, storeId);
-  }
-  function statusOf(actual, target) {
-    var r = actual / target;
-    if (r >= 1.01) return { word: 'Ahead', cls: 'good' };
-    if (r >= 0.99) return { word: 'On Track', cls: 'good' };
-    if (r >= 0.95) return { word: 'Behind', cls: 'warn' };
-    return { word: 'Behind', cls: 'serious' };
-  }
-
-  function tileStatus(label, info, forecast, target, targetLabel) {
-    var st = statusOf(forecast, target);
-    return '<div class="kpi-tile"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
-      '<div class="kpi-status ' + st.cls + '">' + esc(st.word) + '</div>' +
-      '<div class="kpi-subline">Forecast <b>' + esc(money(forecast)) + '</b> vs ' + esc(targetLabel) + ' ' + esc(money(target)) + '</div></div>';
-  }
-  function tileMoney(label, info, value, sub, muted) {
-    return '<div class="kpi-tile"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
-      '<div class="kpi-value' + (muted ? ' muted' : '') + '">' + esc(money(value)) + '</div>' +
-      '<div class="kpi-subline">' + esc(sub) + '</div></div>';
-  }
-  function tileVariance(label, info, value, sub) {
-    var pos = value >= 0, cls = pos ? 'good' : (Math.abs(value) >= 20000 ? 'serious' : 'warn');
-    return '<div class="kpi-tile"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
-      '<div class="kpi-value ' + (pos ? 'pos' : 'neg') + '">' + esc(moneySigned(value)) + '</div>' +
-      '<div class="kpi-subline">' + esc(sub) + '</div>' +
-      '<span class="delta-chip ' + cls + '"><span class="arw" aria-hidden="true">' + (pos ? '▲' : '▼') + '</span>' + (pos ? 'ahead of target' : 'behind target') + '</span></div>';
-  }
-  function tileDays(label, info, days) {
-    var behind = days > 0.05, ahead = days < -0.05;
-    var cls = ahead ? 'good' : (days > 1.5 ? 'serious' : behind ? 'warn' : 'good');
-    var word = behind ? 'behind' : ahead ? 'ahead' : 'on pace';
-    return '<div class="kpi-tile"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
-      '<div class="kpi-main"><div class="kpi-value">' + esc(Math.abs(days).toFixed(1)) + ' <span class="kpi-unit">days</span></div>' +
-      '<span class="delta-chip ' + cls + '"><span class="arw" aria-hidden="true">' + (ahead ? '▲' : behind ? '▼' : '✓') + '</span>' + esc(word) + '</span></div>' +
-      '<div class="kpi-subline">Against straight-line pace</div></div>';
-  }
-  function tileMeter(label, info, pct, pacePct) {
-    var ahead = pct >= pacePct, cls = ahead ? 'good' : (pacePct - pct > 6 ? 'serious' : 'warn');
-    var p = Math.max(0, Math.min(100, pct)), mk = Math.max(0, Math.min(100, pacePct));
-    return '<div class="kpi-tile"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
-      '<div class="kpi-main"><div class="kpi-value">' + Math.round(pct) + '%</div>' +
-      '<span class="delta-chip ' + cls + '"><span class="arw" aria-hidden="true">' + (ahead ? '▲' : '▼') + '</span>' + (ahead ? 'ahead of pace' : 'behind pace') + '</span></div>' +
-      '<div class="meter" role="img" aria-label="' + Math.round(pct) + '% closed versus ' + Math.round(pacePct) + '% straight-line pace"><div class="meter-fill" style="width:' + p.toFixed(1) + '%"></div><div class="meter-mark" style="left:' + mk.toFixed(1) + '%"></div></div>' +
-      '<div class="kpi-subline">' + Math.round(pct) + '% closed &middot; ' + Math.round(pacePct) + '% straight-line pace</div></div>';
-  }
-  function tileDNC(label, info, count, value) {
-    return '<div class="kpi-tile"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
-      '<div class="kpi-main"><div class="kpi-value">' + count + ' <span class="kpi-unit">files</span></div>' +
-      '<span class="delta-chip warn"><span class="arw" aria-hidden="true">●</span>open</span></div>' +
-      '<div class="kpi-subline">' + esc(money(value)) + ' delivered, not yet closed</div></div>';
-  }
-  function weeklyWindow(series) {
-    var last = series.length - 4;               // last beginning index that still has four weeks forward
-    var sel = -1;
-    if (weeklyState.asOfKey) {
-      for (var i = 0; i < series.length; i++) { if (series[i].key === weeklyState.asOfKey) { sel = i; break; } }
-    }
-    if (sel < 0) { for (var j = 0; j < series.length; j++) { if (series[j].key === CUR_WEEK_KEY) { sel = j; break; } } }
-    if (sel < 0) sel = last;
-    sel = Math.max(0, Math.min(sel, last));
-    return { sel: sel, win: series.slice(sel, sel + 4) };
-  }
-  function weeklyInnerHTML(series) {
-    var w = weeklyWindow(series), win = w.win, last = series.length - 4;
-    var opts = '';
-    for (var i = last; i >= 0; i--) {           // selectable beginning weeks, most recent first
-      opts += '<option value="' + esc(series[i].key) + '"' + (i === w.sel ? ' selected' : '') + '>' +
-        esc(mdShort(series[i].start)) + (series[i].key === CUR_WEEK_KEY ? ' · current' : '') + '</option>';
-    }
-    var rows = win.map(function (wk, idx) {
-      var pos = wk.variance >= 0, isSel = idx === 0;
-      return '<tr' + (isSel ? ' class="wk-sel"' : '') + '><td>' + esc(wk.label) +
-        (isSel ? ' <span class="wk-badge">begins</span>' : '') + '</td>' +
-        '<td class="num">' + esc(money(wk.forecast)) + '</td><td class="num">' + esc(money(wk.target)) + '</td>' +
-        '<td class="num var ' + (pos ? 'pos' : 'neg') + '">' + esc(moneySigned(wk.variance)) + '</td></tr>';
-    }).join('');
-    var spanEnd = addDaysD(win[win.length - 1].start, 6);
-    var span = mdShort(win[0].start) + ' – ' + spanEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    return '<div class="wk-head"><label class="wk-pick">Week beginning ' +
-      '<span class="wk-select"><select id="wkSelect" aria-label="Beginning week for the four-week forecast">' + opts + '</select></span></label>' +
-      '<span class="wk-caption">Four weeks · ' + esc(span) + '</span></div>' +
-      '<table class="wk-table"><thead><tr><th>Week</th><th class="num">Forecast</th><th class="num">Target</th><th class="num">Variance</th></tr></thead><tbody>' + rows + '</tbody></table>';
-  }
-  function tileWeekly(label, info, series) {
-    return '<div class="kpi-tile kpi-tile-wide"><div class="kpi-name">' + esc(label) + infoIcon(info) + '</div>' +
-      '<div id="wkInner">' + weeklyInnerHTML(series) + '</div></div>';
-  }
-  function wireWeekly(storeId) {
-    var inner = document.getElementById('wkInner');
-    if (!inner) return;
-    inner.addEventListener('change', function (e) {
-      if (!e.target || e.target.id !== 'wkSelect') return;
-      weeklyState.asOfKey = e.target.value;
-      inner.innerHTML = weeklyInnerHTML(computePacing(storeId).weeks);
-    });
-  }
-
-  function possessive(name) { return name.charAt(name.length - 1).toLowerCase() === 's' ? name + "'" : name + "'s"; }
-  function shortStore(name) { return name.replace(/,\s*[A-Z]{2}$/, ''); }
-
-  function renderKpis(storeId) {
-    var root = document.getElementById('kpiRoot');
-    if (!root) return;
-    var fvals = kpiFunnelValuesFor(storeId);
-    var p = computePacing(storeId);
-    var isMkt = isMarketScope(storeId);
-    var name = isMkt ? storeId.slice(5) : (storeId === 'all' ? 'All stores' : (STORE_BY_ID[storeId] ? shortStore(STORE_BY_ID[storeId].name) : 'All stores'));
-    var title = isMkt ? name + ' — Market KPIs' : possessive(name) + ' KPIs';
-    var html = '';
-    html += '<div class="kpi-head"><p class="kpi-title" data-testid="kpi-page-title">' + esc(title) + '</p>' +
-      '<p class="kpi-sub" data-testid="kpi-page-subtitle">80/70/7</p></div>';
-    html += '<div class="kpi-funnel" data-testid="capture-rate-metrics">' +
-      KPI_FUNNEL.map(function (m) { return funnelBoxHTML(m, fvals[m.key]); }).join('') + '</div>';
-
-    html += '<div class="kpi-section"><div class="kpi-section-title">Sales forecast</div><div class="kpi-tiles">' +
-      tileStatus('Funnel Status', 'Status for the current sales forecast versus the Fill the Funnel target', p.forecast, p.fillTarget, 'Fill the Funnel') +
-      tileStatus('Budget Funnel Status', 'Status for the current sales forecast versus budget', p.forecast, p.budget, 'Budget') +
-      tileMeter('% Closed to Budget', 'Total closed and delivered against budget', p.pctClosedToBudget, p.pacePct) +
-      tileDays('Days Behind', 'How many days of work the shop is ahead or behind', p.daysBehind) +
-      '</div></div>';
-
-    html += '<div class="kpi-section"><div class="kpi-section-title">Closed sales — month to date</div><div class="kpi-tiles">' +
-      tileMoney('Closed Sales MTD', 'Actual sales delivered and closed for the current month', p.closedMTD, 'Delivered & closed, MTD', false) +
-      tileMoney('MTD Closed Sales Target', 'Straight-line sales target for today', p.mtdTarget, 'Straight-line target for today', true) +
-      tileVariance('Closed Sales MTD Variance', 'Closed Sales MTD actuals minus MTD closed sales target', p.closedVariance, 'Actual − target') +
-      tileDNC('DNC (Delivered Not Closed)', 'Vehicle has been delivered, but the file(s) has not been closed', p.dncCount, p.dncValue) +
-      '</div></div>';
-
-    html += '<div class="kpi-section"><div class="kpi-section-title">Weekly forecast</div><div class="kpi-tiles">' +
-      tileWeekly('Weekly forecast & variance', 'Weekly forecast vs target for the four weeks beginning the selected week — pick any week to shift the window', p.weeks) +
-      '</div></div>';
-
-    html += trendsSectionHTML();
-    root.innerHTML = html;
-    drawTrends(storeId);
-    wireTrends(storeId);
-    wireWeekly(storeId);
-  }
-
-  /* ---- KPI trends chart: focus up to two metrics over a period ---- */
-  var TREND_COLORS = ['#0072b2', '#e69f00', '#009e73', '#cc79a7', '#56b4e9'];
-  var TREND_METRICS = [
-    { key: 'estimate',  label: 'Opportunity to Estimate', short: 'Estimate', unit: '%',    dir: 'higher', goal: function () { return 80; } },
-    { key: 'ro',        label: 'Opportunity to RO',       short: 'RO',       unit: '%',    dir: 'higher', goal: function () { return 70; } },
-    { key: 'arrive',    label: 'Opportunity to Arrive',   short: 'Arrive',   unit: 'days', dir: 'lower',  goal: function () { return 7; } },
-    { key: 'closed',    label: 'Closed Sales (monthly)',  short: 'Closed',   unit: '$',    dir: 'higher', goal: function (p) { return p.budget; } },
-    { key: 'pctBudget', label: '% Closed to Budget',      short: '% Budget', unit: '%',    dir: 'higher', goal: function () { return 100; } }
-  ];
-  TREND_METRICS.forEach(function (m, i) { m.color = TREND_COLORS[i]; });
-  var TREND_PERIODS = [6, 12, 24];
-  var TREND_TOTAL = 24;
-  var TREND_MAX = 2;
-  var trendState = { metrics: ['ro', 'closed'], period: 12 };
+  /* ====================== KPIs dashboard (rebuilt) ======================
+     Shop-centric workflow: revenue attainment → challenged flagging →
+     shop detail → carrier scorecard. Every threshold/target/direction
+     comes from window.HUB_CONFIG (assets/config.js) — nothing hardcodes
+     "green above target"; the formatting reads each metric's `direction`. */
+  var CFG = window.HUB_CONFIG || {};
+  var CHALLENGED_PCT = (CFG.revenue && CFG.revenue.challengedVariancePct != null) ? CFG.revenue.challengedVariancePct : -0.10;
+  var FUNNEL = CFG.funnel || [];
+  var DRP = CFG.drp || { scoreMin: 0, scoreMax: 100, variables: [] };
+  var CARRIERS = DATA.carriers || [];
+  var RULE_TEXTS = DATA.ruleTexts || [];
+  var PERIODS = [{ key: 'mtd', label: 'MTD', months: 1 }, { key: 'm3', label: '3M', months: 3 }, { key: 'm6', label: '6M', months: 6 }, { key: 'm12', label: '12M', months: 12 }];
   var MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var CUR_MONTH = TODAY.getMonth();
+  var RA_MIN = -0.35, RA_MAX = 0.25;   // fixed revenue-variance chart domain
 
-  function trendMonths() {
-    var out = [], ay = 2026, am = 7; // anchor: Aug 2026 (the dataset month)
-    for (var k = TREND_TOTAL - 1; k >= 0; k--) {
-      var idx = am - k, y = ay;
-      while (idx < 0) { idx += 12; y -= 1; }
-      out.push({ label: MONTH_ABBR[idx] + (idx === 0 ? " '" + String(y).slice(2) : '') });
+  var kpiState = { view: 'dashboard', shopId: null, period: 'mtd', gran: 'shops', market: 'all', carriers: null };
+
+  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+  function pctStr(p) { return (p >= 0 ? '+' : '−') + Math.abs(Math.round(p * 100)) + '%'; }
+
+  /* ---- hierarchy: market → region, real shops by market, shops per market ---- */
+  var REGION_OF_MARKET = {};
+  REGIONS.forEach(function (rg) { rg.markets.forEach(function (m) { REGION_OF_MARKET[m] = rg; }); });
+  var REAL_SHOPS_BY_MARKET = {};
+  (DATA.stores || []).forEach(function (s) { if (!s.market) return; (REAL_SHOPS_BY_MARKET[s.market] = REAL_SHOPS_BY_MARKET[s.market] || []).push(s); });
+  function isDemoMarket(m) { var rg = REGION_OF_MARKET[m]; return rg && rg.id === DATA.defaultRegionId; }
+  function shopCountForMarket(m) { var r = mulberry(hashStr('shopn:' + m)); return isDemoMarket(m) ? 4 + Math.floor(r() * 5) : 1 + Math.floor(r() * 3); }
+  var LOCALITIES = ['Riverside', 'Oakdale', 'Fairview', 'Lakeside', 'Brookfield', 'Westgate', 'Hillcrest', 'Kingston', 'Ashford', 'Belmont', 'Clearwater', 'Devon', 'Easton', 'Fremont', 'Glenwood', 'Harmon', 'Ivywood', 'Kendall', 'Lorain', 'Maple Grove', 'Northfield', 'Oakhurst', 'Pinewood', 'Ridgeway', 'Stonebridge', 'Trenton', 'Vernon', 'Westbrook'];
+  var SHOP_BY_ID = {}, _shopsCache = {};
+  function shopsOfMarket(m) {
+    if (_shopsCache[m]) return _shopsCache[m];
+    var real = (REAL_SHOPS_BY_MARKET[m] || []).map(function (s) { return { id: s.id, name: s.name, market: m, real: true }; });
+    var out = real.slice(), target = shopCountForMarket(m), need = Math.max(0, target - real.length);
+    var r = mulberry(hashStr('shops:' + m)), used = {};
+    for (var k = 0; k < need; k++) {
+      var idx = Math.floor(r() * LOCALITIES.length), guard = 0;
+      while (used[idx] && guard++ < LOCALITIES.length) idx = (idx + 1) % LOCALITIES.length;
+      used[idx] = 1;
+      out.push({ id: 'g:' + m + ':' + k, name: LOCALITIES[idx], market: m, real: false });
     }
+    out.forEach(function (sh) { SHOP_BY_ID[sh.id] = sh; });
+    _shopsCache[m] = out;
     return out;
   }
-  function metricLatest(m, fvals, p) {
-    if (m.key === 'estimate') return fvals.estimate;
-    if (m.key === 'ro') return fvals.ro;
-    if (m.key === 'arrive') return fvals.arrive;
-    if (m.key === 'closed') return p.monthlyClosed;
-    if (m.key === 'pctBudget') return p.monthlyClosed / p.budget * 100;
-    return 0;
-  }
-  function seriesFull(m, storeId, latest) {
-    var amp = m.unit === 'days' ? 0.7 : m.unit === '%' ? 3.2 : m.unit === '$' ? Math.max(latest * 0.05, 12000) : latest * 0.05;
-    var drift = 1.1 * amp * (m.dir === 'higher' ? -1 : 1);
-    var rnd = mulberry(hashStr(storeId + ':' + m.key + ':trend'));
-    var a = [];
-    for (var i = 0; i < TREND_TOTAL; i++) { var t = i / (TREND_TOTAL - 1); a.push(latest + drift * (1 - t) + (rnd() - 0.5) * amp); }
-    a[TREND_TOTAL - 1] = latest;
-    return a;
-  }
-  function fmtMetric(m, v) {
-    if (m.unit === '$') return money(v);
-    if (m.unit === '%') return Math.round(v) + '%';
-    if (m.unit === 'days') return parseFloat(v.toFixed(1)) + ' days';
-    return String(Math.round(v));
-  }
-  function fmtAxis(m, v) {
-    if (m.unit === '$') return money(v);
-    if (m.unit === '%') return Math.round(v) + '%';
-    if (m.unit === 'days') return String(parseFloat(v.toFixed(1)));
-    return String(Math.round(v));
-  }
-  function rangeOf(vals) {
-    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
-    if (hi === lo) hi = lo + 1;
-    var s = hi - lo;
-    return { lo: lo - s * 0.12, hi: hi + s * 0.12 };
-  }
-  function unitWord(u) { return u === '$' ? 'dollars' : u === 'days' ? 'days' : 'percent'; }
-
-  function trendsSectionHTML() {
-    var chips = TREND_METRICS.map(function (m) {
-      var on = trendState.metrics.indexOf(m.key) >= 0;
-      return '<button type="button" class="trend-chip' + (on ? ' on' : '') + '" data-metric="' + m.key + '" aria-pressed="' + on + '">' +
-        '<span class="sw" style="background:' + m.color + '"></span>' + esc(m.label) + '</button>';
-    }).join('');
-    var periods = TREND_PERIODS.map(function (n) {
-      return '<button type="button" class="trend-per' + (trendState.period === n ? ' on' : '') + '" data-period="' + n + '" aria-pressed="' + (trendState.period === n) + '">' + n + 'M</button>';
-    }).join('');
-    return '<div class="kpi-section trends"><div class="trend-head">' +
-      '<div class="kpi-section-title">Trends over time</div>' +
-      '<div class="trend-period-group" id="trendPeriod" role="group" aria-label="Time range">' + periods + '</div></div>' +
-      '<div class="trend-metrics" id="trendMetrics" role="group" aria-label="Metrics to plot">' + chips + '</div>' +
-      '<div class="trend-hint">Compare up to two metrics. Different units use a left and a right axis.</div>' +
-      '<div class="trend-mode" id="trendMode"></div>' +
-      '<div class="trend-plot" id="trendPlot"></div>' +
-      '<div class="trend-legend" id="trendLegend"></div>' +
-      '<div class="visually-hidden" id="trendTable"></div></div>';
+  function shopsOfRegion(rg) { var out = []; rg.markets.forEach(function (m) { out = out.concat(shopsOfMarket(m)); }); return out; }
+  function shopById(id) {
+    if (SHOP_BY_ID[id]) return SHOP_BY_ID[id];
+    var st = STORE_BY_ID[id];
+    if (st && st.market) { shopsOfMarket(st.market); if (SHOP_BY_ID[id]) return SHOP_BY_ID[id]; }
+    if (typeof id === 'string' && id.indexOf('g:') === 0) { shopsOfMarket(id.slice(2, id.lastIndexOf(':'))); return SHOP_BY_ID[id] || null; }
+    return null;
   }
 
-  function drawTrends(storeId) {
-    var plot = document.getElementById('trendPlot'); if (!plot) return;
-    var fvals = kpiFunnelValuesFor(storeId), p = computePacing(storeId);
-    var months = trendMonths(), start = TREND_TOTAL - trendState.period, n = trendState.period;
-    var sel = TREND_METRICS.filter(function (m) { return trendState.metrics.indexOf(m.key) >= 0; });
-    if (!sel.length) sel = [TREND_METRICS[0]];
-    var mode = sel.length === 1 ? 'single' : (sel[0].unit === sel[1].unit ? 'shared' : 'dual');
-
-    var series = sel.map(function (m) {
-      return { m: m, raw: seriesFull(m, storeId, metricLatest(m, fvals, p)).slice(start), latest: metricLatest(m, fvals, p), goal: m.goal(p) };
-    });
-
-    var W = Math.max(plot.clientWidth || 760, 320), H = 320, mT = 14, mB = 34;
-    var mL = 58, mR = mode === 'dual' ? 72 : 62, iw = W - mL - mR, ih = H - mT - mB;
-    function X(i) { return mL + (n <= 1 ? iw / 2 : iw * i / (n - 1)); }
-
-    var rA, rB, YA, YB, R, Y;
-    if (mode === 'dual') {
-      rA = rangeOf(series[0].raw.concat([series[0].goal]));
-      rB = rangeOf(series[1].raw.concat([series[1].goal]));
-      YA = function (v) { return mT + ih * (1 - (v - rA.lo) / (rA.hi - rA.lo)); };
-      YB = function (v) { return mT + ih * (1 - (v - rB.lo) / (rB.hi - rB.lo)); };
-    } else {
-      var allv = [];
-      series.forEach(function (s) { allv = allv.concat(s.raw, [s.goal]); });
-      R = rangeOf(allv);
-      Y = function (v) { return mT + ih * (1 - (v - R.lo) / (R.hi - R.lo)); };
+  /* ---- deterministic per-shop data ---- */
+  function srng(id, salt) { return mulberry(hashStr('shop:' + id + ':' + salt)); }
+  // 12-month backward random walk ending at `end`
+  function walk12(id, salt, end, spread, lo, hi) {
+    var r = mulberry(hashStr('ms:' + id + ':' + salt)), v = new Array(12); v[11] = end;
+    for (var i = 10; i >= 0; i--) { v[i] = clamp(v[i + 1] - (r() * 2 - 1) * spread, lo, hi); }
+    var out = [];
+    for (var j = 0; j < 12; j++) { var mi = (CUR_MONTH - 11 + j + 1200) % 12; out.push({ mi: mi, label: MONTH_ABBR[mi], value: v[j] }); }
+    return out;
+  }
+  var _shopDataCache = {};
+  function shopData(id) {
+    if (_shopDataCache[id]) return _shopDataCache[id];
+    var sh = shopById(id); if (!sh) return null;
+    var m = sh.market, mpac = marketPacingObj(m), mfun = marketFunnelObj(m);
+    var r = srng(id, 'rev');
+    var target = Math.round(mpac.budget / Math.max(1, shopsOfMarket(m).length) * (0.85 + r() * 0.3) / 1000) * 1000;
+    var baseVar = clamp((mpac.closedPace - 0.95) + (r() * 2 - 1) * 0.14, -0.30, 0.20);
+    // funnel
+    var est = clamp(mfun.estimate + (srng(id, 'est')() * 10 - 5), 60, 95);
+    var ro = clamp(mfun.ro + (srng(id, 'ro')() * 12 - 6), 52, 82);
+    var arr = clamp(mfun.arrive + (srng(id, 'arr')() * 2 - 1), 4.5, 10);
+    // interesting case: ~1/3 of challenged shops are funnel-clean → carrier is the only cause
+    var carrierOnly = false;
+    if (baseVar <= CHALLENGED_PCT && srng(id, 'pick')() < 0.34) {
+      est = clamp(82 + srng(id, 'e2')() * 7, 82, 93);
+      ro = clamp(72 + srng(id, 'r2')() * 7, 72, 82);
+      arr = clamp(5.1 + srng(id, 'a2')() * 1.5, 5.1, 6.9);
+      carrierOnly = true;
     }
-    function Yof(si, v) { return mode === 'dual' ? (si === 0 ? YA(v) : YB(v)) : Y(v); }
-
-    // gridlines + y axis labels
-    var grid = '', ylab = '', ticks = 4;
-    for (var t = 0; t <= ticks; t++) {
-      var gy = mT + ih * (1 - t / ticks);
-      grid += '<line class="tg" x1="' + mL + '" x2="' + (W - mR) + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '"/>';
-      if (mode === 'dual') {
-        var la = fmtAxis(series[0].m, rA.lo + (rA.hi - rA.lo) * t / ticks);
-        var lb = fmtAxis(series[1].m, rB.lo + (rB.hi - rB.lo) * t / ticks);
-        ylab += '<text class="ax" x="' + (mL - 8) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end" fill="' + series[0].m.color + '">' + esc(la) + '</text>';
-        ylab += '<text class="ax" x="' + (W - mR + 8) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="start" fill="' + series[1].m.color + '">' + esc(lb) + '</text>';
-      } else {
-        var lv = fmtAxis(series[0].m, R.lo + (R.hi - R.lo) * t / ticks);
-        ylab += '<text class="ax" x="' + (mL - 8) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end">' + esc(lv) + '</text>';
-      }
+    // monthly revenue: target (slight seasonality) + actual (walk ending at current)
+    var tg = mulberry(hashStr('tg:' + id)), months = [];
+    var actualEnd = Math.round(target * (1 + baseVar));
+    var varWalk = walk12(id, 'var', baseVar, 0.05, -0.4, 0.3);
+    for (var i = 0; i < 12; i++) {
+      var tgt = Math.round(target * (0.97 + tg() * 0.06));
+      months.push({ mi: varWalk[i].mi, label: varWalk[i].label, target: tgt, actual: Math.round(tgt * (1 + varWalk[i].value)) });
     }
-    // x axis labels
-    var xlab = '', step = Math.ceil(n / 6);
-    for (var i = 0; i < n; i++) { if (i % step === 0 || i === n - 1) { xlab += '<text class="ax" x="' + X(i).toFixed(1) + '" y="' + (H - 12) + '" text-anchor="middle">' + esc(months[start + i].label) + '</text>'; } }
+    months[11].target = target; months[11].actual = actualEnd; // pin current month
+    var funTrend = { estimate: walk12(id, 'et', est, 2.2, 55, 97), ro: walk12(id, 'rt', ro, 2.6, 48, 86), arrive: walk12(id, 'at', arr, 0.4, 4, 11) };
+    var opps = 200 + Math.floor(srng(id, 'opps')() * 260);
+    var counts = { opportunities: opps, estimates: Math.round(opps * est / 100), ros: Math.round(opps * ro / 100), arrivals: 0 };
+    counts.arrivals = Math.round(counts.ros * (0.90 + srng(id, 'av')() * 0.08));
+    var d = {
+      id: id, name: sh.name, market: m, region: (REGION_OF_MARKET[m] || {}).name, real: sh.real,
+      months: months, funnel: { estimate: est, ro: ro, arrive: arr, counts: counts, trend: funTrend },
+      carriers: buildCarriers(id), carrierOnly: carrierOnly
+    };
+    _shopDataCache[id] = d;
+    return d;
+  }
+  // revenue summed over the selected period window (MTD = current month)
+  function revFor(id, period) {
+    var d = shopData(id); if (!d) return { actual: 0, target: 0, variancePct: 0, variance: 0 };
+    var n = (PERIODS.filter(function (p) { return p.key === period; })[0] || PERIODS[0]).months;
+    var a = 0, t = 0;
+    for (var i = 12 - n; i < 12; i++) { a += d.months[i].actual; t += d.months[i].target; }
+    var vp = t ? (a - t) / t : 0;
+    return { actual: a, target: t, variancePct: vp, variance: a - t };
+  }
+  function isChallenged(id, period) { return revFor(id, period).variancePct <= CHALLENGED_PCT; }
 
-    // goal reference
-    var goalM = '';
-    if (mode === 'single') {
-      var gyy = Y(series[0].goal);
-      goalM = '<line class="ref" x1="' + mL + '" x2="' + (W - mR) + '" y1="' + gyy.toFixed(1) + '" y2="' + gyy.toFixed(1) + '"/>' +
-        '<text class="ref-lab" x="' + (W - mR + 4) + '" y="' + (gyy + 3).toFixed(1) + '">Goal</text>';
-    } else if (mode === 'shared') {
-      series.forEach(function (s) {
-        var gy2 = Y(s.goal);
-        goalM += '<line class="ref" x1="' + mL + '" x2="' + (W - mR) + '" y1="' + gy2.toFixed(1) + '" y2="' + gy2.toFixed(1) + '" stroke="' + s.m.color + '" opacity="0.55"/>';
-      });
-    } else {
-      goalM += '<line class="ref" x1="' + mL + '" x2="' + (mL + 12) + '" y1="' + YA(series[0].goal).toFixed(1) + '" y2="' + YA(series[0].goal).toFixed(1) + '" stroke="' + series[0].m.color + '"/>';
-      goalM += '<line class="ref" x1="' + (W - mR - 12) + '" x2="' + (W - mR) + '" y1="' + YB(series[1].goal).toFixed(1) + '" y2="' + YB(series[1].goal).toFixed(1) + '" stroke="' + series[1].m.color + '"/>';
+  /* ---- carriers (DRP scorecard) ---- */
+  function buildCarriers(id) {
+    var r = mulberry(hashStr('carr:' + id)), n = 5 + Math.floor(r() * 4);
+    var pool = CARRIERS.slice(), chosen = [];
+    for (var k = 0; k < n && pool.length; k++) { chosen.push(pool.splice(Math.floor(r() * pool.length), 1)[0]); }
+    var shopAvg = { estAccuracy: 88 + r() * 6, rulesNotAdhered: 6 + r() * 8, cycleTime: 8 + r() * 4, csi: 90 + r() * 6 };
+    return chosen.map(function (name) {
+      var cr = mulberry(hashStr('carr:' + id + ':' + name));
+      var score = Math.round(45 + cr() * 52), vol = 20 + Math.floor(cr() * 180);
+      var vars = {
+        estAccuracy: Math.round(clamp(shopAvg.estAccuracy + (cr() * 8 - 4), 78, 98) * 10) / 10,
+        rulesNotAdhered: Math.max(0, Math.round(shopAvg.rulesNotAdhered + (cr() * 10 - 4))),
+        cycleTime: Math.round(clamp(shopAvg.cycleTime + (cr() * 4 - 2), 6, 16) * 10) / 10,
+        csi: Math.round(clamp(shopAvg.csi + (cr() * 8 - 4), 80, 99) * 10) / 10
+      };
+      var trend = walk12(id + ':' + name, 'sc', score, 4, DRP.scoreMin, DRP.scoreMax);
+      return { name: name, score: score, volume: vol, vars: vars, shopAvg: shopAvg, trend: trend, rules: buildRules(id, name, vars.rulesNotAdhered) };
+    }).sort(function (a, b) { return b.volume - a.volume; });
+  }
+  function buildRules(id, carrier, total) {
+    var r = mulberry(hashStr('rules:' + id + ':' + carrier)), groups = {}, count = Math.max(3, total);
+    for (var k = 0; k < count; k++) { var t = RULE_TEXTS[Math.floor(r() * RULE_TEXTS.length)]; groups[t] = (groups[t] || 0) + 1; }
+    return Object.keys(groups).map(function (t) { return { text: t, count: groups[t] }; }).sort(function (a, b) { return b.count - a.count; });
+  }
+
+  /* ---- scope resolution (persona + in-pane market filter) ---- */
+  function baseShopIds() {
+    var ids;
+    if (state.role === 'regional') ids = shopsOfRegion(currentRegion()).map(function (s) { return s.id; });
+    else if (state.role === 'market') ids = (MARKET.storeIds || []).slice();
+    else ids = [state.store];
+    if (kpiState.market && kpiState.market !== 'all') ids = ids.filter(function (id) { var sh = shopById(id); return sh && sh.market === kpiState.market; });
+    return ids.filter(function (id) { return shopById(id); });
+  }
+  function scopeMarkets() {
+    if (state.role === 'regional') return currentRegion().markets.slice();
+    if (state.role === 'market') { var set = {}; (MARKET.storeIds || []).forEach(function (id) { var sh = shopById(id); if (sh) set[sh.market] = 1; }); return Object.keys(set); }
+    var sh = shopById(state.store); return sh ? [sh.market] : [];
+  }
+  function scopeTitle() {
+    if (state.role === 'regional') return currentRegion().name;
+    if (state.role === 'market') return MARKET.name;
+    var sh = shopById(state.store); return sh ? sh.name : 'Shop';
+  }
+
+  /* ---- aggregation for markets/region granularity ---- */
+  function aggEntity(name, shopIds) {
+    var a = 0, t = 0, ch = 0, est = 0, ro = 0, arr = 0, n = shopIds.length || 1;
+    shopIds.forEach(function (id) { var rv = revFor(id, kpiState.period), d = shopData(id); a += rv.actual; t += rv.target; if (rv.variancePct <= CHALLENGED_PCT) ch++; est += d.funnel.estimate; ro += d.funnel.ro; arr += d.funnel.arrive; });
+    return { key: name, name: name, variancePct: t ? (a - t) / t : 0, actual: a, target: t, count: shopIds.length, challenged: ch, funnel: { estimate: est / n, ro: ro / n, arrive: arr / n } };
+  }
+  // chart entities depending on granularity
+  function chartEntities() {
+    var ids = baseShopIds();
+    if (state.role === 'market' && kpiState.gran !== 'shops') return [aggEntity(MARKET.name, ids)];      // MM: markets/region collapse to one bar
+    if (state.role === 'regional' && kpiState.gran === 'region') return [aggEntity(currentRegion().name, ids)];
+    if (state.role === 'regional' && kpiState.gran === 'markets') {
+      var mkts = scopeMarkets();
+      if (kpiState.market && kpiState.market !== 'all') mkts = mkts.filter(function (m) { return m === kpiState.market; });
+      return mkts.map(function (m) { return aggEntity(m, shopsOfMarket(m).map(function (s) { return s.id; })); });
     }
-
-    // lines + endpoints + (single/shared) end labels
-    var paths = '', ends = '';
-    series.forEach(function (s, si) {
-      var d = s.raw.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Yof(si, v).toFixed(1); }).join(' ');
-      paths += '<path class="ln" d="' + d + '" stroke="' + s.m.color + '"/>';
-      var lx = X(n - 1), ly = Yof(si, s.raw[n - 1]);
-      paths += '<circle r="3.2" cx="' + lx.toFixed(1) + '" cy="' + ly.toFixed(1) + '" fill="' + s.m.color + '" stroke="#fff" stroke-width="1.5"/>';
-      if (mode !== 'dual') ends += '<text class="end" x="' + (lx + 7).toFixed(1) + '" y="' + (ly + 3).toFixed(1) + '" fill="' + s.m.color + '">' + esc(s.m.short) + '</text>';
-    });
-
-    var svg = '<svg class="trend-svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Trend of ' + esc(sel.map(function (mm) { return mm.label; }).join(' and ')) + ' over ' + n + ' months">' +
-      grid + goalM + ylab + xlab + paths + ends +
-      '<rect class="hit" x="' + mL + '" y="' + mT + '" width="' + iw + '" height="' + ih + '" fill="transparent"/>' +
-      '<g class="cross" style="display:none"><line class="cx" y1="' + mT + '" y2="' + (mT + ih) + '"/></g></svg>';
-    plot.innerHTML = svg + '<div class="trend-tip" id="trendTip" style="display:none"></div>';
-
-    document.getElementById('trendLegend').innerHTML = series.map(function (s, si) {
-      var ax = mode === 'dual' ? '<span class="axtag">' + (si === 0 ? 'left axis' : 'right axis') + '</span>' : '';
-      return '<span class="lg"><span class="sw" style="background:' + s.m.color + '"></span>' + esc(s.m.label) + ' <b>' + esc(fmtMetric(s.m, s.latest)) + '</b>' + ax + '</span>';
-    }).join('');
-    document.getElementById('trendMode').textContent = mode === 'single'
-      ? 'Actual values with the goal line.'
-      : mode === 'shared'
-        ? 'Both in ' + unitWord(sel[0].unit) + ' on one shared axis, with each goal line.'
-        : 'Two axes — ' + series[0].m.short + ' on the left, ' + series[1].m.short + ' on the right — each in its own units.';
-
-    var thead = '<tr><th>Month</th>' + series.map(function (s) { return '<th>' + esc(s.m.label) + '</th>'; }).join('') + '</tr>';
-    var trows = '';
-    for (var r = 0; r < n; r++) { trows += '<tr><td>' + esc(months[start + r].label) + '</td>' + series.map(function (s) { return '<td>' + esc(fmtMetric(s.m, s.raw[r])) + '</td>'; }).join('') + '</tr>'; }
-    document.getElementById('trendTable').innerHTML = '<table>' + thead + trows + '</table>';
-
-    var svgEl = plot.querySelector('.trend-svg'), tip = document.getElementById('trendTip');
-    var cross = plot.querySelector('.cross'), cx = plot.querySelector('.cx'), hit = plot.querySelector('.hit');
-    function move(ev) {
-      var rect = svgEl.getBoundingClientRect(), sx = (ev.clientX - rect.left) * (W / rect.width);
-      var i = Math.max(0, Math.min(n - 1, Math.round((sx - mL) / (iw / Math.max(n - 1, 1)))));
-      var px = X(i);
-      cross.style.display = ''; cx.setAttribute('x1', px.toFixed(1)); cx.setAttribute('x2', px.toFixed(1));
-      tip.innerHTML = '<div class="tt-h">' + esc(months[start + i].label) + '</div>' + series.map(function (s) {
-        return '<div class="tt-row"><span class="sw" style="background:' + s.m.color + '"></span>' + esc(s.m.short) + '<b>' + esc(fmtMetric(s.m, s.raw[i])) + '</b></div>';
-      }).join('');
-      tip.style.display = 'block';
-      var lpx = (px / W) * plot.clientWidth + 14;
-      if (lpx > plot.clientWidth - 160) lpx = (px / W) * plot.clientWidth - 160;
-      tip.style.left = Math.max(4, lpx) + 'px';
-    }
-    hit.addEventListener('mousemove', move);
-    hit.addEventListener('mouseleave', function () { cross.style.display = 'none'; tip.style.display = 'none'; });
+    // shops
+    return ids.map(function (id) { var rv = revFor(id, kpiState.period), sh = shopById(id); return { key: id, name: sh.name, shop: true, variancePct: rv.variancePct, actual: rv.actual, target: rv.target }; });
   }
 
-  function refreshTrendChips() {
-    Array.prototype.forEach.call(document.querySelectorAll('.trend-chip'), function (c) {
-      var on = trendState.metrics.indexOf(c.getAttribute('data-metric')) >= 0;
-      c.classList.toggle('on', on); c.setAttribute('aria-pressed', on);
-    });
-  }
-  function wireTrends(storeId) {
-    var mets = document.getElementById('trendMetrics'), per = document.getElementById('trendPeriod');
-    if (mets) mets.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-metric]'); if (!b) return;
-      var k = b.getAttribute('data-metric'), at = trendState.metrics.indexOf(k);
-      if (at >= 0) { if (trendState.metrics.length > 1) trendState.metrics.splice(at, 1); }
-      else { trendState.metrics.push(k); if (trendState.metrics.length > TREND_MAX) trendState.metrics.shift(); }
-      refreshTrendChips();
-      drawTrends(storeId);
-    });
-    if (per) per.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-period]'); if (!b) return;
-      trendState.period = parseInt(b.getAttribute('data-period'), 10);
-      Array.prototype.forEach.call(per.children, function (c) { var on = c === b; c.classList.toggle('on', on); c.setAttribute('aria-pressed', on); });
-      drawTrends(storeId);
-    });
+  /* ---- funnel flag helpers (direction-aware) ---- */
+  function funnelPass(f, v) { return f.direction === 'lower' ? v <= f.target : v >= f.target; }
+  function fmtFunnel(f, v) { return f.unit === '%' ? Math.round(v) + '%' : f.unit === 'days' ? (Math.round(v * 10) / 10) + 'd' : '' + Math.round(v); }
+  function funnelAsMetric(f) { return { label: f.label, unit: f.unit, goal: f.target, dir: f.direction, info: f.definition }; }
+  function varClass(vp) { return vp <= CHALLENGED_PCT ? 'bad' : vp < 0 ? 'warn' : 'ok'; }
+
+  /* ---- tiny inline charts ---- */
+  function svgSpark(vals, color, W, H) {
+    if (!vals.length) return '';
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), rng = (hi - lo) || 1, pad = 2;
+    var pts = vals.map(function (v, i) { var x = pad + (W - 2 * pad) * (vals.length < 2 ? 0.5 : i / (vals.length - 1)); var y = pad + (H - 2 * pad) * (1 - (v - lo) / rng); return (Math.round(x * 10) / 10) + ',' + (Math.round(y * 10) / 10); });
+    return '<svg class="spark" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true"><polyline fill="none" stroke="' + color + '" stroke-width="1.5" points="' + pts.join(' ') + '"/></svg>';
   }
 
-  /* ---- Market Manager roll-up (book of shops) ---- */
-  var marketSort = { key: 'risk', dir: 'desc' };
-
-  function shopRow(id) {
-    var s = STORE_BY_ID[id] || { name: id }, k = KPIS_BY_STORE[id] || {}, pc = computePacing(id);
-    var openPlans = 0, atRisk = 0;
-    (DATA.plans || []).forEach(function (pl) {
-      if (pl.storeId !== id) return;
-      if ((pl.tasks || []).some(function (t) { return t.column !== 'closed'; })) openPlans++;
-    });
-    tasks.forEach(function (t) { if (t.storeId === id && isBehind(t)) atRisk++; });
-    var pctBudget = pc.pctClosedToBudget, pace = pc.pacePct, daysBehind = pc.daysBehind, ro = k.ro;
-    var risk = 0;
-    if (daysBehind > 1.5) risk += 2; else if (daysBehind > 0.5) risk += 1;
-    if (pctBudget < pace - 5) risk += 2; else if (pctBudget < pace - 2) risk += 1;
-    if (ro < 68) risk += 1;
-    if (atRisk >= 3) risk += 1;
-    var status = risk >= 3 ? { w: 'Behind', c: 'serious' } : risk >= 1 ? { w: 'Watch', c: 'warn' } : { w: 'On track', c: 'good' };
-    return { id: id, name: s.name, ro: ro, closed: pc.closedMTD, pctBudget: pctBudget, pace: pace, daysBehind: daysBehind, openPlans: openPlans, atRisk: atRisk, risk: risk, status: status };
-  }
-
-  /* a market row for the region scorecard — generated, no underlying stores */
-  function marketRow(name) {
-    var f = marketFunnelObj(name), pc = computeMarketPacing(name), act = marketPlanActivity(name);
-    var pctBudget = pc.pctClosedToBudget, pace = pc.pacePct, daysBehind = pc.daysBehind, ro = f.ro;
-    var risk = 0;
-    if (daysBehind > 1.5) risk += 2; else if (daysBehind > 0.5) risk += 1;
-    if (pctBudget < pace - 5) risk += 2; else if (pctBudget < pace - 2) risk += 1;
-    if (ro < 68) risk += 1;
-    if (act.atRisk >= 3) risk += 1;
-    var status = risk >= 3 ? { w: 'Behind', c: 'serious' } : risk >= 1 ? { w: 'Watch', c: 'warn' } : { w: 'On track', c: 'good' };
-    return { id: 'mkt::' + name, name: name, ro: ro, closed: pc.closedMTD, pctBudget: pctBudget, pace: pace, daysBehind: daysBehind, openPlans: act.open, atRisk: act.atRisk, risk: risk, status: status };
-  }
-
-  function sortScorecard(rows) {
-    var k = marketSort.key, dir = marketSort.dir === 'asc' ? 1 : -1;
-    return rows.slice().sort(function (a, b) {
-      var va = k === 'status' ? a.risk : a[k], vb = k === 'status' ? b.risk : b[k];
-      if (va < vb) return -1 * dir; if (va > vb) return 1 * dir; return 0;
-    });
-  }
-  /* shared scorecard used by the Market (shops) and Region (markets) roll-ups */
-  function scorecardHTML(rows, firstLabel) {
-    var cols = [
-      { k: 'name', label: firstLabel, num: false },
-      { k: 'ro', label: 'Opp. to RO', num: true },
-      { k: 'closed', label: 'Closed MTD', num: true },
-      { k: 'pctBudget', label: '% to Budget', num: true },
-      { k: 'daysBehind', label: 'Days Behind', num: true },
-      { k: 'openPlans', label: 'Open plans', num: true },
-      { k: 'atRisk', label: 'At-risk', num: true },
-      { k: 'status', label: 'Status', num: false }
-    ];
-    var thead = '<tr>' + cols.map(function (c) {
-      var arrow = marketSort.key === c.k ? (marketSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
-      return '<th class="' + (c.num ? 'num' : '') + '" data-sort="' + c.k + '" tabindex="0">' + esc(c.label) + arrow + '</th>';
-    }).join('') + '</tr>';
-    var body = sortScorecard(rows).map(function (r) {
-      var roCls = r.ro >= 70 ? 'ok' : 'bad';
-      var budCls = r.pctBudget >= r.pace ? 'ok' : 'bad';
-      var dbCls = r.daysBehind > 0.5 ? 'bad' : (r.daysBehind < -0.05 ? 'ok' : '');
-      var arCls = r.atRisk > 0 ? 'bad' : '';
-      return '<tr data-store="' + esc(r.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(r.name) + ' dashboard">' +
-        '<td class="shop">' + esc(r.name) + '</td>' +
-        '<td class="num ' + roCls + '">' + Math.round(r.ro) + '%</td>' +
-        '<td class="num">' + esc(money(r.closed)) + '</td>' +
-        '<td class="num ' + budCls + '">' + Math.round(r.pctBudget) + '%</td>' +
-        '<td class="num ' + dbCls + '">' + (r.daysBehind < -0.05 ? '−' : '') + Math.abs(r.daysBehind).toFixed(1) + '</td>' +
-        '<td class="num">' + r.openPlans + '</td>' +
-        '<td class="num ' + arCls + '">' + r.atRisk + '</td>' +
-        '<td><span class="mk-status ' + r.status.c + '">' + esc(r.status.w) + '</span></td>' +
-      '</tr>';
-    }).join('');
-    return '<table class="mk-table"><thead>' + thead + '</thead><tbody>' + body + '</tbody></table>';
-  }
-  function marketTableHTML() { return scorecardHTML(MARKET.storeIds.map(shopRow), 'Shop'); }
-  function regionTableHTML(region) { return scorecardHTML(region.markets.map(marketRow), 'Market'); }
-
-  function wireScorecard(rebuild) {
-    var wrap = document.getElementById('mkTableWrap'); if (!wrap) return;
-    wrap.addEventListener('click', function (e) {
-      var th = e.target.closest('th[data-sort]');
-      if (th) {
-        var k = th.getAttribute('data-sort');
-        if (marketSort.key === k) marketSort.dir = marketSort.dir === 'asc' ? 'desc' : 'asc';
-        else { marketSort.key = k; marketSort.dir = (k === 'name') ? 'asc' : 'desc'; }
-        wrap.innerHTML = rebuild();
-        return;
-      }
-      var tr = e.target.closest('tr[data-store]');
-      if (tr) setStore(tr.getAttribute('data-store'));
-    });
-    wrap.addEventListener('keydown', function (e) {
-      if (e.key !== 'Enter') return;
-      var tr = e.target.closest('tr[data-store]'); if (tr) { setStore(tr.getAttribute('data-store')); return; }
-      var th = e.target.closest('th[data-sort]'); if (th) th.click();
-    });
-  }
-
-  function renderMarketKpis() {
+  /* ====================== dashboard ====================== */
+  function renderDashboard() {
     var root = document.getElementById('kpiRoot'); if (!root) return;
-    var fvals = kpiFunnelValuesFor('book');
-    var rows = MARKET.storeIds.map(shopRow);
-    var behindCount = rows.filter(function (r) { return r.status.w === 'Behind'; }).length;
-    var openPlans = rows.reduce(function (a, r) { return a + r.openPlans; }, 0);
+    var ids = baseShopIds();
+    var challenged = ids.filter(function (id) { return isChallenged(id, kpiState.period); });
+    var ents = chartEntities().slice().sort(function (a, b) { return a.variancePct - b.variancePct; }); // worst first
+    var periodBtns = PERIODS.map(function (p) { return '<button type="button" class="seg' + (kpiState.period === p.key ? ' on' : '') + '" data-period="' + p.key + '">' + p.label + '</button>'; }).join('');
+    var granBtns = '';
+    if (state.role === 'regional') granBtns = ['shops', 'markets', 'region'].map(function (g) { return '<button type="button" class="seg' + (kpiState.gran === g ? ' on' : '') + '" data-gran="' + g + '">' + g.charAt(0).toUpperCase() + g.slice(1) + '</button>'; }).join('');
+    else if (state.role === 'market') granBtns = ['shops', 'markets', 'region'].map(function (g) { return '<button type="button" class="seg' + (kpiState.gran === g ? ' on' : '') + '" data-gran="' + g + '">' + (g === 'shops' ? 'Shops' : g === 'markets' ? 'Market' : 'Book') + '</button>'; }).join('');
+    var mkts = scopeMarkets();
+    var mktOptions = '<option value="all">All markets</option>' + mkts.map(function (m) { return '<option value="' + esc(m) + '"' + (kpiState.market === m ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('');
+
     var html = '';
-    html += '<div class="kpi-head"><p class="kpi-title" data-testid="kpi-page-title">' + esc(MARKET.name) + ' — Market KPIs</p>' +
-      '<p class="kpi-sub" data-testid="kpi-page-subtitle">80/70/7</p>' +
-      '<p class="mk-lead">Market Manager · ' + esc(MARKET.manager) + ' · ' + MARKET.storeIds.length + ' shops · ' +
-      '<b>' + behindCount + '</b> behind · <b>' + openPlans + '</b> open action plans</p></div>';
-    html += '<div class="kpi-funnel">' + KPI_FUNNEL.map(function (m) { return funnelBoxHTML(m, fvals[m.key]); }).join('') + '</div>';
-    html += '<div class="kpi-section"><div class="kpi-section-title">Shops in book</div>' +
-      '<div class="mk-table-wrap" id="mkTableWrap">' + marketTableHTML() + '</div>' +
-      '<div class="trend-hint">Sort by any column; click a shop to drill into its dashboard.</div></div>';
-    html += trendsSectionHTML();
+    html += '<div class="kpi-head"><p class="kpi-title" data-testid="kpi-page-title">' + esc(scopeTitle()) + ' — Revenue Attainment</p>' +
+      '<p class="mk-lead">' + esc(roleWord()) + ' · <b>' + challenged.length + '</b> of ' + ids.length + ' shops challenged (revenue ' + Math.round(CHALLENGED_PCT * 100) + '% or more below target)</p></div>';
+
+    // control bar
+    html += '<div class="dash-controls">' +
+      '<div class="seg-group" id="dashPeriod" role="group" aria-label="Period">' + periodBtns + '</div>' +
+      (granBtns ? '<div class="seg-group" id="dashGran" role="group" aria-label="Granularity">' + granBtns + '</div>' : '') +
+      '<label class="wk-select dash-mkt"><span class="dash-mkt-l">Filter</span><select id="dashMarket" aria-label="Market filter">' + mktOptions + '</select></label>' +
+      '</div>';
+
+    // chart
+    html += '<div class="ra-chart" id="raChart">' + raChartHTML(ents) + '</div>';
+
+    // challenged list
+    html += '<div class="kpi-section"><div class="kpi-section-title">Challenged shops <span class="ctx-sub">(' + challenged.length + ')</span></div>' +
+      challengedListHTML(challenged) + '</div>';
+
     root.innerHTML = html;
-    wireScorecard(marketTableHTML);
-    drawTrends('book');
-    wireTrends('book');
+    wireDashboard();
+  }
+  function roleWord() { return state.role === 'regional' ? 'Regional Manager · ' + currentRegion().division : state.role === 'market' ? 'Market Manager' : 'General Manager'; }
+
+  function raChartHTML(ents) {
+    function pos(v) { return clamp((v - RA_MIN) / (RA_MAX - RA_MIN) * 100, 0, 100); }
+    var zero = pos(0), thr = pos(CHALLENGED_PCT);
+    var rows = ents.map(function (e) {
+      var vp = e.variancePct, cls = varClass(vp), p = pos(vp);
+      var left = Math.min(p, zero), width = Math.abs(p - zero);
+      var clickable = e.shop ? ' data-shop="' + esc(e.key) + '" role="button" tabindex="0"' : '';
+      return '<div class="ra-row' + (e.shop ? ' clickable' : '') + '"' + clickable + '>' +
+        '<span class="ra-name" title="' + esc(e.name) + '">' + esc(e.name) + '</span>' +
+        '<span class="ra-track"><span class="ra-zero" style="left:' + zero + '%"></span>' +
+        '<span class="ra-thresh" style="left:' + thr + '%"></span>' +
+        '<span class="ra-bar ' + cls + '" style="left:' + left + '%;width:' + width + '%"></span></span>' +
+        '<span class="ra-val ' + cls + '">' + pctStr(vp) + '</span></div>';
+    }).join('');
+    return '<div class="ra-legend"><span class="ra-thresh-key"></span> ' + Math.round(CHALLENGED_PCT * 100) + '% challenged line · worst first</div>' +
+      '<div class="ra-rows">' + (rows || '<div class="ctx-sub" style="padding:10px">No shops in scope.</div>') + '</div>';
   }
 
-  function renderRegionKpis() {
+  function challengedListHTML(ids) {
+    if (!ids.length) return '<div class="mk-table-wrap"><div class="ctx-sub" style="padding:14px">No challenged shops in this scope for the selected period. 🎉</div></div>';
+    var rows = ids.map(function (id) { return { id: id, d: shopData(id), rv: revFor(id, kpiState.period) }; })
+      .sort(function (a, b) { return a.rv.variancePct - b.rv.variancePct; });
+    var head = '<tr><th>Shop</th><th>Market</th><th class="num">Actual</th><th class="num">Target</th><th class="num">Variance</th>' +
+      FUNNEL.map(function (f) { return '<th class="num">' + esc(f.label.replace('Opportunity to ', '')) + '</th>'; }).join('') +
+      '<th>Likely cause</th></tr>';
+    var body = rows.map(function (row) {
+      var d = row.d, rv = row.rv;
+      var funCells = FUNNEL.map(function (f) { var v = d.funnel[f.key]; var pass = funnelPass(f, v); return '<td class="num ' + (pass ? 'ok' : 'bad') + '">' + fmtFunnel(f, v) + '</td>'; }).join('');
+      var allPass = FUNNEL.every(function (f) { return funnelPass(f, d.funnel[f.key]); });
+      var cause = allPass ? '<span class="cause carrier">Carrier score</span>' : '<span class="cause funnel">Funnel</span>';
+      return '<tr data-shop="' + esc(row.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(d.name) + '">' +
+        '<td class="shop">' + esc(d.name) + (d.real ? '' : '') + '</td>' +
+        '<td>' + esc(d.market) + '</td>' +
+        '<td class="num">' + money(rv.actual) + '</td>' +
+        '<td class="num">' + money(rv.target) + '</td>' +
+        '<td class="num bad">' + moneySigned(rv.variance) + ' <span class="ra-pct">' + pctStr(rv.variancePct) + '</span></td>' +
+        funCells + '<td>' + cause + '</td></tr>';
+    }).join('');
+    return '<div class="mk-table-wrap"><table class="mk-table challenged-table"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+  }
+
+  function wireDashboard() {
+    var pg = document.getElementById('dashPeriod');
+    if (pg) pg.addEventListener('click', function (e) { var b = e.target.closest('[data-period]'); if (b) { kpiState.period = b.getAttribute('data-period'); renderKpiTab(); } });
+    var gg = document.getElementById('dashGran');
+    if (gg) gg.addEventListener('click', function (e) { var b = e.target.closest('[data-gran]'); if (b) { kpiState.gran = b.getAttribute('data-gran'); renderKpiTab(); } });
+    var mk = document.getElementById('dashMarket');
+    if (mk) mk.addEventListener('change', function () { kpiState.market = mk.value; renderKpiTab(); });
+    var root = document.getElementById('kpiRoot');
+    root.addEventListener('click', function (e) { var row = e.target.closest('[data-shop]'); if (row) openShop(row.getAttribute('data-shop')); });
+    root.addEventListener('keydown', function (e) { if (e.key !== 'Enter') return; var row = e.target.closest('[data-shop]'); if (row) openShop(row.getAttribute('data-shop')); });
+  }
+  function openShop(id) { kpiState.view = 'shop'; kpiState.shopId = id; kpiState.carriers = null; renderKpiTab(); }
+  function backToDashboard() { kpiState.view = 'dashboard'; kpiState.shopId = null; renderKpiTab(); }
+
+  /* ====================== shop detail ====================== */
+  function renderShopDetail(id) {
     var root = document.getElementById('kpiRoot'); if (!root) return;
-    var region = currentRegion();
-    var fvals = regionFunnelAvg(region);
-    var rows = region.markets.map(marketRow);
-    var behindCount = rows.filter(function (r) { return r.status.w === 'Behind'; }).length;
-    var openPlans = rows.reduce(function (a, r) { return a + r.openPlans; }, 0);
+    var d = shopData(id);
+    if (!d) { root.innerHTML = '<div class="ctx-sub" style="padding:20px">Shop not found.</div>'; return; }
+    var rv = revFor(id, kpiState.period), challenged = rv.variancePct <= CHALLENGED_PCT;
+    var back = (state.role !== 'gm') ? '<button type="button" class="link-btn" id="kpiBack">← Back to dashboard</button>' : '';
     var html = '';
-    html += '<div class="kpi-head"><p class="kpi-title" data-testid="kpi-page-title">' + esc(region.name + ' — Region KPIs') + '</p>' +
-      '<p class="kpi-sub" data-testid="kpi-page-subtitle">80/70/7</p>' +
-      '<p class="mk-lead">Regional Manager · ' + esc(region.manager) + ' · ' + esc(region.division) + ' · ' + region.markets.length + ' markets · ' +
-      '<b>' + behindCount + '</b> behind · <b>' + openPlans + '</b> open action plans</p></div>';
-    html += '<div class="kpi-funnel">' + KPI_FUNNEL.map(function (m) { return funnelBoxHTML(m, fvals[m.key]); }).join('') + '</div>';
-    html += '<div class="kpi-section"><div class="kpi-section-title">Markets in region</div>' +
-      '<div class="mk-table-wrap" id="mkTableWrap">' + regionTableHTML(region) + '</div>' +
-      '<div class="trend-hint">Sort by any column; click a market to drill into its dashboard.</div></div>';
-    html += trendsSectionHTML();
+    html += '<div class="kpi-head">' + back +
+      '<p class="kpi-title" data-testid="kpi-page-title">' + esc(d.name) + (challenged ? ' <span class="chal-badge">Challenged</span>' : '') + '</p>' +
+      '<p class="mk-lead">' + esc(d.market) + ' · ' + esc(d.region) + (d.carrierOnly ? ' · <b>funnel on target — carrier score is the likely cause</b>' : '') + '</p></div>';
+
+    // revenue block
+    var periodBtns = PERIODS.map(function (p) { return '<button type="button" class="seg' + (kpiState.period === p.key ? ' on' : '') + '" data-period="' + p.key + '">' + p.label + '</button>'; }).join('');
+    html += '<div class="kpi-section"><div class="kpi-section-title">Revenue attainment</div>' +
+      '<div class="rev-grid">' +
+        '<div class="rev-tile"><span class="rev-l">Actual</span><b class="rev-v">' + money(rv.actual) + '</b></div>' +
+        '<div class="rev-tile"><span class="rev-l">Target</span><b class="rev-v muted">' + money(rv.target) + '</b></div>' +
+        '<div class="rev-tile"><span class="rev-l">Variance</span><b class="rev-v ' + varClass(rv.variancePct) + '">' + moneySigned(rv.variance) + '</b></div>' +
+        '<div class="rev-tile"><span class="rev-l">Variance %</span><b class="rev-v ' + varClass(rv.variancePct) + '">' + pctStr(rv.variancePct) + '</b></div>' +
+      '</div>' +
+      '<div class="seg-group rev-period" id="detailPeriod" role="group" aria-label="Period">' + periodBtns + '</div>' +
+      '<div class="rev-chart">' + revChartHTML(d) + '</div>' +
+      '</div>';
+
+    // funnel metrics vs target + trend
+    html += '<div class="kpi-section"><div class="kpi-section-title">Opportunity funnel — vs target</div>' +
+      '<div class="kpi-funnel">' + FUNNEL.map(function (f) {
+        return funnelBoxHTML(funnelAsMetric(f), d.funnel[f.key]);
+      }).join('') + '</div>' +
+      '<div class="fun-trends">' + FUNNEL.map(function (f) {
+        var col = funnelPass(f, d.funnel[f.key]) ? '#2e7d32' : '#ba1a1a';
+        return '<div class="fun-trend"><span class="ft-l">' + esc(f.label.replace('Opportunity to ', 'Opp → ')) + '</span>' + svgSpark(d.funnel.trend[f.key].map(function (p) { return p.value; }), col, 120, 30) + '</div>';
+      }).join('') + '</div>' +
+      '</div>';
+
+    // visual funnel
+    html += '<div class="kpi-section"><div class="kpi-section-title">Where the drop-off happens</div>' + visualFunnelHTML(d) + '</div>';
+
+    // carrier panel
+    html += '<div class="kpi-section" id="carrierPanel">' + carrierPanelHTML(d) + '</div>';
+
     root.innerHTML = html;
-    wireScorecard(function () { return regionTableHTML(region); });
-    drawTrends('region');
-    wireTrends('region');
+    wireShopDetail(d);
   }
 
-  function renderKpiTab(storeId) {
-    if (state.role === 'regional') { if (storeId === 'region') renderRegionKpis(); else renderKpis(storeId); return; }
-    if (state.role === 'market' && storeId === 'book') renderMarketKpis();
-    else renderKpis(storeId);
+  function revChartHTML(d) {
+    var n = (PERIODS.filter(function (p) { return p.key === kpiState.period; })[0] || PERIODS[0]).months;
+    if (kpiState.period === 'mtd') n = 3; // MTD still shows recent context
+    var slice = d.months.slice(12 - Math.max(n, 3));
+    var W = 620, H = 150, pad = 8, mL = 30, mR = 30, mB = 16;
+    var vals = []; slice.forEach(function (p) { vals.push(p.actual, p.target); });
+    var lo = Math.min.apply(null, vals) * 0.96, hi = Math.max.apply(null, vals) * 1.04, rng = (hi - lo) || 1;
+    function X(i) { return mL + (W - mL - mR) * (slice.length < 2 ? 0.5 : i / (slice.length - 1)); }
+    function Y(v) { return pad + (H - pad - mB) * (1 - (v - lo) / rng); }
+    var aPts = slice.map(function (p, i) { return X(i) + ',' + Y(p.actual); }).join(' ');
+    var tPts = slice.map(function (p, i) { return X(i) + ',' + Y(p.target); }).join(' ');
+    var labels = slice.map(function (p, i) { return '<text x="' + X(i) + '" y="' + (H - 4) + '" class="rc-x">' + p.label + '</text>'; }).join('');
+    var dots = slice.map(function (p, i) { return '<circle cx="' + X(i) + '" cy="' + Y(p.actual) + '" r="2.5" fill="#00529b"/>'; }).join('');
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="rc-svg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Revenue actual versus target trend">' +
+      '<polyline fill="none" stroke="#9aa7b4" stroke-width="1.4" stroke-dasharray="4 3" points="' + tPts + '"/>' +
+      '<polyline fill="none" stroke="#00529b" stroke-width="2" points="' + aPts + '"/>' + dots + labels + '</svg>' +
+      '<div class="rc-legend"><span class="rc-k actual"></span>Actual <span class="rc-k target"></span>Target</div>';
+  }
+
+  function visualFunnelHTML(d) {
+    var c = d.funnel.counts, opps = c.opportunities || 1;
+    var stages = [{ l: 'Opportunities', v: c.opportunities }, { l: 'Estimates', v: c.estimates }, { l: 'Repair orders', v: c.ros }, { l: 'Arrivals', v: c.arrivals }];
+    return '<div class="vfunnel">' + stages.map(function (s, i) {
+      var pct = Math.round(s.v / opps * 100), drop = i === 0 ? '' : ' <span class="vf-drop">' + pct + '% of opps</span>';
+      return '<div class="vf-stage"><span class="vf-label">' + esc(s.l) + '</span>' +
+        '<span class="vf-track"><span class="vf-bar s' + i + '" style="width:' + Math.max(6, pct) + '%"></span></span>' +
+        '<span class="vf-count">' + s.v + drop + '</span></div>';
+    }).join('') + '</div>';
+  }
+
+  /* ====================== carrier scorecard panel ====================== */
+  function selectedCarriers(d) {
+    var names = d.carriers.map(function (c) { return c.name; });
+    if (kpiState.carriers === null) return names.slice();               // default: all
+    return names.filter(function (n) { return kpiState.carriers.indexOf(n) >= 0; });
+  }
+  function carrierPanelHTML(d) {
+    var sel = selectedCarriers(d);
+    var chips = d.carriers.map(function (c) { var on = sel.indexOf(c.name) >= 0; return '<button type="button" class="carr-chip' + (on ? ' on' : '') + '" data-carrier="' + esc(c.name) + '" aria-pressed="' + on + '">' + esc(c.name) + '</button>'; }).join('');
+    var cards = d.carriers.filter(function (c) { return sel.indexOf(c.name) >= 0; }).map(function (c) { return carrierCardHTML(c); }).join('');
+    // rules aggregated across selected carriers
+    var ruleMap = {};
+    d.carriers.filter(function (c) { return sel.indexOf(c.name) >= 0; }).forEach(function (c) { c.rules.forEach(function (r) { ruleMap[r.text] = (ruleMap[r.text] || 0) + r.count; }); });
+    var ruleRows = Object.keys(ruleMap).map(function (t) { return { text: t, count: ruleMap[t] }; }).sort(function (a, b) { return b.count - a.count; });
+    var ruleTable = ruleRows.length
+      ? '<table class="mk-table rules-table"><thead><tr><th>Rule triggered &amp; not adhered to</th><th class="num">Count</th></tr></thead><tbody>' +
+        ruleRows.map(function (r) { return '<tr><td>' + esc(r.text) + '</td><td class="num">' + r.count + '</td></tr>'; }).join('') + '</tbody></table>'
+      : '<div class="ctx-sub" style="padding:10px">No rules for the selected carriers.</div>';
+    return '<div class="kpi-section-title">Carrier scorecard <span class="ctx-sub">(DRP · ' + d.carriers.length + ' carriers with volume)</span></div>' +
+      '<div class="carr-chips" id="carrChips" role="group" aria-label="Filter carriers">' + chips + '</div>' +
+      '<div class="carr-cards">' + cards + '</div>' +
+      '<div class="rules-detail"><div class="kpi-section-title sub">Rules not adhered to — actionable list</div><div class="mk-table-wrap">' + ruleTable + '</div></div>';
+  }
+  function carrierCardHTML(c) {
+    var varsHTML = DRP.variables.map(function (v) {
+      var cur = c.vars[v.key], avg = c.shopAvg[v.key];
+      var better = v.direction === 'lower' ? cur <= avg : cur >= avg;
+      var fmt = function (x) { return v.unit === '%' ? (Math.round(x * 10) / 10) + '%' : v.unit === 'days' ? (Math.round(x * 10) / 10) + 'd' : (Math.round(x * 10) / 10); };
+      return '<div class="cv-row"><span class="cv-l">' + esc(v.label) + '</span>' +
+        '<span class="cv-cur ' + (better ? 'ok' : 'bad') + '">' + fmt(cur) + '</span>' +
+        '<span class="cv-avg">vs ' + fmt(avg) + ' avg</span></div>';
+    }).join('');
+    var scoreCls = c.score >= 80 ? 'ok' : c.score >= 65 ? 'warn' : 'bad';
+    return '<div class="carr-card">' +
+      '<div class="carr-top"><span class="carr-name">' + esc(c.name) + '</span><span class="carr-score ' + scoreCls + '">' + c.score + '<small>/100</small></span></div>' +
+      '<div class="carr-sub">' + svgSpark(c.trend.map(function (p) { return p.value; }), '#00529b', 120, 26) + '<span class="carr-vol">' + c.volume + ' repairs</span></div>' +
+      '<div class="cv-list">' + varsHTML + '</div></div>';
+  }
+
+  function wireShopDetail(d) {
+    var back = document.getElementById('kpiBack');
+    if (back) back.addEventListener('click', backToDashboard);
+    var pg = document.getElementById('detailPeriod');
+    if (pg) pg.addEventListener('click', function (e) { var b = e.target.closest('[data-period]'); if (b) { kpiState.period = b.getAttribute('data-period'); renderKpiTab(); } });
+    var chips = document.getElementById('carrChips');
+    if (chips) chips.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-carrier]'); if (!b) return;
+      var name = b.getAttribute('data-carrier'), sel = selectedCarriers(d);
+      var i = sel.indexOf(name);
+      if (i >= 0) { if (sel.length > 1) sel.splice(i, 1); } else sel.push(name);
+      kpiState.carriers = sel;
+      var panel = document.getElementById('carrierPanel');
+      if (panel) { panel.innerHTML = carrierPanelHTML(shopData(kpiState.shopId || d.id)); wireShopDetail(d); }
+    });
+  }
+
+  /* ====================== dispatch ====================== */
+  function renderKpiTab() {
+    var root = document.getElementById('kpiRoot'); if (!root) return;
+    if (state.role === 'gm') { renderShopDetail(state.store); return; }
+    if (kpiState.view === 'shop' && kpiState.shopId) { renderShopDetail(kpiState.shopId); return; }
+    renderDashboard();
   }
 
   function setRole(role) {
@@ -1115,6 +982,7 @@
         ? rg.name + ' · ' + rg.division + ' — a roll-up across ' + rg.markets.length + ' markets, with a market-by-market scorecard. Drill into any market from the selector.'
         : 'One shop’s Action Plans and KPIs. Use the location selector to choose the shop.';
     }
+    kpiState.view = 'dashboard'; kpiState.shopId = null; kpiState.market = 'all'; kpiState.gran = 'shops'; kpiState.carriers = null;
     state.store = role === 'market' ? 'book' : role === 'regional' ? 'region' : (DATA.defaultStoreId || (DATA.stores[0] && DATA.stores[0].id));
     setStore(state.store);
   }
@@ -1128,7 +996,7 @@
       b.classList.toggle('selected', sel);
       if (sel) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
-    if (view === 'kpis') renderKpiTab(state.store);
+    if (view === 'kpis') renderKpiTab();
   }
 
   /* ---------------- init ---------------- */
@@ -1232,7 +1100,7 @@
     var pn = document.getElementById('protoNote');
     if (pn) pn.textContent = 'One shop’s Action Plans and KPIs. Use the location selector to choose the shop.';
 
-    var rz; window.addEventListener('resize', function () { if (state.view !== 'kpis') return; clearTimeout(rz); rz = setTimeout(function () { drawTrends(state.store); }, 150); });
+    var rz; window.addEventListener('resize', function () { if (state.view !== 'kpis') return; clearTimeout(rz); rz = setTimeout(function () { renderKpiTab(); }, 200); });
 
     setStore(state.store);
   }

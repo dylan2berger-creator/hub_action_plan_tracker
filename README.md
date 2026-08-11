@@ -18,12 +18,9 @@ each a wider scope than the last (shop → market → region):
   selector picks the shop, and both tabs show just that store.
 - **Market Manager (book of ~10 shops)** — scope becomes the manager's book (a
   10-shop *Chicago Metro* market). Action Plans span the whole book, the location
-  selector switches to **All my shops** + the book's shops, and the **KPIs tab
-  becomes a market roll-up**: a book-average capture funnel, a summary
-  (shops behind / open action plans), and a sortable **shop scorecard** (Opp. to RO,
-  Closed MTD, % to Budget, Days Behind, open plans, at-risk tasks, and a
-  Behind / Watch / On-track status) — click any shop to drill into its dashboard.
-  The trends chart rolls up to the book.
+  selector switches to **All my shops** + the book's shops, and the **KPIs tab shows
+  the revenue-attainment dashboard** across the book's shops (with the challenged
+  list below) — click any shop to open its detail.
 - **Regional Manager (a region of markets)** — scope becomes the manager's
   **region**. The full 125-market taxonomy is grouped into **twelve regions**
   under **three divisions**:
@@ -33,15 +30,13 @@ each a wider scope than the last (shop → market → region):
 
   The demo defaults to the 16-market **Midwest** region (North Division — the
   Chicago-area markets that match the instrumented stores). The location selector
-  switches to **All my markets** + the region's markets, and the **KPIs tab becomes
-  a region roll-up**: a region-average funnel, a summary (division · markets behind ·
-  open action plans), and a sortable **market scorecard** (same columns, one row per
-  market) — click any market to drill into its dashboard. Per-market KPIs are
-  generated deterministically from the market name (this prototype instruments one
-  market with real shop data; the rest are modeled roll-ups). The Action Plans board
-  shows the region's active plans.
+  switches to **All my markets** + the region's markets, and the **KPIs tab shows the
+  revenue-attainment dashboard** across every shop in the region, with a Shops /
+  Markets / Region granularity toggle and a market filter — click any shop to open its
+  detail. The Action Plans board shows the region's active plans. (See the KPIs tab
+  section below for the full dashboard → shop detail → carrier scorecard flow.)
 
-![Regional Manager region roll-up](assets/preview-region.png)
+![Regional Manager revenue-attainment dashboard](assets/preview-region.png)
 
 ![Market Manager roll-up](assets/preview-market.png)
 
@@ -108,42 +103,53 @@ misses, sublet revenue leakage, and a refinish capacity gap. Cards show
 > **Data note:** no numeric KPI values, targets, scores, or dollar figures appear
 > anywhere — metrics are referenced by name only. All names are synthetic.
 
-## KPIs tab
+## KPIs tab — challenged-shop workflow
 
-Click **KPI's** in the nav to switch to the per-store KPI dashboard (the store
-selector drives both tabs). It recreates the shipped capture-funnel boxes —
-**Opportunity to Estimate / RO / Arrive** (the 80/70/7 targets), with the Actual
-box, a Monthly Goal box that turns green when ahead / orange when behind, and an
-above-/below-goal message — then adds sales-forecast pacing:
+Click **KPI's** in the nav. The tab is a focused **dashboard → shop detail →
+carrier scorecard** flow answering one question: *is my shop challenged, and if so,
+why?* Every threshold, target, and direction lives in **`assets/config.js`** so it
+can be changed in one place — and the formatting reads each metric's `direction`
+(nothing hardcodes "green above target").
 
-- **Sales forecast** — Funnel Status (forecast vs the Fill the Funnel target) and
-  Budget Funnel Status (forecast vs budget) as On Track / Behind / Ahead; **% Closed
-  to Budget** with a straight-line-pace marker; and **Days Behind** (ahead/behind pace).
-- **Closed sales — month to date** — Closed Sales MTD (actual), MTD Closed Sales Target
-  (straight-line for today), Closed Sales MTD Variance (actual − target), and
-  **DNC (Delivered Not Closed)**.
-- **Weekly forecast** — a selectable **beginning week** (defaults to the current
-  week) showing the **four weeks from it** — each week's forecast, target, and
-  variance, with the beginning week highlighted. Pick any week from the **Week
-  beginning** selector to shift the forward four-week window.
+**Primary — revenue attainment.** `revenue_variance_pct = (actual − target) / target`.
+A shop is **Challenged** when that is **≤ −10%** (the one place this number lives is
+`config.js`).
 
-Status and delta chips use semantic color (green / amber / red) always paired with an
-arrow + label — never color alone. Targets, variance, %, days-behind, DNC, and the
-weekly rows all derive at render time from a small per-store set of inputs (monthly
-budget, closed-sales pace, forecast factor) anchored to the dataset's MTD window, so
-challenged stores pace weaker and the two tabs tell one story.
+**Dashboard (landing, for Market & Regional Managers).** One chart: revenue
+attainment across the shops in scope, **worst-first, with the −10% line drawn on it**.
+Density comes from controls inside the pane — a **period** selector (MTD / 3M / 6M / 12M),
+a **market filter**, and a **Shops / Markets / Region** granularity toggle that
+re-aggregates within your own scope (a GM sees only their shop). Below the chart, a
+**challenged-shop list** carries revenue variance (dollars + %) and the three funnel
+metrics as columns, each flagged against its target — plus a **Likely cause** column
+that reads **Carrier score** when the funnel is all on-target (so the interesting
+carrier-only cases are findable). Click any shop to open its detail.
 
-**Trends over time** — a line chart lets you compare up to **two** metrics over a
-**6 / 12 / 24-month** window. A **single** metric plots its actual values with its goal
-line; **two same-unit** metrics (e.g. two %) share one axis; **two different-unit**
-metrics use a **left and a right axis**, each in its own real units with tick labels
-colored to match its line (selecting a third metric drops the oldest). Lines use a
-colorblind-safe palette with a legend that marks which axis each series reads against, a
-dashed goal reference, a hover crosshair + tooltip with the real values, and a
-screen-reader data table. Series derive deterministically from each metric's current
-value, per store.
+**Diagnostic — the opportunity funnel** (all denominated on opportunities received):
+Opportunity to Estimate (**80%**, higher better), Opportunity to RO (**70%**, higher
+better), Opportunity to Arrive (**7 days**, lower better).
 
-![KPIs tab](assets/preview-kpis.png)
+**Shop detail.** Revenue actual vs target, variance, and a 12-month trend (zoom to
+6 / 3 / MTD); the three funnel metrics vs target with trend sparklines; a **visual
+funnel** (opportunities → estimates → repair orders → arrivals) showing where the
+drop-off happens; and the carrier panel below.
+
+**Carrier scorecard (DRP).** A shop scores separately **per carrier** (0–100; higher
+means more volume). Multi-select filters the carriers that actually have volume at the
+shop (the top U.S. casualty carriers). Each carrier shows its **score + trend** and the
+four contributing variables — **estimate accuracy, rules triggered & not adhered to,
+total cycle time, CSI** — each against the shop's own trailing average, so you can see
+which variable drags the score down. The **rules detail** table groups every not-adhered
+rule by text with counts, sorted descending — the actionable list.
+
+The seed spans a region → market → shop hierarchy (Midwest fully populated, other
+regions lighter), with a realistic minority of challenged shops — including a few where
+revenue is behind but the funnel is entirely on target, so **the carrier score is the
+only remaining explanation.**
+
+![Regional Manager revenue-attainment dashboard](assets/preview-region.png)
+
+![Shop detail — funnel on target, carrier scorecard the cause](assets/preview-kpis.png)
 
 ## Files
 
@@ -153,8 +159,9 @@ value, per store.
 | `assets/hub-shell.css` | The Hub's actual shipped layout/navigation CSS, imported verbatim. |
 | `assets/styles.css` | The Hub design tokens + all Action-Plans component styles. |
 | `assets/thehub.svg` | The official "THE HUB" logo. |
-| `assets/data.js` | The mock dataset — stores, plans, tasks, cross-links, per-store KPI snapshots, the Market Manager's book, and the nine **regions** grouping all 125 markets (`window.HUB_DATA`). |
-| `assets/app.js` | Tab switching, board state, drag & drop, store switching, filters, the task modal, and the KPI dashboard (funnel boxes, tiles, sparklines). |
+| `assets/config.js` | **Single source of truth for KPI thresholds** — the −10% challenged line, the three funnel targets **with direction**, and the DRP 0–100 scale (`window.HUB_CONFIG`). |
+| `assets/data.js` | The mock dataset — stores (each placed in a market), plans, tasks, cross-links, the Market Manager's book, the twelve **regions** across three **divisions**, and the carrier + rule-text seed for the DRP scorecard (`window.HUB_DATA`). |
+| `assets/app.js` | Tab switching, board state, drag & drop, filters, the task modal, and the KPIs workflow — the region → market → shop hierarchy, deterministic per-shop revenue / funnel / carrier generators, the revenue-attainment dashboard, shop detail, and carrier scorecard. |
 
 ## How this maps onto the real Hub
 
