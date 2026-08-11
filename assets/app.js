@@ -558,7 +558,7 @@
   var CUR_MONTH = TODAY.getMonth();
   var RA_MIN = -0.35, RA_MAX = 0.25;   // fixed revenue-variance chart domain
 
-  var kpiState = { view: 'dashboard', shopId: null, period: 'prev', gran: 'shops', market: 'all', carriers: null, chartKpis: ['revenue'] };
+  var kpiState = { view: 'dashboard', shopId: null, period: 'prev', gran: 'shops', market: 'all', carriers: null, chartKpis: ['revenue'], carrierOpen: null, carrierMetric: 'score' };
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function pctStr(p) { return (p >= 0 ? '+' : '−') + Math.abs(Math.round(p * 100)) + '%'; }
@@ -673,8 +673,15 @@
         cycleTime: Math.round(clamp(shopAvg.cycleTime + (cr() * 4 - 2), 6, 16) * 10) / 10,
         csi: Math.round(clamp(shopAvg.csi + (cr() * 8 - 4), 80, 99) * 10) / 10
       };
-      var trend = walk12(id + ':' + name, 'sc', score, 4, DRP.scoreMin, DRP.scoreMax);
-      return { name: name, score: score, volume: vol, vars: vars, shopAvg: shopAvg, trend: trend, rules: buildRules(id, name, vars.rulesNotAdhered) };
+      var trends = {
+        score:           walk12(id + ':' + name, 'sc',  score,                4,   DRP.scoreMin, DRP.scoreMax),
+        volume:          walk12(id + ':' + name, 'vol', vol,                   Math.max(3, vol * 0.05), 5, 260),
+        estAccuracy:     walk12(id + ':' + name, 'ea',  vars.estAccuracy,     1.4, 74, 99),
+        rulesNotAdhered: walk12(id + ':' + name, 'rn',  vars.rulesNotAdhered, 1.3, 0,  28),
+        cycleTime:       walk12(id + ':' + name, 'ct',  vars.cycleTime,       0.5, 5,  18),
+        csi:             walk12(id + ':' + name, 'cs',  vars.csi,             1.1, 78, 100)
+      };
+      return { name: name, score: score, volume: vol, vars: vars, shopAvg: shopAvg, trend: trends.score, trends: trends, rules: buildRules(id, name, vars.rulesNotAdhered) };
     }).sort(function (a, b) { return b.volume - a.volume; });
   }
   function buildRules(id, carrier, total) {
@@ -825,7 +832,7 @@
     root.addEventListener('click', function (e) { var row = e.target.closest('[data-shop]'); if (row) openShop(row.getAttribute('data-shop')); });
     root.addEventListener('keydown', function (e) { if (e.key !== 'Enter') return; var row = e.target.closest('[data-shop]'); if (row) openShop(row.getAttribute('data-shop')); });
   }
-  function openShop(id) { kpiState.view = 'shop'; kpiState.shopId = id; kpiState.carriers = null; renderKpiTab(); }
+  function openShop(id) { kpiState.view = 'shop'; kpiState.shopId = id; kpiState.carriers = null; kpiState.carrierOpen = null; renderKpiTab(); }
   function backToDashboard() { kpiState.view = 'dashboard'; kpiState.shopId = null; renderKpiTab(); }
 
   /* ====================== shop detail ====================== */
@@ -983,10 +990,66 @@
       ? '<table class="mk-table rules-table"><thead><tr><th>Rule triggered &amp; not adhered to</th><th class="num">Count</th></tr></thead><tbody>' +
         ruleRows.map(function (r) { return '<tr><td>' + esc(r.text) + '</td><td class="num">' + r.count + '</td></tr>'; }).join('') + '</tbody></table>'
       : '<div class="ctx-sub" style="padding:10px">No rules for the selected carriers.</div>';
+    // trend panel for the opened carrier (only while it is still in the selected set)
+    var openCarrier = kpiState.carrierOpen ? d.carriers.filter(function (c) { return c.name === kpiState.carrierOpen && sel.indexOf(c.name) >= 0; })[0] : null;
+    var trendHTML = openCarrier ? carrierTrendPanelHTML(openCarrier) : '';
     return '<div class="kpi-section-title">Carrier scorecard <span class="ctx-sub">(DRP · ' + d.carriers.length + ' carriers with volume)</span></div>' +
       '<div class="carr-chips" id="carrChips" role="group" aria-label="Filter carriers">' + chips + '</div>' +
-      '<div class="carr-cards">' + cards + '</div>' +
+      '<div class="carr-cards" id="carrCards">' + cards + '</div>' +
+      trendHTML +
       '<div class="rules-detail"><div class="kpi-section-title sub">Rules not adhered to — actionable list</div><div class="mk-table-wrap">' + ruleTable + '</div></div>';
+  }
+  /* carrier metrics that can be trended over time (one at a time) */
+  var CARRIER_METRICS = [
+    { key: 'score',           label: 'Score',             unit: '',      color: '#00529b' },
+    { key: 'volume',          label: 'Repair volume',     unit: 'n',     color: '#2b7a8e' },
+    { key: 'estAccuracy',     label: 'Estimate accuracy', unit: '%',     color: '#2e7d32' },
+    { key: 'rulesNotAdhered', label: 'Rules not adhered', unit: 'count', color: '#c1660f' },
+    { key: 'cycleTime',       label: 'Total cycle time',  unit: 'd',     color: '#7a5ea8' },
+    { key: 'csi',             label: 'CSI',               unit: '',      color: '#b0357a' }
+  ];
+  function carrierMetricByKey(k) { for (var i = 0; i < CARRIER_METRICS.length; i++) if (CARRIER_METRICS[i].key === k) return CARRIER_METRICS[i]; return CARRIER_METRICS[0]; }
+  function fmtCarrier(unit, v, span) {
+    if (unit === '%') return (span != null && span < 6 ? (Math.round(v * 10) / 10) : Math.round(v)) + '%';
+    if (unit === 'd') return (Math.round(v * 10) / 10) + 'd';
+    return '' + Math.round(v);   // score / CSI / repair volume (count)
+  }
+  function carrierTrendPanelHTML(c) {
+    var m = carrierMetricByKey(kpiState.carrierMetric), win = chartWindow();
+    var pts = (c.trends[m.key] || c.trends.score).slice(win.start, win.end);
+    var labels = pts.map(function (p) { return p.label; });
+    var W = 640, H = 150, padT = 10, mB = 18, mL = 52, mR = 16;
+    function X(i) { return mL + (W - mL - mR) * (labels.length < 2 ? 0.5 : i / (labels.length - 1)); }
+    var vs = pts.map(function (p) { return p.value; });
+    var lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs), s0 = hi - lo;
+    var pad = s0 ? s0 * 0.14 : (Math.abs(hi) * 0.1 || 1), lo2 = lo - pad, hi2 = hi + pad, span = hi2 - lo2;
+    function Y(v) { return padT + (H - padT - mB) * (1 - (v - lo2) / (span || 1)); }
+    var line = pts.map(function (p, i) { return X(i) + ',' + Y(p.value); }).join(' ');
+    var dots = pts.map(function (p, i) { return '<circle cx="' + X(i) + '" cy="' + Y(p.value) + '" r="2.5" fill="' + m.color + '"/>'; }).join('');
+    var xlabs = labels.map(function (lab, i) { return '<text x="' + X(i) + '" y="' + (H - 4) + '" class="rc-x">' + esc(lab) + '</text>'; }).join('');
+    // three ticks; add a decimal only when whole-number ticks would collide (flat count series)
+    var tickV = [hi2, hi2 - span / 2, lo2];
+    var needDec = m.unit === '%' ? span < 6 : m.unit === 'd' ? true
+      : (function () { var il = tickV.map(function (v) { return '' + Math.round(v); }); return il[0] === il[1] || il[1] === il[2] || il[0] === il[2]; })();
+    function fmtTick(v) {
+      if (m.unit === '%') return (needDec ? (Math.round(v * 10) / 10) : Math.round(v)) + '%';
+      if (m.unit === 'd') return (Math.round(v * 10) / 10) + 'd';
+      return '' + (needDec ? (Math.round(v * 10) / 10) : Math.round(v));
+    }
+    var axis = tickV.map(function (v, t) { var y = padT + (H - padT - mB) * (t / 2); return '<text x="' + (mL - 6) + '" y="' + (y + 3) + '" class="rc-ax" text-anchor="end">' + esc(fmtTick(v)) + '</text>'; }).join('');
+    var btns = CARRIER_METRICS.map(function (mm) {
+      var on = mm.key === m.key;
+      return '<button type="button" class="kser' + (on ? ' on' : '') + '" data-cmetric="' + mm.key + '" aria-pressed="' + on + '">' +
+        '<span class="kser-dot" style="background:' + mm.color + '"></span>' + esc(mm.label) + '</button>';
+    }).join('');
+    var latest = pts[pts.length - 1].value;   // last point actually shown in the window
+    return '<div class="carr-trend" id="carrTrend">' +
+      '<div class="rc-head"><div class="rc-title">' + esc(c.name) + ' · ' + esc(m.label) + ' <span class="rc-title-sub">· ' + fmtCarrier(m.unit, latest, span) + ' latest · ' + (win.end - win.start) + '-mo</span></div>' +
+      '<button type="button" class="link-btn ctrend-close" data-carrier-close="1">Close ✕</button></div>' +
+      '<div class="kser-group" id="carrMetrics" role="group" aria-label="Select carrier metric to trend">' + btns + '</div>' +
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" class="rc-svg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' + esc(c.name + ' ' + m.label) + ' trend">' +
+      '<polyline fill="none" stroke="' + m.color + '" stroke-width="2" points="' + line + '"/>' + dots + xlabs + axis + '</svg>' +
+      '</div>';
   }
   function carrierCardHTML(c) {
     var varsHTML = DRP.variables.map(function (v) {
@@ -998,10 +1061,12 @@
         '<span class="cv-avg">vs ' + fmt(avg) + ' avg</span></div>';
     }).join('');
     var scoreCls = c.score >= 80 ? 'ok' : c.score >= 65 ? 'warn' : 'bad';
-    return '<div class="carr-card">' +
+    var open = kpiState.carrierOpen === c.name;
+    return '<div class="carr-card' + (open ? ' open' : '') + '" data-carrier-card="' + esc(c.name) + '" role="button" tabindex="0" aria-expanded="' + open + '">' +
       '<div class="carr-top"><span class="carr-name">' + esc(c.name) + '</span><span class="carr-score ' + scoreCls + '">' + c.score + '<small>/100</small></span></div>' +
       '<div class="carr-sub">' + svgSpark(c.trend.map(function (p) { return p.value; }), '#00529b', 120, 26) + '<span class="carr-vol">' + c.volume + ' repairs</span></div>' +
-      '<div class="cv-list">' + varsHTML + '</div></div>';
+      '<div class="cv-list">' + varsHTML + '</div>' +
+      '<div class="carr-cta">' + (open ? 'Trend shown below ▾' : 'Click to trend a metric ▸') + '</div></div>';
   }
 
   function wireShopDetail(d) {
@@ -1018,6 +1083,10 @@
       kpiState.chartKpis = sel;
       renderKpiTab();
     });
+    function refreshPanel() {
+      var panel = document.getElementById('carrierPanel');
+      if (panel) { panel.innerHTML = carrierPanelHTML(shopData(kpiState.shopId || d.id)); wireShopDetail(d); }
+    }
     var chips = document.getElementById('carrChips');
     if (chips) chips.addEventListener('click', function (e) {
       var b = e.target.closest('[data-carrier]'); if (!b) return;
@@ -1025,9 +1094,29 @@
       var i = sel.indexOf(name);
       if (i >= 0) { if (sel.length > 1) sel.splice(i, 1); } else sel.push(name);
       kpiState.carriers = sel;
-      var panel = document.getElementById('carrierPanel');
-      if (panel) { panel.innerHTML = carrierPanelHTML(shopData(kpiState.shopId || d.id)); wireShopDetail(d); }
+      refreshPanel();
     });
+    // click a carrier card → toggle its trend panel
+    var carrCards = document.getElementById('carrCards');
+    function toggleCard(name) { kpiState.carrierOpen = (kpiState.carrierOpen === name) ? null : name; refreshPanel(); }
+    if (carrCards) {
+      carrCards.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-carrier-card]'); if (b) toggleCard(b.getAttribute('data-carrier-card'));
+      });
+      carrCards.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var b = e.target.closest('[data-carrier-card]'); if (b) { e.preventDefault(); toggleCard(b.getAttribute('data-carrier-card')); }
+      });
+    }
+    // pick which metric to trend
+    var cm = document.getElementById('carrMetrics');
+    if (cm) cm.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-cmetric]'); if (!b) return;
+      kpiState.carrierMetric = b.getAttribute('data-cmetric');
+      refreshPanel();
+    });
+    var cc = document.querySelector('[data-carrier-close]');
+    if (cc) cc.addEventListener('click', function () { kpiState.carrierOpen = null; refreshPanel(); });
   }
 
   /* ====================== dispatch ====================== */

@@ -867,7 +867,15 @@ button { font-family: inherit; }
 .carr-chip { border: 1px solid var(--outline-variant); background: #fff; border-radius: var(--corner-full); padding: 5px 12px; font-size: 12.5px; font-weight: 600; color: var(--on-surface-variant); cursor: pointer; }
 .carr-chip.on { background: var(--primary); color: #fff; border-color: var(--primary); }
 .carr-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
-.carr-card { background: #fff; border: 1px solid #e6e9ef; border-radius: var(--corner-md); box-shadow: var(--shadow-1); padding: 12px 14px; }
+.carr-card { background: #fff; border: 1px solid #e6e9ef; border-radius: var(--corner-md); box-shadow: var(--shadow-1); padding: 12px 14px; cursor: pointer; transition: border-color .12s, box-shadow .12s; }
+.carr-card:hover { border-color: #9fb0c0; }
+.carr-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.carr-card.open { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary), var(--shadow-1); }
+.carr-cta { margin-top: 8px; padding-top: 8px; border-top: 1px solid #eef1f5; font-size: 11px; font-weight: 600; color: var(--muted); }
+.carr-card.open .carr-cta { color: var(--primary); }
+.carr-trend { margin-top: 12px; background: #fff; border: 1px solid #e6e9ef; border-radius: var(--corner-md); box-shadow: var(--shadow-1); padding: 12px 14px 6px; }
+.carr-trend .kser-group { margin: 2px 0 8px; }
+.ctrend-close { font-size: 12px; }
 .carr-top { display: flex; align-items: center; justify-content: space-between; }
 .carr-name { font-weight: 700; font-size: 14px; color: #111; }
 .carr-score { font-family: var(--font-brand); font-size: 22px; font-weight: 700; }
