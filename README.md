@@ -93,8 +93,10 @@ misses, sublet revenue leakage, and a refinish capacity gap. Cards show
 - **Filters:** root cause, owner, and a **Behind target** toggle (tasks past their
   due date or whose plan blew its target-close date).
 - **Search** across task, owner, store, carrier, diagnosis, and metric.
-- **Drag** cards between columns, or use the ◀ ▶ buttons.
-- **Click a card** to open it: editable task fields on the left; on the right, the
+- **Move a task** two ways: **drag** its card between columns, or open the card
+  and change its **Status** in the task detail view (then Save).
+- **Click a card** to open it: editable task fields on the left — including the
+  **Status** control that moves the task between columns — and on the right the
   parent action plan (root cause, carrier, personas, dates, linked plan) and the
   task's activity-log timeline (with add-note).
 - **New task** attaches to any plan via the plan picker.

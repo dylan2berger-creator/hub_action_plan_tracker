@@ -188,7 +188,6 @@
 
   function cardHTML(t) {
     var p = planOf(t), s = storeOf(t), root = rootOf(t), pm = priorityMeta(t.priority);
-    var idx = colIndex(t.column);
     var eyebrow = (scopeIds().length > 1 && s) ? '<div class="card-eyebrow">' + esc(s.name) + '</div>' : '';
 
     var dueHTML = '';
@@ -233,9 +232,7 @@
         '<div class="card-foot foot2">' +
           '<span class="foot-left">' + dueHTML + outcome + '</span>' +
           '<span class="card-moves">' +
-            '<button class="mini-btn" data-move="prev" data-id="' + esc(t.id) + '" aria-label="Move left"' + (idx === 0 ? ' disabled' : '') + '>' + chevL() + '</button>' +
-            '<button class="mini-btn" data-move="next" data-id="' + esc(t.id) + '" aria-label="Move right"' + (idx === COLUMNS.length - 1 ? ' disabled' : '') + '>' + chevR() + '</button>' +
-            '<button class="mini-btn" data-edit="' + esc(t.id) + '" aria-label="Open task">' + editIcon() + '</button>' +
+            '<button class="mini-btn" data-edit="' + esc(t.id) + '" aria-label="Open task details">' + editIcon() + '</button>' +
           '</span>' +
         '</div>' +
       '</article>'
@@ -250,14 +247,10 @@
   function calIcon() { return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 16H5V10h14zm0-12H5V6h14z"/></svg>'; }
   function eyeIcon() { return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7m0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8m0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4"/></svg>'; }
   function lockIcon() { return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2M9 6a3 3 0 0 1 6 0v2H9zm3 11a2 2 0 1 1 0-4 2 2 0 0 1 0 4"/></svg>'; }
-  function chevL() { return '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>'; }
-  function chevR() { return '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>'; }
   function editIcon() { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"/></svg>'; }
 
   /* ---------------- board interactions ---------------- */
   function onBoardClick(e) {
-    var mv = e.target.closest('[data-move]');
-    if (mv) { e.stopPropagation(); moveItem(mv.getAttribute('data-id'), mv.getAttribute('data-move')); return; }
     var ed = e.target.closest('[data-edit]');
     if (ed) { e.stopPropagation(); openModal(ed.getAttribute('data-edit')); return; }
     var card = e.target.closest('.card');
@@ -269,13 +262,6 @@
     if (card && e.target === card) { e.preventDefault(); openModal(card.getAttribute('data-id')); }
   }
   function findTask(id) { for (var i = 0; i < tasks.length; i++) if (tasks[i].id === id) return tasks[i]; return null; }
-  function moveItem(id, dir) {
-    var t = findTask(id); if (!t) return;
-    var idx = colIndex(t.column) + (dir === 'next' ? 1 : -1);
-    if (idx < 0 || idx >= COLUMNS.length) return;
-    t.column = COLUMNS[idx].key;
-    render();
-  }
 
   /* ---------------- drag & drop ---------------- */
   var dragId = null;
