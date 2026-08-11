@@ -130,18 +130,21 @@ carrier-only cases are findable). Click any shop to open its detail.
 Opportunity to Estimate (**80%**, higher better), Opportunity to RO (**70%**, higher
 better), Opportunity to Arrive (**7 days**, lower better).
 
-**Shop detail.** Revenue actual vs target, variance, and a 12-month trend (zoom to
-6 / 3 / MTD); the three funnel metrics vs target with trend sparklines; a **visual
-funnel** (opportunities → estimates → repair orders → arrivals) showing where the
-drop-off happens; and the carrier panel below.
+**Shop detail.** Revenue attainment (actual vs target, variance) with a titled trend
+chart you can **add KPIs to** — plot up to two of Revenue / Opp → Estimate / Opp → RO /
+Opp → Arrive at once, and a second y-axis appears on the right when the two use
+different units; the three funnel metrics vs target; and the carrier panel below. One
+period selector (**Prev mo / MTD / 3M / 6M / 12M**) drives every trend on the page.
 
 **Carrier scorecard (DRP).** A shop scores separately **per carrier** (0–100; higher
 means more volume). Multi-select filters the carriers that actually have volume at the
 shop (the top U.S. casualty carriers). Each carrier shows its **score + trend** and the
-four contributing variables — **estimate accuracy, rules triggered & not adhered to,
-total cycle time, CSI** — each against the shop's own trailing average, so you can see
-which variable drags the score down. The **rules detail** table groups every not-adhered
-rule by text with counts, sorted descending — the actionable list.
+four contributing variables — **estimate accuracy, rules adherence %, total cycle time,
+CSI** — each against the shop's own trailing average, so you can see which variable drags
+the score down. **Click a card** to trend any metric over time — score, repair volume,
+estimate accuracy, rules adherence %, total cycle time, or CSI — over the same period
+windows. The **rules detail** table groups every not-adhered rule by text with counts,
+sorted descending — the actionable list behind the adherence rate.
 
 The seed spans a region → market → shop hierarchy (Midwest fully populated, other
 regions lighter), with a realistic minority of challenged shops — including a few where

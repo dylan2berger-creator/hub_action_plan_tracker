@@ -30,7 +30,7 @@ window.HUB_CONFIG = {
     scoreMax: 100,
     variables: [
       { key: "estAccuracy", label: "Estimate accuracy",       unit: "%",    direction: "higher" },
-      { key: "rulesNotAdhered", label: "Rules not adhered",    unit: "count", direction: "lower" },
+      { key: "rulesAdherence", label: "Rules Adherence %",     unit: "%",     direction: "higher" },
       { key: "cycleTime",   label: "Total cycle time",         unit: "days", direction: "lower"  },
       { key: "csi",         label: "CSI",                      unit: "",     direction: "higher" }
     ]

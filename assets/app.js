@@ -664,25 +664,28 @@
     var r = mulberry(hashStr('carr:' + id)), n = 5 + Math.floor(r() * 4);
     var pool = CARRIERS.slice(), chosen = [];
     for (var k = 0; k < n && pool.length; k++) { chosen.push(pool.splice(Math.floor(r() * pool.length), 1)[0]); }
-    var shopAvg = { estAccuracy: 88 + r() * 6, rulesNotAdhered: 6 + r() * 8, cycleTime: 8 + r() * 4, csi: 90 + r() * 6 };
+    var shopAvg = { estAccuracy: 88 + r() * 6, rulesAdherence: 90 + r() * 7, cycleTime: 8 + r() * 4, csi: 90 + r() * 6 };
     return chosen.map(function (name) {
       var cr = mulberry(hashStr('carr:' + id + ':' + name));
       var score = Math.round(45 + cr() * 52), vol = 20 + Math.floor(cr() * 180);
+      var adherence = Math.round(clamp(shopAvg.rulesAdherence + (cr() * 9 - 4.5), 80, 99.5) * 10) / 10;
+      var triggered = 45 + Math.floor(cr() * 95);                                  // rule triggers over the period
+      var notAdhered = Math.max(0, Math.round(triggered * (1 - adherence / 100))); // count feeding the actionable list
       var vars = {
         estAccuracy: Math.round(clamp(shopAvg.estAccuracy + (cr() * 8 - 4), 78, 98) * 10) / 10,
-        rulesNotAdhered: Math.max(0, Math.round(shopAvg.rulesNotAdhered + (cr() * 10 - 4))),
+        rulesAdherence: adherence,
         cycleTime: Math.round(clamp(shopAvg.cycleTime + (cr() * 4 - 2), 6, 16) * 10) / 10,
         csi: Math.round(clamp(shopAvg.csi + (cr() * 8 - 4), 80, 99) * 10) / 10
       };
       var trends = {
-        score:           walk12(id + ':' + name, 'sc',  score,                4,   DRP.scoreMin, DRP.scoreMax),
-        volume:          walk12(id + ':' + name, 'vol', vol,                   Math.max(3, vol * 0.05), 5, 260),
-        estAccuracy:     walk12(id + ':' + name, 'ea',  vars.estAccuracy,     1.4, 74, 99),
-        rulesNotAdhered: walk12(id + ':' + name, 'rn',  vars.rulesNotAdhered, 1.3, 0,  28),
-        cycleTime:       walk12(id + ':' + name, 'ct',  vars.cycleTime,       0.5, 5,  18),
-        csi:             walk12(id + ':' + name, 'cs',  vars.csi,             1.1, 78, 100)
+        score:          walk12(id + ':' + name, 'sc',  score,               4,   DRP.scoreMin, DRP.scoreMax),
+        volume:         walk12(id + ':' + name, 'vol', vol,                  Math.max(3, vol * 0.05), 5, 260),
+        estAccuracy:    walk12(id + ':' + name, 'ea',  vars.estAccuracy,    1.4, 74, 99),
+        rulesAdherence: walk12(id + ':' + name, 'ra',  vars.rulesAdherence, 1.3, 78, 100),
+        cycleTime:      walk12(id + ':' + name, 'ct',  vars.cycleTime,      0.5, 5,  18),
+        csi:            walk12(id + ':' + name, 'cs',  vars.csi,            1.1, 78, 100)
       };
-      return { name: name, score: score, volume: vol, vars: vars, shopAvg: shopAvg, trend: trends.score, trends: trends, rules: buildRules(id, name, vars.rulesNotAdhered) };
+      return { name: name, score: score, volume: vol, vars: vars, shopAvg: shopAvg, trend: trends.score, trends: trends, rules: buildRules(id, name, notAdhered) };
     }).sort(function (a, b) { return b.volume - a.volume; });
   }
   function buildRules(id, carrier, total) {
@@ -1005,7 +1008,7 @@
     { key: 'score',           label: 'Score',             unit: '',      color: '#00529b' },
     { key: 'volume',          label: 'Repair volume',     unit: 'n',     color: '#2b7a8e' },
     { key: 'estAccuracy',     label: 'Estimate accuracy', unit: '%',     color: '#2e7d32' },
-    { key: 'rulesNotAdhered', label: 'Rules not adhered', unit: 'count', color: '#c1660f' },
+    { key: 'rulesAdherence', label: 'Rules Adherence %', unit: '%', color: '#c1660f' },
     { key: 'cycleTime',       label: 'Total cycle time',  unit: 'd',     color: '#7a5ea8' },
     { key: 'csi',             label: 'CSI',               unit: '',      color: '#b0357a' }
   ];
@@ -1023,7 +1026,9 @@
     function X(i) { return mL + (W - mL - mR) * (labels.length < 2 ? 0.5 : i / (labels.length - 1)); }
     var vs = pts.map(function (p) { return p.value; });
     var lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs), s0 = hi - lo;
-    var pad = s0 ? s0 * 0.14 : (Math.abs(hi) * 0.1 || 1), lo2 = lo - pad, hi2 = hi + pad, span = hi2 - lo2;
+    var pad = s0 ? s0 * 0.14 : (Math.abs(hi) * 0.1 || 1), lo2 = lo - pad, hi2 = hi + pad;
+    if (m.unit === '%') { hi2 = Math.min(hi2, 100); lo2 = Math.max(lo2, 0); }   // a rate can't exceed 100% or go negative
+    var span = hi2 - lo2;
     function Y(v) { return padT + (H - padT - mB) * (1 - (v - lo2) / (span || 1)); }
     var line = pts.map(function (p, i) { return X(i) + ',' + Y(p.value); }).join(' ');
     var dots = pts.map(function (p, i) { return '<circle cx="' + X(i) + '" cy="' + Y(p.value) + '" r="2.5" fill="' + m.color + '"/>'; }).join('');
