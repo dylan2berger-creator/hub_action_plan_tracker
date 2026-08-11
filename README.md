@@ -117,7 +117,8 @@ A shop is **Challenged** when that is **≤ −10%** (the one place this number 
 
 **Dashboard (landing, for Market & Regional Managers).** One chart: revenue
 attainment across the shops in scope, **worst-first, with the −10% line drawn on it**.
-Density comes from controls inside the pane — a **period** selector (MTD / 3M / 6M / 12M),
+Density comes from controls inside the pane — a **period** selector (**Prev mo**
+— the default, the last complete month — / MTD / 3M / 6M / 12M),
 a **market filter**, and a **Shops / Markets / Region** granularity toggle that
 re-aggregates within your own scope (a GM sees only their shop). Below the chart, a
 **challenged-shop list** carries revenue variance (dollars + %) and the three funnel

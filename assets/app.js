@@ -552,12 +552,13 @@
   var DRP = CFG.drp || { scoreMin: 0, scoreMax: 100, variables: [] };
   var CARRIERS = DATA.carriers || [];
   var RULE_TEXTS = DATA.ruleTexts || [];
-  var PERIODS = [{ key: 'mtd', label: 'MTD', months: 1 }, { key: 'm3', label: '3M', months: 3 }, { key: 'm6', label: '6M', months: 6 }, { key: 'm12', label: '12M', months: 12 }];
+  // offset = how many months back the window ends (0 = through the current month; 1 = the previous complete month)
+  var PERIODS = [{ key: 'prev', label: 'Prev mo', months: 1, offset: 1 }, { key: 'mtd', label: 'MTD', months: 1, offset: 0 }, { key: 'm3', label: '3M', months: 3, offset: 0 }, { key: 'm6', label: '6M', months: 6, offset: 0 }, { key: 'm12', label: '12M', months: 12, offset: 0 }];
   var MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   var CUR_MONTH = TODAY.getMonth();
   var RA_MIN = -0.35, RA_MAX = 0.25;   // fixed revenue-variance chart domain
 
-  var kpiState = { view: 'dashboard', shopId: null, period: 'mtd', gran: 'shops', market: 'all', carriers: null };
+  var kpiState = { view: 'dashboard', shopId: null, period: 'prev', gran: 'shops', market: 'all', carriers: null };
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function pctStr(p) { return (p >= 0 ? '+' : '−') + Math.abs(Math.round(p * 100)) + '%'; }
@@ -649,9 +650,9 @@
   // revenue summed over the selected period window (MTD = current month)
   function revFor(id, period) {
     var d = shopData(id); if (!d) return { actual: 0, target: 0, variancePct: 0, variance: 0 };
-    var n = (PERIODS.filter(function (p) { return p.key === period; })[0] || PERIODS[0]).months;
-    var a = 0, t = 0;
-    for (var i = 12 - n; i < 12; i++) { a += d.months[i].actual; t += d.months[i].target; }
+    var pd = PERIODS.filter(function (p) { return p.key === period; })[0] || PERIODS[0];
+    var end = 12 - (pd.offset || 0), a = 0, t = 0;
+    for (var i = end - pd.months; i < end; i++) { a += d.months[i].actual; t += d.months[i].target; }
     var vp = t ? (a - t) / t : 0;
     return { actual: a, target: t, variancePct: vp, variance: a - t };
   }
@@ -874,9 +875,9 @@
   }
 
   function revChartHTML(d) {
-    var n = (PERIODS.filter(function (p) { return p.key === kpiState.period; })[0] || PERIODS[0]).months;
-    if (kpiState.period === 'mtd') n = 3; // MTD still shows recent context
-    var slice = d.months.slice(12 - Math.max(n, 3));
+    var pd = PERIODS.filter(function (p) { return p.key === kpiState.period; })[0] || PERIODS[0];
+    var end = 12 - (pd.offset || 0), n = Math.max(pd.months, 3);  // show at least 3 months of context, ending at the period
+    var slice = d.months.slice(Math.max(0, end - n), end);
     var W = 620, H = 150, pad = 8, mL = 30, mR = 30, mB = 16;
     var vals = []; slice.forEach(function (p) { vals.push(p.actual, p.target); });
     var lo = Math.min.apply(null, vals) * 0.96, hi = Math.max.apply(null, vals) * 1.04, rng = (hi - lo) || 1;
