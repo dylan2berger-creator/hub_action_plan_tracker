@@ -700,3 +700,37 @@ button { font-family: inherit; }
 .wk-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .wk-table td.var.pos { color: #2e7d32; font-weight: 700; }
 .wk-table td.var.neg { color: var(--error-strong); font-weight: 700; }
+
+/* KPI trends chart */
+.trends .trend-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: var(--sp4); }
+.trend-period-group { display: inline-flex; background: #fff; border: 1px solid var(--outline-variant); border-radius: var(--corner-sm); overflow: hidden; }
+.trend-per { border: none; background: transparent; padding: 7px 14px; font-family: var(--font-plain); font-weight: 600; font-size: 13px; color: var(--on-surface-variant); cursor: pointer; }
+.trend-per + .trend-per { border-left: 1px solid var(--outline-variant); }
+.trend-per.on { background: var(--primary); color: #fff; }
+.trend-metrics { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.trend-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: var(--corner-full);
+  border: 1px solid var(--outline-variant); background: #fff; color: var(--on-surface-variant);
+  font-family: var(--font-plain); font-weight: 600; font-size: 13px; cursor: pointer; }
+.trend-chip .sw { width: 10px; height: 10px; border-radius: 50%; opacity: .35; }
+.trend-chip.on { border-color: #12333c; color: #111; background: #eef4fa; }
+.trend-chip.on .sw { opacity: 1; }
+.trend-mode { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.trend-plot { position: relative; width: 100%; background: #fff; border: 1px solid #e6e9ef; border-radius: var(--corner-md); box-shadow: var(--shadow-1); padding: 8px 6px 2px; }
+.trend-svg { display: block; width: 100%; height: auto; }
+.trend-svg .tg { stroke: #eef1f5; stroke-width: 1; }
+.trend-svg .ax { fill: var(--muted); font-family: var(--font-plain); font-size: 11px; }
+.trend-svg .ref { stroke: #9aa5b1; stroke-width: 1; stroke-dasharray: 4 4; }
+.trend-svg .ref-lab { fill: var(--muted); font-family: var(--font-plain); font-size: 10px; }
+.trend-svg .ln { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.trend-svg .end { font-family: var(--font-plain); font-weight: 700; font-size: 11px; }
+.trend-svg .cx { stroke: #12333c; stroke-width: 1; stroke-dasharray: 3 3; }
+.trend-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; }
+.trend-legend .lg { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--on-surface-variant); }
+.trend-legend .sw { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.trend-legend b { color: #111; font-variant-numeric: tabular-nums; }
+.trend-tip { position: absolute; top: 10px; background: #12333c; color: #fff; border-radius: 8px; padding: 8px 10px;
+  font-size: 12px; pointer-events: none; box-shadow: var(--shadow-2); min-width: 130px; z-index: 6; }
+.trend-tip .tt-h { font-weight: 700; margin-bottom: 5px; }
+.trend-tip .tt-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; }
+.trend-tip .tt-row .sw { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.trend-tip .tt-row b { margin-left: auto; font-variant-numeric: tabular-nums; }

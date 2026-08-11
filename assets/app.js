@@ -536,7 +536,7 @@
     for (var i = 1; i <= 3; i++) { var f = weeklyTarget * (0.9 + wr() * 0.18); weeks.push({ week: i, forecast: f, target: weeklyTarget, variance: f - weeklyTarget }); }
     return { budget: budget, mtdTarget: mtdTarget, closedMTD: closedMTD, forecast: forecast, fillTarget: fillTarget,
       closedVariance: closedVariance, pctClosedToBudget: pctClosedToBudget, pacePct: pacePct, daysBehind: daysBehind,
-      dncCount: dncCount, dncValue: dncValue, weeks: weeks };
+      monthlyClosed: budget * base.closedPace, dncCount: dncCount, dncValue: dncValue, weeks: weeks };
   }
   function statusOf(actual, target) {
     var r = actual / target;
@@ -631,7 +631,183 @@
       tileWeekly('Weekly forecast & variance', 'Weekly forecasts from CCC and variance from target', p.weeks) +
       '</div></div>';
 
+    html += trendsSectionHTML();
     root.innerHTML = html;
+    drawTrends(storeId);
+    wireTrends(storeId);
+  }
+
+  /* ---- KPI trends chart: focus one or many metrics over a period ---- */
+  var TREND_COLORS = ['#0072b2', '#e69f00', '#009e73', '#cc79a7', '#56b4e9'];
+  var TREND_METRICS = [
+    { key: 'estimate',  label: 'Opportunity to Estimate', short: 'Estimate', unit: '%',    dir: 'higher', goal: function () { return 80; } },
+    { key: 'ro',        label: 'Opportunity to RO',       short: 'RO',       unit: '%',    dir: 'higher', goal: function () { return 70; } },
+    { key: 'arrive',    label: 'Opportunity to Arrive',   short: 'Arrive',   unit: 'days', dir: 'lower',  goal: function () { return 7; } },
+    { key: 'closed',    label: 'Closed Sales (monthly)',  short: 'Closed',   unit: '$',    dir: 'higher', goal: function (p) { return p.budget; } },
+    { key: 'pctBudget', label: '% Closed to Budget',      short: '% Budget', unit: '%',    dir: 'higher', goal: function () { return 100; } }
+  ];
+  TREND_METRICS.forEach(function (m, i) { m.color = TREND_COLORS[i]; });
+  var TREND_PERIODS = [6, 12, 24];
+  var TREND_TOTAL = 24;
+  var trendState = { metrics: ['estimate', 'ro', 'arrive'], period: 12 };
+  var MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  function trendMonths() {
+    var out = [], ay = 2026, am = 7; // anchor: Aug 2026 (the dataset month)
+    for (var k = TREND_TOTAL - 1; k >= 0; k--) {
+      var idx = am - k, y = ay;
+      while (idx < 0) { idx += 12; y -= 1; }
+      out.push({ m: idx, y: y, label: MONTH_ABBR[idx] + (idx === 0 ? " '" + String(y).slice(2) : '') });
+    }
+    return out;
+  }
+  function metricLatest(m, fvals, p) {
+    if (m.key === 'estimate') return fvals.estimate;
+    if (m.key === 'ro') return fvals.ro;
+    if (m.key === 'arrive') return fvals.arrive;
+    if (m.key === 'closed') return p.monthlyClosed;
+    if (m.key === 'pctBudget') return p.monthlyClosed / p.budget * 100;
+    return 0;
+  }
+  function seriesFull(m, storeId, latest) {
+    var amp = m.unit === 'days' ? 0.7 : m.unit === '%' ? 3.2 : m.unit === '$' ? Math.max(latest * 0.05, 12000) : latest * 0.05;
+    var drift = 1.1 * amp * (m.dir === 'higher' ? -1 : 1);
+    var rnd = mulberry(hashStr(storeId + ':' + m.key + ':trend'));
+    var a = [];
+    for (var i = 0; i < TREND_TOTAL; i++) { var t = i / (TREND_TOTAL - 1); a.push(latest + drift * (1 - t) + (rnd() - 0.5) * amp); }
+    a[TREND_TOTAL - 1] = latest;
+    return a;
+  }
+  function idxValue(m, v, p) { var g = m.goal(p); return m.dir === 'higher' ? v / g * 100 : g / v * 100; }
+  function fmtMetric(m, v) {
+    if (m.unit === '$') return money(v);
+    if (m.unit === '%') return Math.round(v) + '%';
+    if (m.unit === 'days') return parseFloat(v.toFixed(1)) + ' days';
+    return String(Math.round(v));
+  }
+
+  function trendsSectionHTML() {
+    var chips = TREND_METRICS.map(function (m) {
+      var on = trendState.metrics.indexOf(m.key) >= 0;
+      return '<button type="button" class="trend-chip' + (on ? ' on' : '') + '" data-metric="' + m.key + '" aria-pressed="' + on + '">' +
+        '<span class="sw" style="background:' + m.color + '"></span>' + esc(m.label) + '</button>';
+    }).join('');
+    var periods = TREND_PERIODS.map(function (n) {
+      return '<button type="button" class="trend-per' + (trendState.period === n ? ' on' : '') + '" data-period="' + n + '" aria-pressed="' + (trendState.period === n) + '">' + n + 'M</button>';
+    }).join('');
+    return '<div class="kpi-section trends"><div class="trend-head">' +
+      '<div class="kpi-section-title">Trends over time</div>' +
+      '<div class="trend-period-group" id="trendPeriod" role="group" aria-label="Time range">' + periods + '</div></div>' +
+      '<div class="trend-metrics" id="trendMetrics" role="group" aria-label="Metrics to plot">' + chips + '</div>' +
+      '<div class="trend-mode" id="trendMode"></div>' +
+      '<div class="trend-plot" id="trendPlot"></div>' +
+      '<div class="trend-legend" id="trendLegend"></div>' +
+      '<div class="visually-hidden" id="trendTable"></div></div>';
+  }
+
+  function drawTrends(storeId) {
+    var plot = document.getElementById('trendPlot'); if (!plot) return;
+    var fvals = kpiFunnelValuesFor(storeId), p = computePacing(storeId);
+    var months = trendMonths();
+    var start = TREND_TOTAL - trendState.period;
+    var sel = TREND_METRICS.filter(function (m) { return trendState.metrics.indexOf(m.key) >= 0; });
+    if (!sel.length) sel = [TREND_METRICS[0]];
+    var indexed = sel.length > 1;
+
+    var series = sel.map(function (m) {
+      var vis = seriesFull(m, storeId, metricLatest(m, fvals, p)).slice(start);
+      return { m: m, raw: vis, plot: vis.map(function (v) { return indexed ? idxValue(m, v, p) : v; }), latest: metricLatest(m, fvals, p) };
+    });
+
+    var lo = Infinity, hi = -Infinity;
+    series.forEach(function (s) { s.plot.forEach(function (v) { if (v < lo) lo = v; if (v > hi) hi = v; }); });
+    var refY = indexed ? 100 : sel[0].goal(p);
+    if (refY < lo) lo = refY;
+    if (refY > hi) hi = refY;
+    var span = (hi - lo) || 1; lo -= span * 0.12; hi += span * 0.12;
+
+    var W = Math.max(plot.clientWidth || 760, 320), H = 320;
+    var mL = 54, mR = 62, mT = 14, mB = 34, iw = W - mL - mR, ih = H - mT - mB, n = trendState.period;
+    function X(i) { return mL + (n <= 1 ? iw / 2 : iw * i / (n - 1)); }
+    function Y(v) { return mT + ih * (1 - (v - lo) / (hi - lo)); }
+
+    var grid = '', ylab = '', ticks = 4;
+    for (var t = 0; t <= ticks; t++) {
+      var gv = lo + (hi - lo) * t / ticks, gy = Y(gv);
+      grid += '<line class="tg" x1="' + mL + '" x2="' + (W - mR) + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '"/>';
+      var lab = indexed ? Math.round(gv) : (sel[0].unit === '$' ? money(gv) : sel[0].unit === '%' ? Math.round(gv) + '%' : parseFloat(gv.toFixed(1)));
+      ylab += '<text class="ax" x="' + (mL - 8) + '" y="' + (gy + 3).toFixed(1) + '" text-anchor="end">' + esc(String(lab)) + '</text>';
+    }
+    var xlab = '', step = Math.ceil(n / 6);
+    for (var i = 0; i < n; i++) { if (i % step === 0 || i === n - 1) { xlab += '<text class="ax" x="' + X(i).toFixed(1) + '" y="' + (H - 12) + '" text-anchor="middle">' + esc(months[start + i].label) + '</text>'; } }
+
+    var refLine = '<line class="ref" x1="' + mL + '" x2="' + (W - mR) + '" y1="' + Y(refY).toFixed(1) + '" y2="' + Y(refY).toFixed(1) + '"/>' +
+      '<text class="ref-lab" x="' + (W - mR + 4) + '" y="' + (Y(refY) + 3).toFixed(1) + '">' + (indexed ? 'Goal 100' : 'Goal') + '</text>';
+
+    var paths = '', ends = '', direct = sel.length <= 4;
+    series.forEach(function (s) {
+      var d = s.plot.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }).join(' ');
+      paths += '<path class="ln" d="' + d + '" stroke="' + s.m.color + '"/>';
+      var lx = X(n - 1), ly = Y(s.plot[n - 1]);
+      paths += '<circle r="3.2" cx="' + lx.toFixed(1) + '" cy="' + ly.toFixed(1) + '" fill="' + s.m.color + '" stroke="#fff" stroke-width="1.5"/>';
+      if (direct) ends += '<text class="end" x="' + (lx + 7).toFixed(1) + '" y="' + (ly + 3).toFixed(1) + '" fill="' + s.m.color + '">' + esc(s.m.short) + '</text>';
+    });
+
+    var svg = '<svg class="trend-svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Trend of ' + esc(sel.map(function (mm) { return mm.label; }).join(', ')) + ' over ' + n + ' months">' +
+      grid + refLine + ylab + xlab + paths + ends +
+      '<rect class="hit" x="' + mL + '" y="' + mT + '" width="' + iw + '" height="' + ih + '" fill="transparent"/>' +
+      '<g class="cross" style="display:none"><line class="cx" y1="' + mT + '" y2="' + (mT + ih) + '"/></g></svg>';
+    plot.innerHTML = svg + '<div class="trend-tip" id="trendTip" style="display:none"></div>';
+
+    document.getElementById('trendLegend').innerHTML = series.map(function (s) {
+      return '<span class="lg"><span class="sw" style="background:' + s.m.color + '"></span>' + esc(s.m.label) + ' <b>' + esc(fmtMetric(s.m, s.latest)) + '</b></span>';
+    }).join('');
+    document.getElementById('trendMode').textContent = indexed
+      ? 'Indexed to each metric’s goal (100 = on goal) so mixed units compare on one axis. Hover for actual values.'
+      : 'Actual values with the goal line.';
+
+    var thead = '<tr><th>Month</th>' + series.map(function (s) { return '<th>' + esc(s.m.label) + '</th>'; }).join('') + '</tr>';
+    var trows = '';
+    for (var r = 0; r < n; r++) { trows += '<tr><td>' + esc(months[start + r].label) + '</td>' + series.map(function (s) { return '<td>' + esc(fmtMetric(s.m, s.raw[r])) + '</td>'; }).join('') + '</tr>'; }
+    document.getElementById('trendTable').innerHTML = '<table>' + thead + trows + '</table>';
+
+    var svgEl = plot.querySelector('.trend-svg'), tip = document.getElementById('trendTip');
+    var cross = plot.querySelector('.cross'), cx = plot.querySelector('.cx'), hit = plot.querySelector('.hit');
+    function move(ev) {
+      var rect = svgEl.getBoundingClientRect(), sx = (ev.clientX - rect.left) * (W / rect.width);
+      var i = Math.max(0, Math.min(n - 1, Math.round((sx - mL) / (iw / Math.max(n - 1, 1)))));
+      var px = X(i);
+      cross.style.display = ''; cx.setAttribute('x1', px.toFixed(1)); cx.setAttribute('x2', px.toFixed(1));
+      tip.innerHTML = '<div class="tt-h">' + esc(months[start + i].label) + '</div>' + series.map(function (s) {
+        return '<div class="tt-row"><span class="sw" style="background:' + s.m.color + '"></span>' + esc(s.m.short) + '<b>' + esc(fmtMetric(s.m, s.raw[i])) + '</b></div>';
+      }).join('');
+      tip.style.display = 'block';
+      var lpx = (px / W) * plot.clientWidth + 14;
+      if (lpx > plot.clientWidth - 160) lpx = (px / W) * plot.clientWidth - 160;
+      tip.style.left = Math.max(4, lpx) + 'px';
+    }
+    hit.addEventListener('mousemove', move);
+    hit.addEventListener('mouseleave', function () { cross.style.display = 'none'; tip.style.display = 'none'; });
+  }
+
+  function wireTrends(storeId) {
+    var mets = document.getElementById('trendMetrics'), per = document.getElementById('trendPeriod');
+    if (mets) mets.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-metric]'); if (!b) return;
+      var k = b.getAttribute('data-metric'), at = trendState.metrics.indexOf(k);
+      if (at >= 0) { if (trendState.metrics.length > 1) trendState.metrics.splice(at, 1); }
+      else trendState.metrics.push(k);
+      trendState.metrics = TREND_METRICS.filter(function (m) { return trendState.metrics.indexOf(m.key) >= 0; }).map(function (m) { return m.key; });
+      var on = trendState.metrics.indexOf(k) >= 0;
+      b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+      drawTrends(storeId);
+    });
+    if (per) per.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-period]'); if (!b) return;
+      trendState.period = parseInt(b.getAttribute('data-period'), 10);
+      Array.prototype.forEach.call(per.children, function (c) { var on = c === b; c.classList.toggle('on', on); c.setAttribute('aria-pressed', on); });
+      drawTrends(storeId);
+    });
   }
 
   function setView(view) {
@@ -738,6 +914,8 @@
       if (view) { btn.addEventListener('click', function () { setView(view); }); }
       else { btn.addEventListener('click', function () { toast(btn.getAttribute('data-label') + ' isn’t part of this prototype'); }); }
     });
+
+    var rz; window.addEventListener('resize', function () { if (state.view !== 'kpis') return; clearTimeout(rz); rz = setTimeout(function () { drawTrends(state.store); }, 150); });
 
     setStore(state.store);
   }
