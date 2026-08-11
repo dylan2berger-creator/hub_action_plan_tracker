@@ -854,7 +854,7 @@ button { font-family: inherit; }
 .rc-legend { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
 .rc-item { display: inline-flex; align-items: center; gap: 6px; }
 .rc-k { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
-.rc-k.tgt { background: repeating-linear-gradient(90deg, #9aa7b4 0 3px, transparent 3px 6px); }
+.rc-k.tgt { background: repeating-linear-gradient(90deg, #9aa7b4 0 2px, transparent 2px 5px); }
 .rc-side { font-style: italic; color: var(--muted); }
 
 /* funnel trends row */

@@ -923,8 +923,10 @@
     var mL = 52, mR = dual ? 52 : 16;
     function X(i) { return mL + (W - mL - mR) * (labels.length < 2 ? 0.5 : i / (labels.length - 1)); }
 
-    var showTarget = keys.length === 1 && keys[0] === 'revenue';
+    // revenue's target-over-time line shows whenever revenue is plotted, on whichever axis revenue sits
+    var revIdx = keys.indexOf('revenue'), showTarget = revIdx >= 0;
     var targetVals = showTarget ? kpiByKey('revenue').target(d).slice(win.start, win.end) : null;
+    var revOnRight = showTarget && dual && revIdx === 1;
 
     function rangeOf(ptsArrays, extra) {
       var vs = []; ptsArrays.forEach(function (pts) { pts.forEach(function (p) { vs.push(p.value); }); });
@@ -933,26 +935,34 @@
       var pad = span ? span * 0.12 : (Math.abs(hi) * 0.1 || 1);
       return { lo: lo - pad, hi: hi + pad };
     }
-    // include each axis's goal(s) in its range so the goal line is always on-chart
+    // each axis's range folds in its series' goal(s) and — for revenue's axis — the target, so those lines stay on-chart
     var leftSeries = dual ? [series[0]] : series;
-    var leftExtra = (targetVals ? targetVals.slice() : []);
+    var leftExtra = [];
     leftSeries.forEach(function (s) { if (s.def.goal != null) leftExtra.push(s.def.goal); });
+    if (showTarget && !revOnRight) targetVals.forEach(function (v) { leftExtra.push(v); });
     var L = rangeOf(leftSeries.map(function (s) { return s.pts; }), leftExtra);
-    var R = dual ? rangeOf([series[1].pts], series[1].def.goal != null ? [series[1].def.goal] : null) : null;
+    var R = null;
+    if (dual) {
+      var rightExtra = [];
+      if (series[1].def.goal != null) rightExtra.push(series[1].def.goal);
+      if (revOnRight) targetVals.forEach(function (v) { rightExtra.push(v); });
+      R = rangeOf([series[1].pts], rightExtra);
+    }
     function Y(range, v) { return padT + (H - padT - mB) * (1 - (v - range.lo) / ((range.hi - range.lo) || 1)); }
     function yFor(si, v) { return Y((dual && si === 1) ? R : L, v); }
 
     var svg = '';
     if (showTarget) {
-      var tp = targetVals.map(function (v, i) { return X(i) + ',' + Y(L, v); }).join(' ');
-      svg += '<polyline fill="none" stroke="#9aa7b4" stroke-width="1.4" stroke-dasharray="4 3" points="' + tp + '"/>';
+      var tp = targetVals.map(function (v, i) { return X(i) + ',' + yFor(revIdx, v).toFixed(1); }).join(' ');
+      svg += '<polyline fill="none" stroke="#9aa7b4" stroke-width="1.8" stroke-dasharray="1 5" stroke-linecap="round" points="' + tp + '"/>';
     }
     // goal reference line for any plotted KPI that has one (Opp → Estimate 80%, Opp → RO 70%, Opp → Arrive 7d)
     series.forEach(function (s, si) {
       if (s.def.goal == null) return;
       var gy = yFor(si, s.def.goal), gl = 'Goal ' + s.def.goal + (s.def.unit === '%' ? '%' : s.def.unit === 'd' ? 'd' : '');
+      var onLeft = dual && si === 1;   // right-axis series labels on the left so two goals never overlap at the right edge
       svg += '<line x1="' + mL + '" y1="' + gy.toFixed(1) + '" x2="' + (W - mR) + '" y2="' + gy.toFixed(1) + '" stroke="' + s.def.color + '" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.55"/>';
-      svg += '<text x="' + (W - mR - 3) + '" y="' + (gy - 4).toFixed(1) + '" class="rc-goal" text-anchor="end" fill="' + s.def.color + '">' + esc(gl) + '</text>';
+      svg += '<text x="' + (onLeft ? (mL + 3) : (W - mR - 3)) + '" y="' + (gy - 4).toFixed(1) + '" class="rc-goal" text-anchor="' + (onLeft ? 'start' : 'end') + '" fill="' + s.def.color + '">' + esc(gl) + '</text>';
     });
     series.forEach(function (s, si) {
       var pts = s.pts.map(function (p, i) { return X(i) + ',' + yFor(si, p.value); }).join(' ');
