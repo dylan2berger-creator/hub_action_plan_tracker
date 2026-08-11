@@ -875,6 +875,7 @@ button { font-family: inherit; }
 .carr-card.open .carr-cta { color: var(--primary); }
 .carr-trend { margin-top: 12px; background: #fff; border: 1px solid #e6e9ef; border-radius: var(--corner-md); box-shadow: var(--shadow-1); padding: 12px 14px 6px; }
 .carr-trend .kser-group { margin: 2px 0 8px; }
+.rc-head-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ctrend-close { font-size: 12px; }
 .carr-top { display: flex; align-items: center; justify-content: space-between; }
 .carr-name { font-weight: 700; font-size: 14px; color: #111; }

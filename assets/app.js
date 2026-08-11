@@ -555,6 +555,7 @@
   // offset = how many months back the window ends (0 = through the current month; 1 = the previous complete month)
   var PERIODS = [{ key: 'prev', label: 'Prev mo', months: 1, offset: 1 }, { key: 'mtd', label: 'MTD', months: 1, offset: 0 }, { key: 'm3', label: '3M', months: 3, offset: 0 }, { key: 'm6', label: '6M', months: 6, offset: 0 }, { key: 'm12', label: '12M', months: 12, offset: 0 }];
   var MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function periodBtnsHTML() { return PERIODS.map(function (p) { return '<button type="button" class="seg' + (kpiState.period === p.key ? ' on' : '') + '" data-period="' + p.key + '">' + p.label + '</button>'; }).join(''); }
   var CUR_MONTH = TODAY.getMonth();
   var RA_MIN = -0.35, RA_MAX = 0.25;   // fixed revenue-variance chart domain
 
@@ -750,7 +751,7 @@
     var ids = baseShopIds();
     var challenged = ids.filter(function (id) { return isChallenged(id, kpiState.period); });
     var ents = chartEntities().slice().sort(function (a, b) { return a.variancePct - b.variancePct; }); // worst first
-    var periodBtns = PERIODS.map(function (p) { return '<button type="button" class="seg' + (kpiState.period === p.key ? ' on' : '') + '" data-period="' + p.key + '">' + p.label + '</button>'; }).join('');
+    var periodBtns = periodBtnsHTML();
     var granBtns = '';
     if (state.role === 'regional') granBtns = ['shops', 'markets', 'region'].map(function (g) { return '<button type="button" class="seg' + (kpiState.gran === g ? ' on' : '') + '" data-gran="' + g + '">' + g.charAt(0).toUpperCase() + g.slice(1) + '</button>'; }).join('');
     else if (state.role === 'market') granBtns = ['shops', 'markets', 'region'].map(function (g) { return '<button type="button" class="seg' + (kpiState.gran === g ? ' on' : '') + '" data-gran="' + g + '">' + (g === 'shops' ? 'Shops' : g === 'markets' ? 'Market' : 'Book') + '</button>'; }).join('');
@@ -855,7 +856,7 @@
       '</div>';
 
     // revenue block
-    var periodBtns = PERIODS.map(function (p) { return '<button type="button" class="seg' + (kpiState.period === p.key ? ' on' : '') + '" data-period="' + p.key + '">' + p.label + '</button>'; }).join('');
+    var periodBtns = periodBtnsHTML();
     html += '<div class="kpi-section"><div class="kpi-section-title">Revenue attainment</div>' +
       '<div class="rev-grid">' +
         '<div class="rev-tile"><span class="rev-l">Actual</span><b class="rev-v">' + money(rv.actual) + '</b></div>' +
@@ -1045,7 +1046,8 @@
     var latest = pts[pts.length - 1].value;   // last point actually shown in the window
     return '<div class="carr-trend" id="carrTrend">' +
       '<div class="rc-head"><div class="rc-title">' + esc(c.name) + ' · ' + esc(m.label) + ' <span class="rc-title-sub">· ' + fmtCarrier(m.unit, latest, span) + ' latest · ' + (win.end - win.start) + '-mo</span></div>' +
-      '<button type="button" class="link-btn ctrend-close" data-carrier-close="1">Close ✕</button></div>' +
+      '<div class="rc-head-tools"><div class="seg-group" id="carrPeriod" role="group" aria-label="Period">' + periodBtnsHTML() + '</div>' +
+      '<button type="button" class="link-btn ctrend-close" data-carrier-close="1">Close ✕</button></div></div>' +
       '<div class="kser-group" id="carrMetrics" role="group" aria-label="Select carrier metric to trend">' + btns + '</div>' +
       '<svg viewBox="0 0 ' + W + ' ' + H + '" class="rc-svg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' + esc(c.name + ' ' + m.label) + ' trend">' +
       '<polyline fill="none" stroke="' + m.color + '" stroke-width="2" points="' + line + '"/>' + dots + xlabs + axis + '</svg>' +
@@ -1108,6 +1110,9 @@
         var b = e.target.closest('[data-carrier-card]'); if (b) { e.preventDefault(); toggleCard(b.getAttribute('data-carrier-card')); }
       });
     }
+    // time window inside the carrier view — shares the shop-detail period
+    var cpg = document.getElementById('carrPeriod');
+    if (cpg) cpg.addEventListener('click', function (e) { var b = e.target.closest('[data-period]'); if (b) { kpiState.period = b.getAttribute('data-period'); renderKpiTab(); } });
     // pick which metric to trend
     var cm = document.getElementById('carrMetrics');
     if (cm) cm.addEventListener('click', function (e) {
