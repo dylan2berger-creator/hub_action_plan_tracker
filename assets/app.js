@@ -156,7 +156,7 @@
   }
 
   /* ---------------- rendering ---------------- */
-  var boardEl, statBlocked, statBehind, pageSub;
+  var boardEl, statBlocked, statBehind, pageSub, pageTitle;
 
   function render() {
     var shown = visible();
@@ -190,6 +190,8 @@
     statBlocked.textContent = blocked;
     statBehind.textContent = behind;
     var nPlans = Object.keys(planIds).length, nTasks = scope.length;
+    // singular header for a single shop (one action plan), plural for a multi-shop scope
+    if (pageTitle) pageTitle.textContent = scopeIds().length === 1 ? 'Action Plan' : 'Action Plans';
     pageSub.textContent = nPlans + ' action plan' + (nPlans === 1 ? '' : 's') +
       ' · ' + nTasks + ' task' + (nTasks === 1 ? '' : 's') + ' · as of ' + fmtDateY(DATA.referenceDate);
   }
@@ -417,20 +419,24 @@
   /* ---------------- store selector (nav) ---------------- */
   function buildStoreMenu() {
     var menu = document.getElementById('storeMenu');
-    var counts = {};   // tasks per shop (one action plan per shop, so plan-count is always 1)
-    tasks.forEach(function (t) { counts[t.storeId] = (counts[t.storeId] || 0) + 1; });
+    // GM works a single shop → count its tasks. Market / Regional oversee many shops
+    // → count action plans (one per shop, so this is "shops on a plan").
+    var taskCounts = {};
+    tasks.forEach(function (t) { taskCounts[t.storeId] = (taskCounts[t.storeId] || 0) + 1; });
+    function planCount(id) { return PLAN_BY_STORE[id] ? 1 : 0; }
+    function marketPlans(nm) { return shopsOfMarket(nm).reduce(function (a, s) { return a + planCount(s.id); }, 0); }
     var items;
     if (state.role === 'regional') {
       var region = currentRegion();
-      var regionShops = region.markets.reduce(function (a, nm) { return a + shopsOfMarket(nm).length; }, 0);
-      items = [{ id: 'region', name: 'All my markets', count: regionShops, sub: region.markets.length + ' markets' }]
-        .concat(region.markets.map(function (nm) { return { id: 'mkt::' + nm, name: nm, count: shopsOfMarket(nm).length }; }));
+      var regionPlans = region.markets.reduce(function (a, nm) { return a + marketPlans(nm); }, 0);
+      items = [{ id: 'region', name: 'All my markets', count: regionPlans, sub: region.markets.length + ' markets' }]
+        .concat(region.markets.map(function (nm) { return { id: 'mkt::' + nm, name: nm, count: marketPlans(nm) }; }));
     } else if (state.role === 'market') {
-      var bookTasks = tasks.filter(function (t) { return MARKET.storeIds.indexOf(t.storeId) >= 0; }).length;
-      items = [{ id: 'book', name: 'All my shops', count: bookTasks, sub: MARKET.storeIds.length + ' shops' }]
-        .concat(MARKET.storeIds.map(function (id) { var s = STORE_BY_ID[id]; return { id: id, name: s ? s.name : id, count: counts[id] || 0 }; }));
+      var bookPlans = MARKET.storeIds.reduce(function (a, id) { return a + planCount(id); }, 0);
+      items = [{ id: 'book', name: 'All my shops', count: bookPlans, sub: MARKET.storeIds.length + ' shops' }]
+        .concat(MARKET.storeIds.map(function (id) { var s = STORE_BY_ID[id]; return { id: id, name: s ? s.name : id, count: planCount(id) }; }));
     } else {
-      items = (DATA.stores || []).map(function (s) { return { id: s.id, name: s.name, count: counts[s.id] || 0 }; });
+      items = (DATA.stores || []).map(function (s) { return { id: s.id, name: s.name, count: taskCounts[s.id] || 0 }; });
     }
     menu.innerHTML = items.map(function (it) {
       return '<button type="button" role="option" class="store-item' + (it.id === state.store ? ' active' : '') + '" data-store="' + esc(it.id) + '">' +
@@ -1412,6 +1418,7 @@
     statBlocked = document.getElementById('statBlocked');
     statBehind = document.getElementById('statBehind');
     pageSub = document.getElementById('pageSub');
+    pageTitle = document.querySelector('.page-title');
     toastEl = document.getElementById('toast');
 
     // toolbar
