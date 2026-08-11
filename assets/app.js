@@ -860,9 +860,6 @@
       '<div class="rev-chart">' + revChartHTML(d) + '</div>' +
       '</div>';
 
-    // visual funnel
-    html += '<div class="kpi-section"><div class="kpi-section-title">Where the drop-off happens</div>' + visualFunnelHTML(d) + '</div>';
-
     // carrier panel
     html += '<div class="kpi-section" id="carrierPanel">' + carrierPanelHTML(d) + '</div>';
 
@@ -887,17 +884,6 @@
       '<polyline fill="none" stroke="#9aa7b4" stroke-width="1.4" stroke-dasharray="4 3" points="' + tPts + '"/>' +
       '<polyline fill="none" stroke="#00529b" stroke-width="2" points="' + aPts + '"/>' + dots + labels + '</svg>' +
       '<div class="rc-legend"><span class="rc-k actual"></span>Actual <span class="rc-k target"></span>Target</div>';
-  }
-
-  function visualFunnelHTML(d) {
-    var c = d.funnel.counts, opps = c.opportunities || 1;
-    var stages = [{ l: 'Opportunities', v: c.opportunities }, { l: 'Estimates', v: c.estimates }, { l: 'Repair orders', v: c.ros }, { l: 'Arrivals', v: c.arrivals }];
-    return '<div class="vfunnel">' + stages.map(function (s, i) {
-      var pct = Math.round(s.v / opps * 100), drop = i === 0 ? '' : ' <span class="vf-drop">' + pct + '% of opps</span>';
-      return '<div class="vf-stage"><span class="vf-label">' + esc(s.l) + '</span>' +
-        '<span class="vf-track"><span class="vf-bar s' + i + '" style="width:' + Math.max(6, pct) + '%"></span></span>' +
-        '<span class="vf-count">' + s.v + drop + '</span></div>';
-    }).join('') + '</div>';
   }
 
   /* ====================== carrier scorecard panel ====================== */
