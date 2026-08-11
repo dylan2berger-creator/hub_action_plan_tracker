@@ -96,7 +96,7 @@
   function avatarColor(name) { var h = 0, s = String(name || ''); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return AV[h % AV.length]; }
   function planOf(t) { return PLAN_BY_ID[t.planId]; }
   function storeOf(t) { return STORE_BY_ID[t.storeId]; }
-  function rootOf(t) { var p = planOf(t); return p ? ROOT_BY_KEY[p.rootCauseCategory] : null; }
+  function rootOf(t) { if (t.rootCauseCategory && ROOT_BY_KEY[t.rootCauseCategory]) return ROOT_BY_KEY[t.rootCauseCategory]; var p = planOf(t); return p ? ROOT_BY_KEY[p.rootCauseCategory] : null; }
   function colMeta(key) { for (var i = 0; i < COLUMNS.length; i++) if (COLUMNS[i].key === key) return COLUMNS[i]; return COLUMNS[0]; }
   function colIndex(key) { for (var i = 0; i < COLUMNS.length; i++) if (COLUMNS[i].key === key) return i; return 0; }
   function priorityMeta(key) { for (var i = 0; i < PRIORITIES.length; i++) if (PRIORITIES[i].key === key) return PRIORITIES[i]; return PRIORITIES[2]; }
@@ -116,7 +116,7 @@
     return tasks.filter(function (t) {
       if (!inScope(t.storeId)) return false;
       var p = planOf(t);
-      if (state.root !== 'all' && (!p || p.rootCauseCategory !== state.root)) return false;
+      if (state.root !== 'all') { var rc = rootOf(t); if (!rc || rc.key !== state.root) return false; }
       if (state.owner !== 'all' && t.ownerName !== state.owner) return false;
       if (state.behind && !isBehind(t)) return false;
       if (q) {
@@ -279,7 +279,7 @@
 
   /* ---------------- modal (edit + context) ---------------- */
   var overlay, modalTitle, deleteBtn,
-      fPlan, fTitle, fDesc, fOwner, fRole, fStatus, fPriority, fDue, fRisk, fBlocked, fMetric, fLag,
+      fPlan, fTitle, fDesc, fOwner, fRole, fRoot, fStatus, fPriority, fDue, fRisk, fBlocked, fMetric, fLag,
       ctxWrap, logWrap, noteInput;
 
   function planOptionsHTML(selectedPlanId) {
@@ -310,6 +310,7 @@
     fDesc.value = t ? (t.description || '') : '';
     fOwner.value = t ? (t.ownerName || '') : '';
     fRole.value = t ? (t.ownerRole || '') : '';
+    fRoot.value = (t && t.rootCauseCategory) || (PLAN_BY_ID[planId] && PLAN_BY_ID[planId].rootCauseCategory) || (DATA.rootCauses[0] && DATA.rootCauses[0].key);
     fStatus.value = t ? t.column : 'identified';
     fPriority.value = t ? t.priority : 'medium';
     fDue.value = t ? (t.dueDate || '') : '';
@@ -385,6 +386,7 @@
       description: fDesc.value.trim(),
       ownerName: fOwner.value.trim(),
       ownerRole: fRole.value.trim(),
+      rootCauseCategory: fRoot.value,
       column: fStatus.value,
       priority: fPriority.value,
       dueDate: fDue.value || '',
@@ -1213,6 +1215,7 @@
     fDesc = document.getElementById('fDesc');
     fOwner = document.getElementById('fOwner');
     fRole = document.getElementById('fRole');
+    fRoot = document.getElementById('fRoot');
     fStatus = document.getElementById('fStatus');
     fPriority = document.getElementById('fPriority');
     fDue = document.getElementById('fDue');
@@ -1225,11 +1228,12 @@
 
     fStatus.innerHTML = COLUMNS.map(function (c) { return '<option value="' + c.key + '">' + esc(c.label) + '</option>'; }).join('');
     fPriority.innerHTML = PRIORITIES.map(function (p) { return '<option value="' + p.key + '">' + esc(p.label) + '</option>'; }).join('');
+    fRoot.innerHTML = (DATA.rootCauses || []).map(function (r) { return '<option value="' + r.key + '">' + esc(r.label) + '</option>'; }).join('');
     fRole.setAttribute('list', 'roleOptions');
     document.getElementById('roleOptions').innerHTML = ['Market Manager (CPM)', 'RDO', 'Shop GM', 'Estimator', 'Body Technician', 'Refinish Technician', 'Painter', 'Parts Manager', 'CSR', 'National Account Manager', 'RVP', 'ADAS Calibration Tech', 'Facilities / Capex', 'HR Recruiter', 'Regional Fixed Ops', 'Sales Rep']
       .map(function (r) { return '<option value="' + esc(r) + '">'; }).join('');
 
-    fPlan.addEventListener('change', function () { renderContext(fPlan.value, editingId ? findTask(editingId) : null); });
+    fPlan.addEventListener('change', function () { var pl = PLAN_BY_ID[fPlan.value]; if (pl) fRoot.value = pl.rootCauseCategory; renderContext(fPlan.value, editingId ? findTask(editingId) : null); });
     document.getElementById('actionForm').addEventListener('submit', submitForm);
     document.getElementById('cancelBtn').addEventListener('click', closeModal);
     deleteBtn.addEventListener('click', deleteCurrent);

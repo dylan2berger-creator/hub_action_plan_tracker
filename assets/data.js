@@ -15,8 +15,7 @@ window.HUB_DATA = {
     { key: "drp-participation", label: "DRP Participation",     dot: "#2b7a8e", bg: "#d5e9ec", fg: "#0f3a44" },
     { key: "personnel",         label: "Personnel / Skill Mix",dot: "#c1660f", bg: "#f6e3cf", fg: "#6b3f10" },
     { key: "equipment",         label: "Equipment",            dot: "#ba1a1a", bg: "#f6dcdc", fg: "#5b1414" },
-    { key: "revenue-leakage",   label: "Revenue Leakage",      dot: "#36832f", bg: "#dcecdc", fg: "#1e4620" },
-    { key: "market-demand",     label: "Market Demand",        dot: "#6a4c93", bg: "#e6e1f0", fg: "#3a2d5a" }
+    { key: "other",             label: "Other",                dot: "#5f6b7a", bg: "#e6e9ee", fg: "#333d49" }
   ],
 
   stores: [
@@ -139,7 +138,7 @@ window.HUB_DATA = {
       ]
     },
     {
-      id: "AP-204", storeId: "s2", rootCauseCategory: "revenue-leakage", parentPlanId: "AP-201",
+      id: "AP-204", storeId: "s2", rootCauseCategory: "other", parentPlanId: "AP-201",
       owningPersona: "RDO", openedDate: "2026-06-27", targetCloseDate: "2026-09-30",
       diagnosis: "Sublet refinish is eroding capture — in-house refinish labor and blend operations aren't being written on the sublet ROs. The booth outage is upstream, but the leakage is fixable now with estimating discipline.",
       tasks: [
@@ -520,7 +519,7 @@ window.HUB_DATA = {
       ]
     },
     {
-      id: "AP-113", storeId: "s10", rootCauseCategory: "revenue-leakage",
+      id: "AP-113", storeId: "s10", rootCauseCategory: "other",
       owningPersona: "Shop GM", openedDate: "2026-07-01", targetCloseDate: "2026-10-01",
       diagnosis: "The store has the volume but leaves money on every RO — included operations like corrosion protection, cavity wax, and feather-prime-block are routinely omitted from estimates. A rules-adherence and checklist fix.",
       tasks: [
@@ -550,7 +549,7 @@ window.HUB_DATA = {
 
     /* ===================== GRAND RAPIDS (s11) — market demand (no shop remedy) ===================== */
     {
-      id: "AP-114", storeId: "s11", rootCauseCategory: "market-demand",
+      id: "AP-114", storeId: "s11", rootCauseCategory: "other",
       owningPersona: "RVP", openedDate: "2026-04-02", targetCloseDate: "2026-06-30",
       diagnosis: "PIF volume decline traces to a new MSO competitor opening in the CBSA and a softer local market — there is no shop-level operational fix here. The plan is to document the market shift and escalate for a marketing and carrier-steering response, then close.",
       tasks: [
@@ -644,7 +643,7 @@ window.HUB_DATA = {
 
     /* ===================== MESA (s13) ===================== */
     {
-      id: "AP-117", storeId: "s13", rootCauseCategory: "revenue-leakage",
+      id: "AP-117", storeId: "s13", rootCauseCategory: "other",
       carrier: "Farmers", owningPersona: "Market Manager (CPM)", openedDate: "2026-07-15", targetCloseDate: "2026-10-10",
       diagnosis: "The store under-captures on Farmers work — alternative parts usage and supplements run below program expectations, and rules-driven operations are missed. Volume is fine; capture discipline is the gap.",
       tasks: [

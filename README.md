@@ -67,14 +67,14 @@ not-yet-started work.)
 `Identified → In Progress → Blocked → Verifying → Closed`
 
 **Root-cause taxonomy** (every card is tagged with one):
-DRP Scorecard · DRP Participation · Personnel / Skill Mix · Equipment ·
-Revenue Leakage · Market Demand.
+DRP Scorecard · DRP Participation · Personnel / Skill Mix · Equipment · Other.
 
 **Action plan** (attaches to a store): root cause, carrier (when carrier-specific),
 opened / target-close dates, owning persona (CPM, RDO, Shop GM, National Account
 Manager, RVP, Sales), a plain-language diagnosis, and 3–6 tasks.
 
-**Task**: owner + role, status column, priority, due date, a risk note, a blocked
+**Task**: owner + role, **root cause** (set on the task; defaults to the parent
+plan's when created), status column, priority, due date, a risk note, a blocked
 reason (when Blocked), a **verification signal** (the *name* of the metric expected
 to move + expected lag in days), and a dated **activity log** of the real
 back-and-forth.
@@ -99,7 +99,8 @@ misses, sublet revenue leakage, and a refinish capacity gap. Cards show
   **Status** control that moves the task between columns — and on the right the
   parent action plan (root cause, carrier, personas, dates, linked plan) and the
   task's activity-log timeline (with add-note).
-- **New task** attaches to any plan via the plan picker.
+- **New task** attaches to any plan via the plan picker, and carries its own
+  **Root cause** field (defaults to the chosen plan's root cause).
 
 > **Data note:** no numeric KPI values, targets, scores, or dollar figures appear
 > anywhere — metrics are referenced by name only. All names are synthetic.
