@@ -738,15 +738,15 @@ button { font-family: inherit; }
 .trend-tip .tt-row b { margin-left: auto; font-variant-numeric: tabular-nums; }
 
 /* prototype persona banner */
-.proto-banner { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+.proto-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   background: repeating-linear-gradient(45deg, #eef1f7, #eef1f7 10px, #e9edf5 10px, #e9edf5 20px);
-  border-bottom: 1px solid var(--outline-variant); padding: 8px 24px; }
+  border-bottom: 1px solid var(--outline-variant); padding: 5px 24px; }
 .proto-tag { font-family: var(--font-brand); font-weight: 700; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
   color: #fff; background: #6a4c93; border-radius: var(--corner-full); padding: 3px 10px; }
 .proto-lead { font-size: 13px; font-weight: 600; color: var(--on-surface-variant); }
 .proto-roles { display: inline-flex; background: #fff; border: 1px solid var(--outline-variant); border-radius: var(--corner-sm); overflow: hidden; }
-.proto-role { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; border: none; background: transparent; cursor: pointer;
-  padding: 6px 14px; font-family: var(--font-plain); font-weight: 700; font-size: 13px; color: var(--on-surface-variant); text-align: left; }
+.proto-role { display: flex; flex-direction: row; align-items: baseline; gap: 6px; border: none; background: transparent; cursor: pointer;
+  padding: 5px 12px; font-family: var(--font-plain); font-weight: 700; font-size: 13px; color: var(--on-surface-variant); text-align: left; }
 .proto-role + .proto-role { border-left: 1px solid var(--outline-variant); }
 .proto-role small { font-weight: 500; font-size: 11px; color: var(--muted); }
 .proto-role.on { background: var(--primary); color: #fff; }
