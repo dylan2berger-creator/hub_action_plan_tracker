@@ -34,19 +34,34 @@
   (DATA.rootCauses || []).forEach(function (r) { ROOT_BY_KEY[r.key] = r; });
   var STORE_BY_ID = {};
   (DATA.stores || []).forEach(function (s) { STORE_BY_ID[s.id] = s; });
-  var PLAN_BY_ID = {};
-  (DATA.plans || []).forEach(function (p) { PLAN_BY_ID[p.id] = p; });
-
-  // how many plans point at each plan as a parent (for "upstream of N")
-  var CHILD_COUNT = {};
-  (DATA.plans || []).forEach(function (p) {
-    if (p.parentPlanId) CHILD_COUNT[p.parentPlanId] = (CHILD_COUNT[p.parentPlanId] || 0) + 1;
-  });
+  // ONE action plan per shop. A shop's action plan is the locked container for
+  // getting it back on track — every task rolls up to it (a shop doesn't have 15
+  // action plans; it has one plan with 15 tasks). The source data splits a shop
+  // into several plan records, so merge them by store and push each plan's
+  // carrier / root cause down onto its tasks.
+  var PLANS = (function () {
+    var byStore = {}, order = [];
+    (DATA.plans || []).forEach(function (p) {
+      var sp = byStore[p.storeId];
+      if (!sp) { sp = byStore[p.storeId] = { id: 'AP-' + p.storeId, storeId: p.storeId, rootCauseCategory: p.rootCauseCategory, owningPersona: p.owningPersona, openedDate: p.openedDate, targetCloseDate: p.targetCloseDate, diagnosis: p.diagnosis, tasks: [] }; order.push(sp); }
+      if (p.openedDate && p.openedDate < sp.openedDate) sp.openedDate = p.openedDate;
+      if (p.targetCloseDate && p.targetCloseDate > sp.targetCloseDate) sp.targetCloseDate = p.targetCloseDate;
+      (p.tasks || []).forEach(function (t) {
+        var tt = shallow(t);
+        if (p.carrier && !tt.carrier) tt.carrier = p.carrier;                          // carrier now lives on the task
+        if (!tt.rootCauseCategory && p.rootCauseCategory) tt.rootCauseCategory = p.rootCauseCategory;   // as does root cause
+        sp.tasks.push(tt);
+      });
+    });
+    return order;
+  })();
+  var PLAN_BY_ID = {}, PLAN_BY_STORE = {};
+  PLANS.forEach(function (p) { PLAN_BY_ID[p.id] = p; PLAN_BY_STORE[p.storeId] = p; });
 
   // Flatten plan tasks into a single in-memory list (source of truth for the board)
   var tasks = [];
-  (DATA.plans || []).forEach(function (p) {
-    (p.tasks || []).forEach(function (t) {
+  PLANS.forEach(function (p) {
+    p.tasks.forEach(function (t) {
       var item = shallow(t);
       item.planId = p.id;
       item.storeId = p.storeId;
@@ -174,9 +189,9 @@
     });
     statBlocked.textContent = blocked;
     statBehind.textContent = behind;
-    var nStores = Object.keys(storeIds).length;
-    pageSub.textContent = Object.keys(planIds).length + ' plan' + (Object.keys(planIds).length === 1 ? '' : 's') +
-      ' across ' + nStores + ' store' + (nStores === 1 ? '' : 's') + ' · as of ' + fmtDateY(DATA.referenceDate);
+    var nPlans = Object.keys(planIds).length, nTasks = scope.length;
+    pageSub.textContent = nPlans + ' action plan' + (nPlans === 1 ? '' : 's') +
+      ' · ' + nTasks + ' task' + (nTasks === 1 ? '' : 's') + ' · as of ' + fmtDateY(DATA.referenceDate);
   }
 
   function catChip(root) {
@@ -210,16 +225,12 @@
     var outcome = (t.column === 'closed' && t.outcome)
       ? '<span class="chip outcome ' + outcomeClass(t.outcome) + '">' + esc(t.outcome) + '</span>' : '';
 
-    var link = (p && p.parentPlanId && PLAN_BY_ID[p.parentPlanId])
-      ? '<span class="chip link-chip" title="Downstream of ' + esc(p.parentPlanId) + '">↳ linked</span>' : '';
-    var upstream = (p && CHILD_COUNT[p.id])
-      ? '<span class="chip link-chip up" title="Upstream cause">▲ upstream of ' + CHILD_COUNT[p.id] + '</span>' : '';
-    var carrier = (p && p.carrier) ? '<span class="chip chip-gray">' + esc(p.carrier) + '</span>' : '';
+    var carrier = t.carrier ? '<span class="chip chip-gray">' + esc(t.carrier) + '</span>' : '';
 
     return (
       '<article class="card p-' + esc(t.priority) + '" draggable="true" data-id="' + esc(t.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(t.title) + '">' +
         eyebrow +
-        '<div class="card-meta">' + catChip(root) + carrier + link + upstream + '</div>' +
+        '<div class="card-meta">' + catChip(root) + carrier + '</div>' +
         '<div class="card-title">' + esc(t.title) + '</div>' +
         (t.description ? '<div class="card-desc">' + esc(t.description) + '</div>' : '') +
         signal +
@@ -280,15 +291,13 @@
       fPlan, fTitle, fDesc, fOwner, fRole, fRoot, fStatus, fPriority, fDue, fRisk, fBlocked, fMetric, fLag,
       logWrap, noteInput;
 
+  function planLabel(p) { var s = STORE_BY_ID[p.storeId]; return (s ? s.name : p.storeId) + ' — Action plan'; }
   function planOptionsHTML(selectedPlanId) {
-    var plans = (DATA.plans || []).slice().sort(function (a, b) {
-      var sa = STORE_BY_ID[a.storeId].name, sb = STORE_BY_ID[b.storeId].name;
-      return sa < sb ? -1 : sa > sb ? 1 : (a.id < b.id ? -1 : 1);
-    });
-    return plans.map(function (p) {
-      var r = ROOT_BY_KEY[p.rootCauseCategory];
-      var lab = STORE_BY_ID[p.storeId].name + ' · ' + (r ? r.label : '') + ' · ' + p.id;
-      return '<option value="' + esc(p.id) + '"' + (p.id === selectedPlanId ? ' selected' : '') + '>' + esc(lab) + '</option>';
+    return PLANS.slice().sort(function (a, b) {
+      var sa = (STORE_BY_ID[a.storeId] || {}).name || '', sb = (STORE_BY_ID[b.storeId] || {}).name || '';
+      return sa < sb ? -1 : sa > sb ? 1 : 0;
+    }).map(function (p) {
+      return '<option value="' + esc(p.id) + '"' + (p.id === selectedPlanId ? ' selected' : '') + '>' + esc(planLabel(p)) + '</option>';
     }).join('');
   }
 
@@ -298,12 +307,20 @@
     modalTitle.textContent = t ? 'Task detail' : 'New task';
     deleteBtn.style.display = t ? 'inline-flex' : 'none';
 
-    var defaultPlan = state.store !== 'all'
-      ? (DATA.plans.filter(function (p) { return p.storeId === state.store; })[0] || DATA.plans[0])
-      : DATA.plans[0];
-    var planId = t ? t.planId : (defaultPlan && defaultPlan.id);
+    // The action plan is locked to a shop — a task can't be reassigned to another
+    // shop's plan. It's only selectable when adding a NEW task from a multi-shop
+    // scope (you must pick which shop's plan it joins).
+    var sids = scopeIds(), singleShop = sids.length === 1 ? sids[0] : null;
+    var planStoreId = t ? t.storeId : (singleShop || (PLAN_BY_STORE[state.store] ? state.store : (PLANS[0] && PLANS[0].storeId)));
+    var thePlan = PLAN_BY_STORE[planStoreId] || PLANS[0];
+    var planId = thePlan && thePlan.id;
+    var lockPlan = !!t || singleShop != null;
 
-    fPlan.innerHTML = planOptionsHTML(planId);
+    fPlan.disabled = lockPlan;
+    fPlan.classList.toggle('locked', lockPlan);
+    fPlan.innerHTML = lockPlan
+      ? '<option value="' + esc(planId) + '" selected>' + esc(planLabel(thePlan)) + '</option>'
+      : planOptionsHTML(planId);
     fTitle.value = t ? t.title : '';
     fDesc.value = t ? (t.description || '') : '';
     fOwner.value = t ? (t.ownerName || '') : '';
@@ -400,8 +417,8 @@
   /* ---------------- store selector (nav) ---------------- */
   function buildStoreMenu() {
     var menu = document.getElementById('storeMenu');
-    var counts = {};
-    (DATA.plans || []).forEach(function (p) { counts[p.storeId] = (counts[p.storeId] || 0) + 1; });
+    var counts = {};   // tasks per shop (one action plan per shop, so plan-count is always 1)
+    tasks.forEach(function (t) { counts[t.storeId] = (counts[t.storeId] || 0) + 1; });
     var items;
     if (state.role === 'regional') {
       var region = currentRegion();
@@ -409,8 +426,8 @@
       items = [{ id: 'region', name: 'All my markets', count: regionShops, sub: region.markets.length + ' markets' }]
         .concat(region.markets.map(function (nm) { return { id: 'mkt::' + nm, name: nm, count: shopsOfMarket(nm).length }; }));
     } else if (state.role === 'market') {
-      var bookPlans = (DATA.plans || []).filter(function (p) { return MARKET.storeIds.indexOf(p.storeId) >= 0; }).length;
-      items = [{ id: 'book', name: 'All my shops', count: bookPlans, sub: MARKET.storeIds.length + ' shops' }]
+      var bookTasks = tasks.filter(function (t) { return MARKET.storeIds.indexOf(t.storeId) >= 0; }).length;
+      items = [{ id: 'book', name: 'All my shops', count: bookTasks, sub: MARKET.storeIds.length + ' shops' }]
         .concat(MARKET.storeIds.map(function (id) { var s = STORE_BY_ID[id]; return { id: id, name: s ? s.name : id, count: counts[id] || 0 }; }));
     } else {
       items = (DATA.stores || []).map(function (s) { return { id: s.id, name: s.name, count: counts[s.id] || 0 }; });

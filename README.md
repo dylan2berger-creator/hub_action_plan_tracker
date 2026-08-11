@@ -68,27 +68,25 @@ not-yet-started work.)
 **Root-cause taxonomy** (every card is tagged with one):
 DRP Scorecard · DRP Participation · Personnel / Skill Mix · Equipment · Other.
 
-**Action plan** (attaches to a store): root cause, carrier (when carrier-specific),
-opened / target-close dates, owning persona (CPM, RDO, Shop GM, National Account
-Manager, RVP, Sales), a plain-language diagnosis, and 3–6 tasks.
+**Action plan** — **one per shop**, the locked container for getting that shop back
+on track. A shop doesn't accumulate many plans; it has one plan with however many
+tasks the recovery needs. Open **Aurora, IL** (the default store): its single action
+plan holds 15 tasks spanning several root causes — the booth-outage equipment fix,
+the cycle-time and CSI scorecard responses, sublet revenue leakage, and a refinish
+capacity gap — all under one plan.
 
-**Task**: owner + role, **root cause** (set on the task; defaults to the parent
-plan's when created), status column, priority, due date, a risk note, a blocked
+**Task** (the kanban card): owner + role, **root cause** (set on the task), carrier
+(when carrier-specific), status column, priority, due date, a risk note, a blocked
 reason (when Blocked), a **verification signal** (the *name* of the metric expected
 to move + expected lag in days), and a dated **activity log** of the real
-back-and-forth.
-
-**Cross-linking** — plans carry a `parentPlanId` so several symptoms trace to one
-cause. Open **Aurora, IL** (the default store): a single downstream booth outage
-(Equipment) shows up as four separate symptom plans — cycle-time and CSI scorecard
-misses, sublet revenue leakage, and a refinish capacity gap. Cards show
-**▲ upstream of N** on the cause and **↳ linked** on the symptoms.
+back-and-forth. In the task editor the **Action plan is locked** to the shop — a task
+can't be reassigned to another shop's plan.
 
 ## Using the board
 
-- **Switch stores** from the location selector in the top nav (defaults to the
-  Aurora cross-link cluster; choose **All stores** to see the whole market —
-  21 plans across 13 stores).
+- **Switch stores** from the location selector in the top nav (defaults to
+  Aurora; choose **All stores** to see the whole market — one action plan per
+  shop across 13 stores).
 - **Filters:** root cause, owner, and a **Behind target** toggle (tasks past their
   due date or whose plan blew its target-close date).
 - **Search** across task, owner, store, carrier, diagnosis, and metric.

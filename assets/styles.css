@@ -501,6 +501,11 @@ button { font-family: inherit; }
 .form-row .err { color: var(--error-strong); font-size: 12px; display: none; }
 .form-row.invalid input { border-color: var(--error-strong); }
 .form-row.invalid .err { display: block; }
+/* the action plan is locked to the shop — one plan per shop */
+.form-row select.locked, .form-row select:disabled {
+  background: #f4f6f9 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='%2372808d'><path d='M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2M9 6a3 3 0 0 1 6 0v2H9z'/></svg>") no-repeat right 10px center;
+  color: #41505c; cursor: not-allowed; border-style: dashed; opacity: 1; -webkit-appearance: none; appearance: none; padding-right: 30px;
+}
 
 .modal-foot {
   display: flex; align-items: center; justify-content: space-between;
@@ -549,8 +554,6 @@ button { font-family: inherit; }
 .blocked-note svg { width: 14px; height: 14px; margin-top: 1px; color: var(--error-strong); flex-shrink: 0; }
 
 /* cross-link + outcome chips */
-.chip.link-chip { background: #e6e1f0; color: #3a2d5a; font-weight: 700; }
-.chip.link-chip.up { background: #f6e3cf; color: #6b3f10; }
 .chip.outcome { font-weight: 700; }
 
 /* second footer row (due / outcome + move buttons) */
