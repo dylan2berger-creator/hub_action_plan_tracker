@@ -740,7 +740,7 @@ button { font-family: inherit; }
 /* prototype persona banner */
 .proto-banner { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   background: repeating-linear-gradient(45deg, #eef1f7, #eef1f7 10px, #e9edf5 10px, #e9edf5 20px);
-  border: 1px solid var(--outline-variant); border-radius: var(--corner-md); padding: 10px 14px; margin-bottom: 16px; }
+  border-bottom: 1px solid var(--outline-variant); padding: 8px 24px; }
 .proto-tag { font-family: var(--font-brand); font-weight: 700; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
   color: #fff; background: #6a4c93; border-radius: var(--corner-full); padding: 3px 10px; }
 .proto-lead { font-size: 13px; font-weight: 600; color: var(--on-surface-variant); }

@@ -13,6 +13,17 @@
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
+  <!-- ================= Prototype persona banner (full-width, above the nav) ================= -->
+  <div class="proto-banner" role="region" aria-label="Prototype view switcher">
+    <span class="proto-tag">Prototype</span>
+    <span class="proto-lead">Viewing as</span>
+    <div class="proto-roles" id="protoRoles" role="group" aria-label="Role">
+      <button type="button" class="proto-role on" data-role="gm" aria-pressed="true">General Manager<small>Shop level</small></button>
+      <button type="button" class="proto-role" data-role="market" aria-pressed="false">Market Manager<small>Book of ~10 shops</small></button>
+    </div>
+    <span class="proto-note" id="protoNote"></span>
+  </div>
+
   <!-- ================= Navigation bar — real Hub ClientLayout shell ================= -->
   <div class="ClientLayout-module-scss-module__Skw-ja__headerWrapper">
     <div class="ClientLayout-module-scss-module__Skw-ja__navigationBarWrapper">
@@ -68,15 +79,6 @@
   <!-- ================= Page — real Hub content wrappers ================= -->
   <div class="ClientLayout-module-scss-module__Skw-ja__pageContentWrapper ClientLayout-module-scss-module__Skw-ja__huddleBoard">
     <div class="ClientLayout-module-scss-module__Skw-ja__pageContent ClientLayout-module-scss-module__Skw-ja__withHeader ClientLayout-module-scss-module__Skw-ja__huddleBoard">
-      <div class="proto-banner" role="region" aria-label="Prototype view switcher">
-        <span class="proto-tag">Prototype</span>
-        <span class="proto-lead">Viewing as</span>
-        <div class="proto-roles" id="protoRoles" role="group" aria-label="Role">
-          <button type="button" class="proto-role on" data-role="gm" aria-pressed="true">General Manager<small>Shop level</small></button>
-          <button type="button" class="proto-role" data-role="market" aria-pressed="false">Market Manager<small>Book of ~10 shops</small></button>
-        </div>
-        <span class="proto-note" id="protoNote"></span>
-      </div>
       <div id="viewActionPlans">
       <div class="page-head">
         <div class="page-title-wrap">
