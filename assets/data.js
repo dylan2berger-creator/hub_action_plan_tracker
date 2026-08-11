@@ -757,3 +757,73 @@ window.HUB_DATA.market = {
   id: "m-chi", name: "Chicago Metro", manager: "Marcus Delgado",
   storeIds: ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s10", "s14"]
 };
+
+/* ============================================================
+   Regions — the Regional Manager scope. Every market below is
+   grouped into one of nine logical geographic regions. Market
+   names are the real Boyd/Gerber market taxonomy; per-market
+   KPIs are generated deterministically at render time (see the
+   market* generators in app.js). The Heartland region is the
+   demo default (Chicago-area markets, matching the instrumented
+   stores). Manager names are synthetic.
+   ============================================================ */
+window.HUB_DATA.defaultRegionId = "rg-heartland";
+window.HUB_DATA.regions = [
+  { id: "rg-pacific", name: "Pacific", manager: "Dana Whitfield", markets: [
+    "CA Central Valley Market", "CA North Valley Market", "CA-LA Market",
+    "Inland Empire I Market", "Inland Empire II Market", "Sacramento Market",
+    "Seattle Central", "Seattle East", "Seattle North", "Seattle South",
+    "Eastern Washington", "Oregon Market", "Hawaii Market"
+  ] },
+  { id: "rg-mountain", name: "Mountain West", manager: "Cal Jorgensen", markets: [
+    "Arizona East", "Arizona South", "Arizona West",
+    "Colorado North", "Colorado South", "Colorado Western Slope",
+    "Utah Market", "North Vegas", "South Vegas"
+  ] },
+  { id: "rg-southcentral", name: "South Central", manager: "Marisol Vega", markets: [
+    "Texas Austin", "Texas Central", "Texas Dallas East", "Texas Dallas North",
+    "Texas Dallas South", "Texas Dallas West", "Texas Houston North",
+    "Texas Houston South", "Texas South", "Texas West",
+    "Oklahoma City East", "Oklahoma City West", "Oklahoma South",
+    "Oklahoma Tulsa North", "Oklahoma Tulsa South"
+  ] },
+  { id: "rg-gulfsouth", name: "Gulf South", manager: "Terrence Boudreaux", markets: [
+    "AL Central East", "AL Central West", "AL East", "AL Huntsville", "AL South",
+    "MS and AL Gulf Coast", "MS North",
+    "LA Central", "LA East", "LA West", "Louisiana North",
+    "Arkansas Central", "Arkansas North & Missouri South"
+  ] },
+  { id: "rg-southeast", name: "Southeast", manager: "Janelle Carter", markets: [
+    "GA Atlanta East", "GA Atlanta North", "GA Atlanta South", "GA Central", "GA East",
+    "North Carolina Central", "North Carolina Charlotte Metro", "North Carolina East",
+    "North Carolina North", "North Carolina West",
+    "SC South", "South Carolina East", "South Carolina North", "South Carolina West",
+    "Tennessee East", "Tennessee North", "Tennessee South"
+  ] },
+  { id: "rg-florida", name: "Florida", manager: "Rafael Ortiz", markets: [
+    "FL Panhandle", "Jacksonville North", "Jacksonville West", "Northwest Florida",
+    "Ocala Market", "Orlando North", "Orlando South", "Southwest Florida",
+    "Tampa North", "Tampa South", "West Florida"
+  ] },
+  { id: "rg-greatlakes", name: "Great Lakes", manager: "Bernadette Kowalski", markets: [
+    "MI Ann Arbor", "MI Detroit East", "MI Detroit North", "MI Detroit South",
+    "MI Grand Rapids", "MI Lansing", "MI Northwest", "MI Southwest",
+    "Ohio Central", "Ohio Cincinnati North", "Ohio Cincinnati South",
+    "Ohio Northeast", "Ohio Northwest",
+    "IN Central City", "IN North Central", "IN Northeast", "IN Northwest"
+  ] },
+  { id: "rg-heartland", name: "Heartland", manager: "Curtis Lindgren", markets: [
+    "Central East", "Central Illinois", "Central Suburban", "City Market",
+    "North Suburban", "South Suburban", "West Suburban",
+    "Central Wisconsin", "East Wisconsin", "West Wisconsin",
+    "NE Wisconsin & Upper Michigan", "NW Wisconsin & Minnesota", "MN West Market",
+    "Iowa market", "Missouri & Kansas City", "Missouri St Louis",
+    "Kansas Wichita", "Nebraska Omaha", "Kentucky East", "Kentucky West"
+  ] },
+  { id: "rg-northeast", name: "Northeast", manager: "Sophia Almeida", markets: [
+    "Maryland East", "Maryland West",
+    "New York Albany", "New York Central", "New York Syracuse", "New York West",
+    "Pennsylvania Northeast", "Pennsylvania West",
+    "Virginia North", "Virginia South"
+  ] }
+];

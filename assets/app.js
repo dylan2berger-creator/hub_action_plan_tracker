@@ -58,9 +58,12 @@
 
   var MARKET = DATA.market || { name: 'Market', manager: '', storeIds: [] };
   var ALL_STORE_IDS = (DATA.stores || []).map(function (s) { return s.id; });
+  function isMarketScope(id) { return typeof id === 'string' && id.indexOf('mkt::') === 0; }
   function resolveIds(storeId) {
     if (storeId === 'book') return MARKET.storeIds.slice();
-    if (storeId === 'all') return ALL_STORE_IDS.slice();
+    // Region-level scopes (Regional Manager) have no per-market stores in this
+    // prototype — the board shows the region's instrumented action plans (all stores).
+    if (storeId === 'all' || storeId === 'region' || isMarketScope(storeId)) return ALL_STORE_IDS.slice();
     return [storeId];
   }
   function scopeIds() { return resolveIds(state.store); }
@@ -434,7 +437,12 @@
     var counts = {};
     (DATA.plans || []).forEach(function (p) { counts[p.storeId] = (counts[p.storeId] || 0) + 1; });
     var items;
-    if (state.role === 'market') {
+    if (state.role === 'regional') {
+      var region = currentRegion();
+      var regionOpen = region.markets.reduce(function (a, nm) { return a + marketPlanActivity(nm).open; }, 0);
+      items = [{ id: 'region', name: 'All my markets', count: regionOpen, sub: region.markets.length + ' markets' }]
+        .concat(region.markets.map(function (nm) { return { id: 'mkt::' + nm, name: nm, count: marketPlanActivity(nm).open }; }));
+    } else if (state.role === 'market') {
       var bookPlans = (DATA.plans || []).filter(function (p) { return MARKET.storeIds.indexOf(p.storeId) >= 0; }).length;
       items = [{ id: 'book', name: 'All my shops', count: bookPlans, sub: MARKET.storeIds.length + ' shops' }]
         .concat(MARKET.storeIds.map(function (id) { var s = STORE_BY_ID[id]; return { id: id, name: s ? s.name : id, count: counts[id] || 0 }; }));
@@ -449,6 +457,8 @@
   function setStore(id) {
     state.store = id;
     var label = id === 'book' ? MARKET.name + ' · all shops'
+      : id === 'region' ? currentRegion().name + ' · all markets'
+      : isMarketScope(id) ? id.slice(5)
       : id === 'all' ? 'All stores'
       : (STORE_BY_ID[id] ? STORE_BY_ID[id].name : id);
     document.getElementById('shopName').textContent = label;
@@ -479,7 +489,34 @@
   var PACING_BY_STORE = DATA.pacingByStore || {};
   var MTD = DATA.mtd || { day: 10, daysInMonth: 31 };
 
+  /* ---- Regions (Regional Manager scope) + deterministic per-market KPIs ----
+     Markets in the region list have no stores in this prototype, so their
+     funnel / pacing / plan activity are generated deterministically from the
+     market name (same seeded approach as the sparklines). */
+  var REGIONS = DATA.regions || [];
+  var REGION_BY_ID = {}; REGIONS.forEach(function (r) { REGION_BY_ID[r.id] = r; });
+  function currentRegion() { return REGION_BY_ID[DATA.defaultRegionId] || REGIONS[0] || { id: 'rg', name: 'Region', manager: '', markets: [] }; }
+  function mrng(name, salt) { return mulberry(hashStr('mkt:' + name + ':' + salt)); }
+  function marketFunnelObj(name) { var r = mrng(name, 'fun'); return { estimate: 78 + r() * 11, ro: 61 + r() * 15, arrive: 5.8 + r() * 2.2 }; }
+  function marketPacingObj(name) { var r = mrng(name, 'pac'); return { budget: 3800000 + Math.floor(r() * 4600000), closedPace: 0.80 + r() * 0.30, forecastFactor: 0.88 + r() * 0.20 }; }
+  function marketPlanActivity(name) {
+    var r = mrng(name, 'plan');
+    var open = 1 + Math.floor(r() * 7);
+    var blocked = Math.floor(r() * Math.min(3, open));
+    var inprog = Math.min(open - blocked, Math.floor(r() * (open + 1)));
+    var atRisk = Math.floor(r() * 4);
+    return { open: open, blocked: blocked, inprog: Math.max(0, inprog), atRisk: atRisk };
+  }
+  function regionFunnelAvg(region) {
+    var ids = region.markets, n = ids.length || 1, acc = {};
+    ids.forEach(function (nm) { var f = marketFunnelObj(nm); KPI_FUNNEL.forEach(function (m) { acc[m.key] = (acc[m.key] || 0) + f[m.key]; }); });
+    var out = {}; KPI_FUNNEL.forEach(function (m) { out[m.key] = acc[m.key] / n; });
+    return out;
+  }
+
   function kpiFunnelValuesFor(storeId) {
+    if (isMarketScope(storeId)) return marketFunnelObj(storeId.slice(5));
+    if (storeId === 'region') return regionFunnelAvg(currentRegion());
     var ids = resolveIds(storeId).filter(function (id) { return KPIS_BY_STORE[id]; });
     if (ids.length === 1) return KPIS_BY_STORE[ids[0]];
     var acc = {}, n = ids.length;
@@ -555,9 +592,7 @@
     ids.forEach(function (id) { b += PACING_BY_STORE[id].budget; cp += PACING_BY_STORE[id].closedPace; ff += PACING_BY_STORE[id].forecastFactor; });
     return { budget: b / n, closedPace: cp / n, forecastFactor: ff / n };
   }
-  function computePacing(storeId) {
-    var ids = resolveIds(storeId);
-    var base = (ids.length === 1 && PACING_BY_STORE[ids[0]]) ? PACING_BY_STORE[ids[0]] : avgPacingOver(ids);
+  function pacingFromBase(base, seedKey) {
     var frac = MTD.day / MTD.daysInMonth;
     var budget = base.budget;
     var mtdTarget = budget * frac;
@@ -568,14 +603,27 @@
     var pctClosedToBudget = closedMTD / budget * 100;
     var pacePct = frac * 100;
     var daysBehind = (mtdTarget - closedMTD) / (budget / 22);
-    var dr = mulberry(hashStr(storeId + ':dnc'));
+    var dr = mulberry(hashStr(seedKey + ':dnc'));
     var dncCount = 3 + Math.floor(dr() * 6);
     var dncValue = dncCount * (12000 + dr() * 9000);
     var weeklyTarget = budget / (MTD.daysInMonth / 7);
-    var weeks = weekSeries(storeId, weeklyTarget);
+    var weeks = weekSeries(seedKey, weeklyTarget);
     return { budget: budget, mtdTarget: mtdTarget, closedMTD: closedMTD, forecast: forecast, fillTarget: fillTarget,
       closedVariance: closedVariance, pctClosedToBudget: pctClosedToBudget, pacePct: pacePct, daysBehind: daysBehind,
       monthlyClosed: budget * base.closedPace, dncCount: dncCount, dncValue: dncValue, weeks: weeks };
+  }
+  function computeMarketPacing(name) { return pacingFromBase(marketPacingObj(name), 'mkt::' + name); }
+  function computeRegionPacing(region) {
+    var ids = region.markets, n = ids.length || 1, b = 0, cp = 0, ff = 0;
+    ids.forEach(function (nm) { var mp = marketPacingObj(nm); b += mp.budget; cp += mp.closedPace; ff += mp.forecastFactor; });
+    return pacingFromBase({ budget: b, closedPace: cp / n, forecastFactor: ff / n }, 'region:' + region.id);
+  }
+  function computePacing(storeId) {
+    if (isMarketScope(storeId)) return computeMarketPacing(storeId.slice(5));
+    if (storeId === 'region') return computeRegionPacing(currentRegion());
+    var ids = resolveIds(storeId);
+    var base = (ids.length === 1 && PACING_BY_STORE[ids[0]]) ? PACING_BY_STORE[ids[0]] : avgPacingOver(ids);
+    return pacingFromBase(base, storeId);
   }
   function statusOf(actual, target) {
     var r = actual / target;
@@ -681,9 +729,11 @@
     if (!root) return;
     var fvals = kpiFunnelValuesFor(storeId);
     var p = computePacing(storeId);
-    var name = storeId === 'all' ? 'All stores' : (STORE_BY_ID[storeId] ? shortStore(STORE_BY_ID[storeId].name) : 'All stores');
+    var isMkt = isMarketScope(storeId);
+    var name = isMkt ? storeId.slice(5) : (storeId === 'all' ? 'All stores' : (STORE_BY_ID[storeId] ? shortStore(STORE_BY_ID[storeId].name) : 'All stores'));
+    var title = isMkt ? name + ' — Market KPIs' : possessive(name) + ' KPIs';
     var html = '';
-    html += '<div class="kpi-head"><p class="kpi-title" data-testid="kpi-page-title">' + esc(possessive(name) + ' KPIs') + '</p>' +
+    html += '<div class="kpi-head"><p class="kpi-title" data-testid="kpi-page-title">' + esc(title) + '</p>' +
       '<p class="kpi-sub" data-testid="kpi-page-subtitle">80/70/7</p></div>';
     html += '<div class="kpi-funnel" data-testid="capture-rate-metrics">' +
       KPI_FUNNEL.map(function (m) { return funnelBoxHTML(m, fvals[m.key]); }).join('') + '</div>';
@@ -955,18 +1005,30 @@
     return { id: id, name: s.name, ro: ro, closed: pc.closedMTD, pctBudget: pctBudget, pace: pace, daysBehind: daysBehind, openPlans: openPlans, atRisk: atRisk, risk: risk, status: status };
   }
 
-  function marketRowsSorted() {
-    var rows = MARKET.storeIds.map(shopRow), k = marketSort.key, dir = marketSort.dir === 'asc' ? 1 : -1;
-    rows.sort(function (a, b) {
+  /* a market row for the region scorecard — generated, no underlying stores */
+  function marketRow(name) {
+    var f = marketFunnelObj(name), pc = computeMarketPacing(name), act = marketPlanActivity(name);
+    var pctBudget = pc.pctClosedToBudget, pace = pc.pacePct, daysBehind = pc.daysBehind, ro = f.ro;
+    var risk = 0;
+    if (daysBehind > 1.5) risk += 2; else if (daysBehind > 0.5) risk += 1;
+    if (pctBudget < pace - 5) risk += 2; else if (pctBudget < pace - 2) risk += 1;
+    if (ro < 68) risk += 1;
+    if (act.atRisk >= 3) risk += 1;
+    var status = risk >= 3 ? { w: 'Behind', c: 'serious' } : risk >= 1 ? { w: 'Watch', c: 'warn' } : { w: 'On track', c: 'good' };
+    return { id: 'mkt::' + name, name: name, ro: ro, closed: pc.closedMTD, pctBudget: pctBudget, pace: pace, daysBehind: daysBehind, openPlans: act.open, atRisk: act.atRisk, risk: risk, status: status };
+  }
+
+  function sortScorecard(rows) {
+    var k = marketSort.key, dir = marketSort.dir === 'asc' ? 1 : -1;
+    return rows.slice().sort(function (a, b) {
       var va = k === 'status' ? a.risk : a[k], vb = k === 'status' ? b.risk : b[k];
       if (va < vb) return -1 * dir; if (va > vb) return 1 * dir; return 0;
     });
-    return rows;
   }
-
-  function marketTableHTML() {
+  /* shared scorecard used by the Market (shops) and Region (markets) roll-ups */
+  function scorecardHTML(rows, firstLabel) {
     var cols = [
-      { k: 'name', label: 'Shop', num: false },
+      { k: 'name', label: firstLabel, num: false },
       { k: 'ro', label: 'Opp. to RO', num: true },
       { k: 'closed', label: 'Closed MTD', num: true },
       { k: 'pctBudget', label: '% to Budget', num: true },
@@ -979,12 +1041,12 @@
       var arrow = marketSort.key === c.k ? (marketSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
       return '<th class="' + (c.num ? 'num' : '') + '" data-sort="' + c.k + '" tabindex="0">' + esc(c.label) + arrow + '</th>';
     }).join('') + '</tr>';
-    var rows = marketRowsSorted().map(function (r) {
+    var body = sortScorecard(rows).map(function (r) {
       var roCls = r.ro >= 70 ? 'ok' : 'bad';
       var budCls = r.pctBudget >= r.pace ? 'ok' : 'bad';
       var dbCls = r.daysBehind > 0.5 ? 'bad' : (r.daysBehind < -0.05 ? 'ok' : '');
       var arCls = r.atRisk > 0 ? 'bad' : '';
-      return '<tr data-store="' + r.id + '" tabindex="0" role="button" aria-label="Open ' + esc(r.name) + ' dashboard">' +
+      return '<tr data-store="' + esc(r.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(r.name) + ' dashboard">' +
         '<td class="shop">' + esc(r.name) + '</td>' +
         '<td class="num ' + roCls + '">' + Math.round(r.ro) + '%</td>' +
         '<td class="num">' + esc(money(r.closed)) + '</td>' +
@@ -995,10 +1057,12 @@
         '<td><span class="mk-status ' + r.status.c + '">' + esc(r.status.w) + '</span></td>' +
       '</tr>';
     }).join('');
-    return '<table class="mk-table"><thead>' + thead + '</thead><tbody>' + rows + '</tbody></table>';
+    return '<table class="mk-table"><thead>' + thead + '</thead><tbody>' + body + '</tbody></table>';
   }
+  function marketTableHTML() { return scorecardHTML(MARKET.storeIds.map(shopRow), 'Shop'); }
+  function regionTableHTML(region) { return scorecardHTML(region.markets.map(marketRow), 'Market'); }
 
-  function wireMarketTable() {
+  function wireScorecard(rebuild) {
     var wrap = document.getElementById('mkTableWrap'); if (!wrap) return;
     wrap.addEventListener('click', function (e) {
       var th = e.target.closest('th[data-sort]');
@@ -1006,7 +1070,7 @@
         var k = th.getAttribute('data-sort');
         if (marketSort.key === k) marketSort.dir = marketSort.dir === 'asc' ? 'desc' : 'asc';
         else { marketSort.key = k; marketSort.dir = (k === 'name') ? 'asc' : 'desc'; }
-        wrap.innerHTML = marketTableHTML();
+        wrap.innerHTML = rebuild();
         return;
       }
       var tr = e.target.closest('tr[data-store]');
@@ -1036,12 +1100,36 @@
       '<div class="trend-hint">Sort by any column; click a shop to drill into its dashboard.</div></div>';
     html += trendsSectionHTML();
     root.innerHTML = html;
-    wireMarketTable();
+    wireScorecard(marketTableHTML);
     drawTrends('book');
     wireTrends('book');
   }
 
+  function renderRegionKpis() {
+    var root = document.getElementById('kpiRoot'); if (!root) return;
+    var region = currentRegion();
+    var fvals = regionFunnelAvg(region);
+    var rows = region.markets.map(marketRow);
+    var behindCount = rows.filter(function (r) { return r.status.w === 'Behind'; }).length;
+    var openPlans = rows.reduce(function (a, r) { return a + r.openPlans; }, 0);
+    var html = '';
+    html += '<div class="kpi-head"><p class="kpi-title" data-testid="kpi-page-title">' + esc(region.name + ' — Region KPIs') + '</p>' +
+      '<p class="kpi-sub" data-testid="kpi-page-subtitle">80/70/7</p>' +
+      '<p class="mk-lead">Regional Manager · ' + esc(region.manager) + ' · ' + region.markets.length + ' markets · ' +
+      '<b>' + behindCount + '</b> behind · <b>' + openPlans + '</b> open action plans</p></div>';
+    html += '<div class="kpi-funnel">' + KPI_FUNNEL.map(function (m) { return funnelBoxHTML(m, fvals[m.key]); }).join('') + '</div>';
+    html += '<div class="kpi-section"><div class="kpi-section-title">Markets in region</div>' +
+      '<div class="mk-table-wrap" id="mkTableWrap">' + regionTableHTML(region) + '</div>' +
+      '<div class="trend-hint">Sort by any column; click a market to drill into its dashboard.</div></div>';
+    html += trendsSectionHTML();
+    root.innerHTML = html;
+    wireScorecard(function () { return regionTableHTML(region); });
+    drawTrends('region');
+    wireTrends('region');
+  }
+
   function renderKpiTab(storeId) {
+    if (state.role === 'regional') { if (storeId === 'region') renderRegionKpis(); else renderKpis(storeId); return; }
     if (state.role === 'market' && storeId === 'book') renderMarketKpis();
     else renderKpis(storeId);
   }
@@ -1053,10 +1141,15 @@
       b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
     });
     var note = document.getElementById('protoNote');
-    if (note) note.textContent = role === 'market'
-      ? MARKET.name + ' — a roll-up across the book of ' + MARKET.storeIds.length + ' shops, with a shop-by-shop scorecard. Drill into any shop from the selector.'
-      : 'One shop’s Action Plans and KPIs. Use the location selector to choose the shop.';
-    state.store = role === 'market' ? 'book' : (DATA.defaultStoreId || (DATA.stores[0] && DATA.stores[0].id));
+    if (note) {
+      var rg = currentRegion();
+      note.textContent = role === 'market'
+        ? MARKET.name + ' — a roll-up across the book of ' + MARKET.storeIds.length + ' shops, with a shop-by-shop scorecard. Drill into any shop from the selector.'
+        : role === 'regional'
+        ? rg.name + ' region — a roll-up across ' + rg.markets.length + ' markets, with a market-by-market scorecard. Drill into any market from the selector.'
+        : 'One shop’s Action Plans and KPIs. Use the location selector to choose the shop.';
+    }
+    state.store = role === 'market' ? 'book' : role === 'regional' ? 'region' : (DATA.defaultStoreId || (DATA.stores[0] && DATA.stores[0].id));
     setStore(state.store);
   }
 

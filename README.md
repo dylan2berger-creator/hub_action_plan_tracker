@@ -11,7 +11,8 @@ dashboard — switched from the nav and both driven by the shared store selector
 
 ## Prototype view switcher (roles)
 
-A **Prototype** banner across the top lets you see the same tabs through two roles:
+A **Prototype** banner across the top lets you see the same tabs through three roles,
+each a wider scope than the last (shop → market → region):
 
 - **General Manager (shop level)** — the default. One shop at a time; the location
   selector picks the shop, and both tabs show just that store.
@@ -23,6 +24,20 @@ A **Prototype** banner across the top lets you see the same tabs through two rol
   Closed MTD, % to Budget, Days Behind, open plans, at-risk tasks, and a
   Behind / Watch / On-track status) — click any shop to drill into its dashboard.
   The trends chart rolls up to the book.
+- **Regional Manager (region of ~20 markets)** — scope becomes the manager's
+  **region**: one of nine logical geographic regions that group the full market
+  taxonomy (125 markets → Pacific, Mountain West, South Central, Gulf South,
+  Southeast, Florida, Great Lakes, Heartland, Northeast). The demo defaults to the
+  20-market **Heartland** region. The location selector switches to **All my
+  markets** + the region's markets, and the **KPIs tab becomes a region roll-up**:
+  a region-average funnel, a summary (markets behind / open action plans), and a
+  sortable **market scorecard** (same columns, one row per market) — click any
+  market to drill into its dashboard. Per-market KPIs are generated deterministically
+  from the market name (this prototype instruments one market with real shop data;
+  the rest are modeled roll-ups). The Action Plans board shows the region's active
+  plans.
+
+![Regional Manager region roll-up](assets/preview-region.png)
 
 ![Market Manager roll-up](assets/preview-market.png)
 
@@ -132,7 +147,7 @@ value, per store.
 | `assets/hub-shell.css` | The Hub's actual shipped layout/navigation CSS, imported verbatim. |
 | `assets/styles.css` | The Hub design tokens + all Action-Plans component styles. |
 | `assets/thehub.svg` | The official "THE HUB" logo. |
-| `assets/data.js` | The mock dataset — stores, plans, tasks, cross-links, and per-store KPI snapshots (`window.HUB_DATA`). |
+| `assets/data.js` | The mock dataset — stores, plans, tasks, cross-links, per-store KPI snapshots, the Market Manager's book, and the nine **regions** grouping all 125 markets (`window.HUB_DATA`). |
 | `assets/app.js` | Tab switching, board state, drag & drop, store switching, filters, the task modal, and the KPI dashboard (funnel boxes, tiles, sparklines). |
 
 ## How this maps onto the real Hub
