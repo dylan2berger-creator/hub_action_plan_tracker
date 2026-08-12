@@ -8,7 +8,7 @@
 window.HUB_DATA = {
   referenceDate: "2026-08-10",
 
-  personas: ["Market Manager (CPM)", "RDO", "Shop GM", "National Account Manager", "RVP", "Sales"],
+  personas: ["Market Manager", "CPM", "RDO", "Shop GM", "National Account Manager", "RVP", "Sales"],
 
   rootCauses: [
     { key: "drp-scorecard",     label: "DRP Scorecard",        dot: "#00529b", bg: "#dbe8f5", fg: "#0b3d6b" },
@@ -81,11 +81,11 @@ window.HUB_DATA = {
     },
     {
       id: "AP-202", storeId: "s2", rootCauseCategory: "drp-scorecard", parentPlanId: "AP-201",
-      carrier: "State Farm", owningPersona: "Market Manager (CPM)", openedDate: "2026-06-25", targetCloseDate: "2026-09-30",
+      carrier: "State Farm", owningPersona: "CPM", openedDate: "2026-06-25", targetCloseDate: "2026-09-30",
       diagnosis: "Keys-to-keys cycle time is out of tolerance on the State Farm Select Service scorecard. The cause is the booth outage (AP-201), not process - documenting the linkage so the carrier sees remediation in flight instead of a process failure.",
       tasks: [
         { id: "AP-202-t1", title: "Meet State Farm field rep to review scorecard metrics", description: "Walk the rep through the booth root cause and the remediation timeline so the cycle-time miss is understood in context.",
-          ownerName: "Marcus Delgado", ownerRole: "Market Manager (CPM)", column: "inprogress", createdDate: "2026-06-26", dueDate: "2026-08-15", priority: "high",
+          ownerName: "Marcus Delgado", ownerRole: "CPM", column: "inprogress", createdDate: "2026-06-26", dueDate: "2026-08-15", priority: "high",
           risk: "Rep may still hold the store to program tolerance regardless of cause.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 60 },
           activityLog: [
@@ -101,7 +101,7 @@ window.HUB_DATA = {
             { date: "2026-07-18", note: "Granted for the outage window; routing hold lifted." }
           ] },
         { id: "AP-202-t3", title: "Re-baseline WIP and confirm cycle-time reporting once booth returns", description: "After the booth is restored, verify the cycle-time metric on the scorecard reflects the recovered flow.",
-          ownerName: "Marcus Delgado", ownerRole: "Market Manager (CPM)", column: "verifying", createdDate: "2026-07-02", dueDate: "2026-09-20", priority: "medium",
+          ownerName: "Marcus Delgado", ownerRole: "CPM", column: "verifying", createdDate: "2026-07-02", dueDate: "2026-09-20", priority: "medium",
           risk: "Signal lags the fix by weeks; premature reads will look flat.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 60 },
           activityLog: [
@@ -269,7 +269,7 @@ window.HUB_DATA = {
     },
     {
       id: "AP-103", storeId: "s3", rootCauseCategory: "drp-scorecard", parentPlanId: "AP-104",
-      carrier: "Progressive", owningPersona: "Market Manager (CPM)", openedDate: "2026-05-20", targetCloseDate: "2026-09-15",
+      carrier: "Progressive", owningPersona: "CPM", openedDate: "2026-05-20", targetCloseDate: "2026-09-15",
       diagnosis: "Supplement frequency is high on the Progressive scorecard because initial estimates are incomplete - the same estimating skill-mix gap as AP-104. Blueprinting discipline should pull it back.",
       tasks: [
         { id: "AP-103-t1", title: "Stand up full-teardown blueprinting SOP", description: "Require complete disassembly and blueprint before the estimate is finalized on all but the lightest hits.",
@@ -336,7 +336,7 @@ window.HUB_DATA = {
       diagnosis: "Nothing is broken here - the store simply isn't equipped for in-house ADAS calibration and sublets every one. That adds days to cycle time and gives away the calibration labor. This is a capability gap, not a repair.",
       tasks: [
         { id: "AP-107-t1", title: "Build the business case for an in-house ADAS calibration rig", description: "Model in-house calibration versus sublet on cycle time and captured labor to support a capex request.",
-          ownerName: "Elaine Cho", ownerRole: "Market Manager (CPM)", column: "identified", createdDate: "2026-05-29", dueDate: "2026-08-22", priority: "medium",
+          ownerName: "Elaine Cho", ownerRole: "CPM", column: "identified", createdDate: "2026-05-29", dueDate: "2026-08-22", priority: "medium",
           risk: "Case must account for training and floor space, not just the rig.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 60 },
           activityLog: [
@@ -352,7 +352,7 @@ window.HUB_DATA = {
             { date: "2026-07-24", note: "RVP asked to prioritize against Gambrills frame capex first." }
           ] },
         { id: "AP-107-t3", title: "Evaluate in-house rig versus a mobile calibration vendor", description: "Compare owning a rig against a scheduled mobile-calibration vendor as a lower-capex bridge.",
-          ownerName: "Elaine Cho", ownerRole: "Market Manager (CPM)", column: "identified", createdDate: "2026-06-12", dueDate: "2026-09-02", priority: "low",
+          ownerName: "Elaine Cho", ownerRole: "CPM", column: "identified", createdDate: "2026-06-12", dueDate: "2026-09-02", priority: "low",
           risk: "Mobile vendors still add scheduling days versus in-house.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 60 },
           activityLog: [
@@ -364,7 +364,7 @@ window.HUB_DATA = {
     /* ===================== HAMMOND (s6) - on program, no assignments ===================== */
     {
       id: "AP-108", storeId: "s6", rootCauseCategory: "drp-participation",
-      carrier: "GEICO", owningPersona: "Market Manager (CPM)", openedDate: "2026-06-02", targetCloseDate: "2026-08-05",
+      carrier: "GEICO", owningPersona: "CPM", openedDate: "2026-06-02", targetCloseDate: "2026-08-05",
       diagnosis: "The store is on GEICO ARX but assignment volume dried up. The portal capacity flag is stuck at 'full' and aged open files are suppressing routing - an administrative participation problem, not a capacity one.",
       tasks: [
         { id: "AP-108-t1", title: "Correct the stuck capacity flag in the GEICO portal", description: "Reset the portal availability flag so the store shows open for routing.",
@@ -384,7 +384,7 @@ window.HUB_DATA = {
             { date: "2026-07-28", note: "Closeable files worked down; a handful stuck on total-loss docs." }
           ] },
         { id: "AP-108-t3", title: "Confirm routing restored with GEICO rep", description: "Verify with the GEICO rep that assignments resume once the flag and aged files are cleared.",
-          ownerName: "Marcus Delgado", ownerRole: "Market Manager (CPM)", column: "verifying", createdDate: "2026-06-10", dueDate: "2026-08-20", priority: "medium",
+          ownerName: "Marcus Delgado", ownerRole: "CPM", column: "verifying", createdDate: "2026-06-10", dueDate: "2026-08-20", priority: "medium",
           risk: "Routing can take a cycle to normalize after cleanup.",
           verificationSignal: { metric: "DRP Assignment Volume", lagDays: 30 },
           activityLog: [
@@ -494,7 +494,7 @@ window.HUB_DATA = {
     /* ===================== SCHERERVILLE (s10) ===================== */
     {
       id: "AP-112", storeId: "s10", rootCauseCategory: "drp-scorecard",
-      carrier: "Liberty Mutual", owningPersona: "Market Manager (CPM)", openedDate: "2026-03-20", targetCloseDate: "2026-08-15",
+      carrier: "Liberty Mutual", owningPersona: "CPM", openedDate: "2026-03-20", targetCloseDate: "2026-08-15",
       diagnosis: "Estimate accuracy is low against Liberty Mutual guidelines, driving rework and supplements. Calibration and a first-estimate QC gate should bring it back.",
       tasks: [
         { id: "AP-112-t1", title: "Calibrate estimators to Liberty Mutual guidelines", description: "Align estimating practice to Liberty's guidelines to lift first-estimate accuracy.",
@@ -506,7 +506,7 @@ window.HUB_DATA = {
             { date: "2026-06-10", note: "First-estimate rework visibly down in file reviews." }
           ] },
         { id: "AP-112-t2", title: "Run a first-estimate QC review on complex files", description: "Add a quick second set of eyes on complex first estimates before they go out.",
-          ownerName: "Elaine Cho", ownerRole: "Market Manager (CPM)", column: "verifying", createdDate: "2026-03-28", dueDate: "2026-08-22", priority: "medium",
+          ownerName: "Elaine Cho", ownerRole: "CPM", column: "verifying", createdDate: "2026-03-28", dueDate: "2026-08-22", priority: "medium",
           risk: "QC step can slow throughput if it's not lightweight.",
           verificationSignal: { metric: "Estimate Accuracy", lagDays: 45 },
           activityLog: [
@@ -514,7 +514,7 @@ window.HUB_DATA = {
             { date: "2026-07-28", note: "Watching the scorecard to confirm accuracy holds." }
           ] },
         { id: "AP-112-t3", title: "Monitor Estimate Accuracy on the Liberty scorecard", description: "Track the metric to confirm the calibration and QC gate moved and held the number.",
-          ownerName: "Elaine Cho", ownerRole: "Market Manager (CPM)", column: "verifying", createdDate: "2026-04-05", dueDate: "2026-08-25", priority: "low",
+          ownerName: "Elaine Cho", ownerRole: "CPM", column: "verifying", createdDate: "2026-04-05", dueDate: "2026-08-25", priority: "low",
           risk: "Improvement can regress if calibration isn't refreshed.",
           verificationSignal: { metric: "Estimate Accuracy", lagDays: 45 },
           activityLog: [
@@ -617,11 +617,11 @@ window.HUB_DATA = {
     },
     {
       id: "AP-116", storeId: "s12", rootCauseCategory: "drp-participation",
-      carrier: "Nationwide", owningPersona: "Market Manager (CPM)", openedDate: "2026-07-10", targetCloseDate: "2026-08-01",
+      carrier: "Nationwide", owningPersona: "CPM", openedDate: "2026-07-10", targetCloseDate: "2026-08-01",
       diagnosis: "Nationwide routing share slipped as aged open files piled up and the portal began deprioritizing the store. On the program, but assignments are drying up - an administrative cleanup, distinct from the CSI plan.",
       tasks: [
         { id: "AP-116-t1", title: "Reconcile portal file statuses against shop management system", description: "Sync the carrier portal statuses to the true state of files so routing logic sees accurate availability.",
-          ownerName: "Elaine Cho", ownerRole: "Market Manager (CPM)", column: "inprogress", createdDate: "2026-07-11", dueDate: "2026-08-13", priority: "high",
+          ownerName: "Elaine Cho", ownerRole: "CPM", column: "inprogress", createdDate: "2026-07-11", dueDate: "2026-08-13", priority: "high",
           risk: "Portal and management-system mismatches recur without a routine.",
           verificationSignal: { metric: "DRP Assignment Volume", lagDays: 30 },
           activityLog: [
@@ -636,7 +636,7 @@ window.HUB_DATA = {
             { date: "2026-07-31", note: "Chasing remaining sign-offs to clear the list." }
           ] },
         { id: "AP-116-t3", title: "Confirm routing recovery with Nationwide rep", description: "Verify with the rep that routing normalizes after the portal cleanup.",
-          ownerName: "Marcus Delgado", ownerRole: "Market Manager (CPM)", column: "identified", createdDate: "2026-07-18", dueDate: "2026-08-22", priority: "medium",
+          ownerName: "Marcus Delgado", ownerRole: "CPM", column: "identified", createdDate: "2026-07-18", dueDate: "2026-08-22", priority: "medium",
           risk: "Routing may take a cycle to reflect the cleanup.",
           verificationSignal: { metric: "DRP Assignment Volume", lagDays: 30 },
           activityLog: [
@@ -648,7 +648,7 @@ window.HUB_DATA = {
     /* ===================== MESA (s13) ===================== */
     {
       id: "AP-117", storeId: "s13", rootCauseCategory: "other",
-      carrier: "Farmers", owningPersona: "Market Manager (CPM)", openedDate: "2026-07-15", targetCloseDate: "2026-10-10",
+      carrier: "Farmers", owningPersona: "CPM", openedDate: "2026-07-15", targetCloseDate: "2026-10-10",
       diagnosis: "The store under-captures on Farmers work - alternative parts usage and supplements run below program expectations, and rules-driven operations are missed. Volume is fine; capture discipline is the gap.",
       tasks: [
         { id: "AP-117-t1", title: "Stand up a parts-sourcing workflow for recycled/aftermarket", description: "Give estimators a sourcing step so alternative parts are considered and captured per Farmers rules.",
@@ -659,14 +659,14 @@ window.HUB_DATA = {
             { date: "2026-07-17", note: "Sourcing step drafted for the estimate workflow." }
           ] },
         { id: "AP-117-t2", title: "Coach estimators on Farmers rules adherence", description: "Coaching on the specific Farmers rules where the store is under-writing operations and parts.",
-          ownerName: "Elaine Cho", ownerRole: "Market Manager (CPM)", column: "inprogress", createdDate: "2026-07-18", dueDate: "2026-08-19", priority: "medium",
+          ownerName: "Elaine Cho", ownerRole: "CPM", column: "inprogress", createdDate: "2026-07-18", dueDate: "2026-08-19", priority: "medium",
           risk: "Coaching needs audit reinforcement to hold.",
           verificationSignal: { metric: "Rules Adherence Score", lagDays: 45 },
           activityLog: [
             { date: "2026-07-20", note: "First coaching session held against recent Farmers files." }
           ] },
         { id: "AP-117-t3", title: "Add a weekly rules-adherence audit on Farmers files", description: "Sample Farmers files weekly to confirm parts and operations are being captured to rule.",
-          ownerName: "Marcus Delgado", ownerRole: "Market Manager (CPM)", column: "identified", createdDate: "2026-07-22", dueDate: "2026-08-29", priority: "low",
+          ownerName: "Marcus Delgado", ownerRole: "CPM", column: "identified", createdDate: "2026-07-22", dueDate: "2026-08-29", priority: "low",
           risk: "Audit only helps if findings loop back to coaching.",
           verificationSignal: { metric: "Rules Adherence Score", lagDays: 45 },
           activityLog: [

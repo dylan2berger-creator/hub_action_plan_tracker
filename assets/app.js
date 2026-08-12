@@ -1791,7 +1791,7 @@
     fPriority.innerHTML = PRIORITIES.map(function (p) { return '<option value="' + p.key + '">' + esc(p.label) + '</option>'; }).join('');
     fRoot.innerHTML = (DATA.rootCauses || []).map(function (r) { return '<option value="' + r.key + '">' + esc(r.label) + '</option>'; }).join('');
     fRole.setAttribute('list', 'roleOptions');
-    document.getElementById('roleOptions').innerHTML = ['Market Manager (CPM)', 'RDO', 'Shop GM', 'Estimator', 'Body Technician', 'Refinish Technician', 'Painter', 'Parts Manager', 'CSR', 'National Account Manager', 'RVP', 'ADAS Calibration Tech', 'Facilities / Capex', 'HR Recruiter', 'Regional Fixed Ops', 'Sales Rep']
+    document.getElementById('roleOptions').innerHTML = ['Market Manager', 'CPM', 'RDO', 'Shop GM', 'Estimator', 'Body Technician', 'Refinish Technician', 'Painter', 'Parts Manager', 'CSR', 'National Account Manager', 'RVP', 'ADAS Calibration Tech', 'Facilities / Capex', 'HR Recruiter', 'Regional Fixed Ops', 'Sales Rep']
       .map(function (r) { return '<option value="' + esc(r) + '">'; }).join('');
 
     fPlan.addEventListener('change', function () { var pl = PLAN_BY_ID[fPlan.value]; if (pl) fRoot.value = pl.rootCauseCategory; renderContext(fPlan.value, editingId ? findTask(editingId) : null); });

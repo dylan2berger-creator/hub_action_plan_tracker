@@ -2,7 +2,7 @@
 
 An **Action Plans** tab for *The Hub* - a self-contained prototype for tracking
 **challenged-store remediation** across a Boyd Group / Gerber Collision market. A
-Market Manager (CPM) or GM diagnoses *why* a store is missing revenue targets,
+Market Manager, CPM, or GM diagnoses *why* a store is missing revenue targets,
 builds an action plan, assigns tasks, and tracks whether the intervention actually
 moved the metric. Built on The Hub's real navigation shell and design system.
 
