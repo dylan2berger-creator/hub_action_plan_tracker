@@ -575,8 +575,16 @@
 
   /* ---------------- modal (edit + context) ---------------- */
   var overlay, modalTitle, deleteBtn,
-      fPlan, fTitle, fDesc, fOwner, fRole, fRoot, fStatus, fPriority, fDue, fRisk, fBlocked, fMetric, fLag,
+      fPlan, fTitle, fDesc, fOwner, fRole, fRoot, fCarrier, fStatus, fPriority, fDue, fRisk, fBlocked, fMetric, fLag,
       logWrap, noteInput;
+  // DRP root causes require an insurance carrier to be selected.
+  function isDrpRoot(k) { return k === 'drp-scorecard' || k === 'drp-participation'; }
+  function updateCarrierReq() {
+    var row = document.getElementById('carrierRow'); if (!row || !fRoot) return;
+    var req = isDrpRoot(fRoot.value);
+    row.classList.toggle('required', req);
+    if (!req) row.classList.remove('invalid');   // clear a stale error once it's no longer required
+  }
 
   function planLabel(p) { var s = STORE_BY_ID[p.storeId]; return (s ? s.name : p.storeId) + ' - Action plan'; }
   function planOptionsHTML(selectedPlanId) {
@@ -620,6 +628,9 @@
     fBlocked.value = t ? (t.blockedReason || '') : '';
     fMetric.value = t && t.verificationSignal ? (t.verificationSignal.metric || '') : '';
     fLag.value = t && t.verificationSignal && t.verificationSignal.lagDays != null ? t.verificationSignal.lagDays : '';
+    fCarrier.value = t ? (t.carrier || '') : '';
+    if (fCarrier.closest('.form-row')) fCarrier.closest('.form-row').classList.remove('invalid');
+    updateCarrierReq();
 
     renderContext(planId, t);
     overlay.classList.add('open');
@@ -681,6 +692,10 @@
     e.preventDefault();
     var title = fTitle.value.trim();
     if (!title) { fTitle.closest('.form-row').classList.add('invalid'); fTitle.focus(); return; }
+    var carrier = fCarrier.value;
+    if (isDrpRoot(fRoot.value) && !carrier) {   // DRP root causes require a carrier
+      fCarrier.closest('.form-row').classList.add('invalid'); fCarrier.focus(); return;
+    }
     var metric = fMetric.value.trim();
     var lag = fLag.value.trim();
     var vs = metric ? { metric: metric, lagDays: lag ? parseInt(lag, 10) : null } : null;
@@ -692,6 +707,7 @@
       ownerName: fOwner.value.trim(),
       ownerRole: fRole.value.trim(),
       rootCauseCategory: fRoot.value,
+      carrier: carrier,
       column: fStatus.value,
       priority: fPriority.value,
       dueDate: fDue.value || '',
@@ -1894,6 +1910,7 @@
     fOwner = document.getElementById('fOwner');
     fRole = document.getElementById('fRole');
     fRoot = document.getElementById('fRoot');
+    fCarrier = document.getElementById('fCarrier');
     fStatus = document.getElementById('fStatus');
     fPriority = document.getElementById('fPriority');
     fDue = document.getElementById('fDue');
@@ -1906,11 +1923,14 @@
     fStatus.innerHTML = COLUMNS.map(function (c) { return '<option value="' + c.key + '">' + esc(c.label) + '</option>'; }).join('');
     fPriority.innerHTML = PRIORITIES.map(function (p) { return '<option value="' + p.key + '">' + esc(p.label) + '</option>'; }).join('');
     fRoot.innerHTML = (DATA.rootCauses || []).map(function (r) { return '<option value="' + r.key + '">' + esc(r.label) + '</option>'; }).join('');
+    if (fCarrier) fCarrier.innerHTML = '<option value="">None</option>' + CARRIERS.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
     fRole.setAttribute('list', 'roleOptions');
     document.getElementById('roleOptions').innerHTML = ['Market Manager', 'CPM', 'RDO', 'Shop GM', 'Estimator', 'Body Technician', 'Refinish Technician', 'Painter', 'Parts Manager', 'CSR', 'National Account Manager', 'RVP', 'ADAS Calibration Tech', 'Facilities / Capex', 'HR Recruiter', 'Regional Fixed Ops', 'Sales Rep']
       .map(function (r) { return '<option value="' + esc(r) + '">'; }).join('');
 
-    fPlan.addEventListener('change', function () { var pl = PLAN_BY_ID[fPlan.value]; if (pl) fRoot.value = pl.rootCauseCategory; renderContext(fPlan.value, editingId ? findTask(editingId) : null); });
+    fPlan.addEventListener('change', function () { var pl = PLAN_BY_ID[fPlan.value]; if (pl) fRoot.value = pl.rootCauseCategory; updateCarrierReq(); renderContext(fPlan.value, editingId ? findTask(editingId) : null); });
+    fRoot.addEventListener('change', updateCarrierReq);
+    if (fCarrier) fCarrier.addEventListener('change', function () { fCarrier.closest('.form-row').classList.remove('invalid'); });
     document.getElementById('actionForm').addEventListener('submit', submitForm);
     document.getElementById('cancelBtn').addEventListener('click', closeModal);
     deleteBtn.addEventListener('click', deleteCurrent);

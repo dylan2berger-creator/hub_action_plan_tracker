@@ -499,8 +499,10 @@ button { font-family: inherit; }
   border-color: var(--primary); box-shadow: 0 0 0 2px #00529b22;
 }
 .form-row .err { color: var(--error-strong); font-size: 12px; display: none; }
-.form-row.invalid input { border-color: var(--error-strong); }
+.form-row.invalid input, .form-row.invalid select { border-color: var(--error-strong); }
 .form-row.invalid .err { display: block; }
+.req-star { display: none; color: var(--error-strong); font-weight: 700; }
+.form-row.required .req-star { display: inline; }
 /* the action plan is locked to the shop - one plan per shop */
 .form-row select.locked, .form-row select:disabled {
   background: #f4f6f9 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='%2372808d'><path d='M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2M9 6a3 3 0 0 1 6 0v2H9z'/></svg>") no-repeat right 10px center;

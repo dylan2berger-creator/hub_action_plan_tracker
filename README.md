@@ -114,7 +114,9 @@ another shop's plan.
   **Status** control that moves the task between columns - and the task's
   activity-log timeline (with add-note) on the right.
 - **New task** attaches to any plan via the plan picker, and carries its own
-  **Root cause** field (defaults to the chosen plan's root cause).
+  **Root cause** field (defaults to the chosen plan's root cause). When the root cause
+  is **DRP Scorecard** or **DRP Participation**, an **Insurance carrier** must be
+  selected - the editor marks the field required and blocks save until one is chosen.
 
 > **Data note:** no numeric KPI values, targets, scores, or dollar figures appear
 > anywhere - metrics are referenced by name only. All names are synthetic.
