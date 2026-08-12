@@ -66,7 +66,7 @@ not-yet-started work.)
 `Identified → In Progress → Blocked → Verifying → Closed`
 
 **Root-cause taxonomy** (every card is tagged with one):
-DRP Scorecard · DRP Participation · Personnel / Skill Mix · Equipment · Other.
+DRP Scorecard · DRP Participation · Personnel & Training · Equipment · Other.
 
 **Action plan** — **one per shop**, the locked container for getting that shop back
 on track. A shop doesn't accumulate many plans; it has one plan with however many

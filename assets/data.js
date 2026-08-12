@@ -13,7 +13,7 @@ window.HUB_DATA = {
   rootCauses: [
     { key: "drp-scorecard",     label: "DRP Scorecard",        dot: "#00529b", bg: "#dbe8f5", fg: "#0b3d6b" },
     { key: "drp-participation", label: "DRP Participation",     dot: "#2b7a8e", bg: "#d5e9ec", fg: "#0f3a44" },
-    { key: "personnel",         label: "Personnel / Skill Mix",dot: "#c1660f", bg: "#f6e3cf", fg: "#6b3f10" },
+    { key: "personnel",         label: "Personnel & Training", dot: "#c1660f", bg: "#f6e3cf", fg: "#6b3f10" },
     { key: "equipment",         label: "Equipment",            dot: "#ba1a1a", bg: "#f6dcdc", fg: "#5b1414" },
     { key: "other",             label: "Other",                dot: "#5f6b7a", bg: "#e6e9ee", fg: "#333d49" }
   ],
