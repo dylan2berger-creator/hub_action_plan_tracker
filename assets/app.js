@@ -106,9 +106,12 @@
     storeFilter: null,   // MM/RM multi-select of stores (null = all in-scope)
     root: 'all',
     owner: 'all',
+    ownerRole: 'all',    // owner-role filter (both board and list)
+    status: 'all',       // status filter (list view only; the board shows all columns)
     behind: false,
     search: '',
-    sort: 'manual'
+    sort: 'manual',
+    boardView: 'board'   // 'board' (Kanban) | 'list'
   };
   function passStoreFilter(sid) { return !state.storeFilter || state.storeFilter.indexOf(sid) >= 0; }
   var editingId = null;
@@ -151,6 +154,9 @@
       var p = planOf(t);
       if (state.root !== 'all') { var rc = rootOf(t); if (!rc || rc.key !== state.root) return false; }
       if (state.owner !== 'all' && t.ownerName !== state.owner) return false;
+      if (state.ownerRole !== 'all' && (t.ownerRole || '') !== state.ownerRole) return false;
+      // Status filter applies in the list view only - the board already columns by status.
+      if (state.boardView === 'list' && state.status !== 'all' && t.column !== state.status) return false;
       if (state.behind && !isBehind(t)) return false;
       if (q) {
         var s = storeOf(t), r = rootOf(t);
@@ -183,28 +189,25 @@
   }
 
   /* ---------------- rendering ---------------- */
-  var boardEl, statBlocked, statBehind, pageSub, pageTitle;
+  var boardEl, listEl, statBlocked, statBehind, pageSub, pageTitle;
+  var expandedRows = {};   // list-view: task ids whose activity log is drilled open
 
   function render() {
     var shown = visible();
-    var byCol = {};
-    COLUMNS.forEach(function (c) { byCol[c.key] = []; });
-    shown.forEach(function (t) { (byCol[t.column] || (byCol[t.column] = [])).push(t); });
 
-    boardEl.innerHTML = COLUMNS.map(function (c) {
-      var list = sortTasks(byCol[c.key] || []);
-      var cards = list.length ? list.map(cardHTML).join('') : '<div class="col-empty">Nothing here</div>';
-      return (
-        '<section class="column" data-col="' + c.key + '" aria-label="' + esc(c.label) + '">' +
-          '<div class="column-head">' +
-            '<span class="column-dot" style="background:' + c.accent + '"></span>' +
-            '<span class="column-title">' + esc(c.label) + '</span>' +
-            '<span class="count-badge">' + list.length + '</span>' +
-          '</div>' +
-          '<div class="cards">' + cards + '</div>' +
-        '</section>'
-      );
-    }).join('');
+    // the active sub-view drives which container + toolbar controls are shown
+    var listMode = state.boardView === 'list';
+    if (boardEl) boardEl.style.display = listMode ? 'none' : '';
+    if (listEl) { listEl.hidden = !listMode; listEl.style.display = listMode ? '' : 'none'; }
+    var sortSel = document.getElementById('sortSelect'); if (sortSel && sortSel.closest('.field')) sortSel.closest('.field').style.display = listMode ? 'none' : '';
+    var statSel = document.getElementById('statusFilter'); if (statSel && statSel.closest('.field')) statSel.closest('.field').style.display = listMode ? '' : 'none';
+    Array.prototype.forEach.call(document.querySelectorAll('.viewtoggle [data-view-mode]'), function (b) {
+      var on = b.getAttribute('data-view-mode') === state.boardView;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+
+    if (listMode) renderList(shown); else renderBoard(shown);
 
     // stats reflect the current store scope (and the store multi-select)
     var scope = tasks.filter(function (t) { return inScope(t.storeId) && passStoreFilter(t.storeId); });
@@ -223,6 +226,87 @@
     pageSub.textContent = nPlans + ' action plan' + (nPlans === 1 ? '' : 's') +
       ' · ' + nTasks + ' task' + (nTasks === 1 ? '' : 's') + ' · as of ' + fmtDateY(DATA.referenceDate);
   }
+
+  /* ---- Kanban board ---- */
+  function renderBoard(shown) {
+    var byCol = {};
+    COLUMNS.forEach(function (c) { byCol[c.key] = []; });
+    shown.forEach(function (t) { (byCol[t.column] || (byCol[t.column] = [])).push(t); });
+    boardEl.innerHTML = COLUMNS.map(function (c) {
+      var list = sortTasks(byCol[c.key] || []);
+      var cards = list.length ? list.map(cardHTML).join('') : '<div class="col-empty">Nothing here</div>';
+      return (
+        '<section class="column" data-col="' + c.key + '" aria-label="' + esc(c.label) + '">' +
+          '<div class="column-head">' +
+            '<span class="column-dot" style="background:' + c.accent + '"></span>' +
+            '<span class="column-title">' + esc(c.label) + '</span>' +
+            '<span class="count-badge">' + list.length + '</span>' +
+          '</div>' +
+          '<div class="cards">' + cards + '</div>' +
+        '</section>'
+      );
+    }).join('');
+  }
+
+  /* ---- List view (filterable table + activity-log drill-in) ---- */
+  function dueHTMLFor(t) {
+    if (!t.dueDate) return '';
+    var du = daysBetween(parseISO(t.dueDate), TODAY), cls = '', label = fmtDate(t.dueDate);
+    if (t.column !== 'closed') {
+      if (du < 0) { cls = ' overdue'; label = 'Overdue · ' + label; }
+      else if (du <= 2) { cls = ' soon'; label = (du === 0 ? 'Due today' : label); }
+    }
+    return '<span class="due' + cls + '">' + esc(label) + '</span>';
+  }
+  function listRowHTML(t, multi) {
+    var s = storeOf(t), root = rootOf(t), pm = priorityMeta(t.priority), cm = colMeta(t.column);
+    var open = !!expandedRows[t.id];
+    var eyebrow = (multi && s) ? '<div class="lt-store">' + esc(s.name) + '</div>' : '';
+    var carrier = t.carrier ? '<span class="chip chip-gray">' + esc(t.carrier) + '</span>' : '';
+    var nLog = (t.activityLog || []).length;
+    return (
+      '<div class="lt-row' + (open ? ' open' : '') + '" data-id="' + esc(t.id) + '" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+        '<div class="lt-cell lt-expand"><span class="lt-caret" aria-hidden="true">' + caretIcon() + '</span></div>' +
+        '<div class="lt-cell lt-task">' + eyebrow + '<div class="lt-title">' + esc(t.title) + '</div>' +
+          '<div class="lt-metarow">' + catChip(root) + carrier + '</div></div>' +
+        '<div class="lt-cell lt-status"><span class="status-chip"><span class="status-dot" style="background:' + cm.accent + '"></span>' + esc(cm.label) + '</span></div>' +
+        '<div class="lt-cell lt-owner">' + avatarHTML(t.ownerName) + '<span class="lt-owner-name">' + esc(t.ownerName || 'Unassigned') + '</span></div>' +
+        '<div class="lt-cell lt-role">' + esc(t.ownerRole || '-') + '</div>' +
+        '<div class="lt-cell lt-prio"><span class="chip ' + pm.chip + '">' + esc(pm.label) + '</span></div>' +
+        '<div class="lt-cell lt-due">' + dueHTMLFor(t) + '</div>' +
+        '<div class="lt-cell lt-actions">' +
+          '<span class="lt-logcount" title="' + nLog + ' activity entr' + (nLog === 1 ? 'y' : 'ies') + '">' + logIcon() + nLog + '</span>' +
+          '<button class="mini-btn" data-edit="' + esc(t.id) + '" aria-label="Open task details">' + editIcon() + '</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="lt-detail"' + (open ? '' : ' hidden') + '>' +
+        '<div class="lt-detail-inner"><div class="ctx-head">Activity log</div>' + activityTimelineHTML(t.activityLog) + '</div>' +
+      '</div>'
+    );
+  }
+  function renderList(shown) {
+    var multi = scopeIds().length > 1;
+    var rows = shown.slice().sort(function (a, b) {
+      var ci = colIndex(a.column) - colIndex(b.column);   // group by status in board order
+      return ci || (orderOf(a) - orderOf(b));             // then manual order within status
+    });
+    var head =
+      '<div class="lt-head">' +
+        '<div class="lt-cell lt-expand"></div>' +
+        '<div class="lt-cell lt-task">Task</div>' +
+        '<div class="lt-cell lt-status">Status</div>' +
+        '<div class="lt-cell lt-owner">Owner</div>' +
+        '<div class="lt-cell lt-role">Role</div>' +
+        '<div class="lt-cell lt-prio">Priority</div>' +
+        '<div class="lt-cell lt-due">Due</div>' +
+        '<div class="lt-cell lt-actions"></div>' +
+      '</div>';
+    listEl.innerHTML = rows.length
+      ? head + '<div class="lt-body">' + rows.map(function (t) { return listRowHTML(t, multi); }).join('') + '</div>'
+      : head + '<div class="list-empty">No tasks match the current filters.</div>';
+  }
+  function caretIcon() { return '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M9 6l6 6-6 6z"/></svg>'; }
+  function logIcon() { return '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M4 6h13v2H4zm0 5h13v2H4zm0 5h9v2H4zm15-9l3 3-3 3z" opacity=".9"/></svg>'; }
 
   function catChip(root) {
     if (!root) return '';
@@ -301,6 +385,28 @@
     if (card && e.target === card) { e.preventDefault(); openModal(card.getAttribute('data-id')); }
   }
   function findTask(id) { for (var i = 0; i < tasks.length; i++) if (tasks[i].id === id) return tasks[i]; return null; }
+
+  /* ---------------- list interactions ---------------- */
+  function toggleRow(row) {
+    var id = row.getAttribute('data-id'); if (!id) return;
+    var open = !expandedRows[id];
+    if (open) expandedRows[id] = true; else delete expandedRows[id];
+    row.classList.toggle('open', open);
+    row.setAttribute('aria-expanded', open ? 'true' : 'false');
+    var detail = row.nextElementSibling;
+    if (detail && detail.classList.contains('lt-detail')) detail.hidden = !open;
+  }
+  function onListClick(e) {
+    var ed = e.target.closest('[data-edit]');
+    if (ed) { e.stopPropagation(); openModal(ed.getAttribute('data-edit')); return; }
+    var row = e.target.closest('.lt-row');
+    if (row) toggleRow(row);   // drill into the task's activity log
+  }
+  function onListKey(e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var row = e.target.closest('.lt-row');
+    if (row && e.target === row) { e.preventDefault(); toggleRow(row); }
+  }
 
   /* ---------------- drag & drop ----------------
      Cards drag between columns (changes status) and reorder within a column (manual
@@ -431,18 +537,22 @@
   }
   function closeModal() { overlay.classList.remove('open'); editingId = null; }
 
+  // Activity timeline markup, shared by the task modal and the list-view drill-in.
+  function activityTimelineHTML(log) {
+    log = log || [];
+    if (!log.length) return '<div class="ctx-sub">No activity recorded yet.</div>';
+    return '<ol class="tl">' + log.map(function (e) {
+      var isStatus = e.kind === 'status';
+      return '<li class="tl-item' + (isStatus ? ' tl-status' : '') + '">' +
+        '<span class="tl-date">' + esc(fmtDate(e.date)) + '</span>' +
+        '<span class="tl-note">' + (isStatus ? '<span class="tl-tag">Status</span> ' : '') + esc(e.note) + '</span></li>';
+    }).join('') + '</ol>';
+  }
   function renderContext(planId, t) {
     var log = (t && t.activityLog) ? t.activityLog : [];
     logWrap.innerHTML =
       '<div class="ctx-head">Activity log</div>' +
-      (log.length
-        ? '<ol class="tl">' + log.map(function (e) {
-            var isStatus = e.kind === 'status';
-            return '<li class="tl-item' + (isStatus ? ' tl-status' : '') + '">' +
-              '<span class="tl-date">' + esc(fmtDate(e.date)) + '</span>' +
-              '<span class="tl-note">' + (isStatus ? '<span class="tl-tag">Status</span> ' : '') + esc(e.note) + '</span></li>';
-          }).join('') + '</ol>'
-        : '<div class="ctx-sub">No activity recorded yet.</div>') +
+      activityTimelineHTML(log) +
       '<div class="note-add">' +
         '<input id="noteInput" type="text" placeholder="Add an activity note…" maxlength="180" />' +
         '<button type="button" class="btn btn-ghost" id="addNoteBtn">Add</button>' +
@@ -509,13 +619,14 @@
       toast('Task added');
     }
     refreshOwnerFilter();
+    refreshRoleFilter();
     render();
     closeModal();
   }
   function deleteCurrent() {
     if (!editingId) return;
     tasks = tasks.filter(function (t) { return t.id !== editingId; });
-    refreshOwnerFilter(); render(); closeModal(); toast('Task deleted');
+    refreshOwnerFilter(); refreshRoleFilter(); render(); closeModal(); toast('Task deleted');
   }
 
   /* ---------------- toast ---------------- */
@@ -633,6 +744,17 @@
     sel.innerHTML = '<option value="all">All owners</option>' + list.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
     sel.value = (cur && (cur === 'all' || names[cur])) ? cur : 'all';
     state.owner = sel.value;
+  }
+  // Owner-role filter (both board and list) - distinct roles across all tasks.
+  function refreshRoleFilter() {
+    var sel = document.getElementById('roleFilter'); if (!sel) return;
+    var cur = sel.value;
+    var roles = {};
+    tasks.forEach(function (t) { if (t.ownerRole) roles[t.ownerRole] = 1; });
+    var list = Object.keys(roles).sort();
+    sel.innerHTML = '<option value="all">All roles</option>' + list.map(function (r) { return '<option value="' + esc(r) + '">' + esc(r) + '</option>'; }).join('');
+    sel.value = (cur && (cur === 'all' || roles[cur])) ? cur : 'all';
+    state.ownerRole = sel.value;
   }
   function populate(sel, opts, allLabel) {
     sel.innerHTML = '<option value="all">' + esc(allLabel) + '</option>' +
@@ -1571,10 +1693,17 @@
     });
     if (view === 'kpis') renderKpiTab();
   }
+  function setBoardView(v) {
+    if (v !== 'board' && v !== 'list') return;
+    if (state.boardView === v) return;
+    state.boardView = v;
+    render();
+  }
 
   /* ---------------- init ---------------- */
   function init() {
     boardEl = document.getElementById('board');
+    listEl = document.getElementById('listView');
     statBlocked = document.getElementById('statBlocked');
     statBehind = document.getElementById('statBehind');
     pageSub = document.getElementById('pageSub');
@@ -1587,19 +1716,30 @@
     var ownerFilter = document.getElementById('ownerFilter');
     var behindBtn = document.getElementById('behindBtn');
     var sortSelect = document.getElementById('sortSelect');
+    var roleFilter = document.getElementById('roleFilter');
+    var statusFilter = document.getElementById('statusFilter');
 
     populate(rootFilter, DATA.rootCauses || [], 'Root Causes');
     refreshOwnerFilter();
+    refreshRoleFilter();
+    if (statusFilter) statusFilter.innerHTML = '<option value="all">All statuses</option>' + COLUMNS.map(function (c) { return '<option value="' + c.key + '">' + esc(c.label) + '</option>'; }).join('');
 
     search.addEventListener('input', function () { state.search = search.value; render(); });
     rootFilter.addEventListener('change', function () { state.root = rootFilter.value; render(); });
     ownerFilter.addEventListener('change', function () { state.owner = ownerFilter.value; render(); });
+    if (roleFilter) roleFilter.addEventListener('change', function () { state.ownerRole = roleFilter.value; render(); });
+    if (statusFilter) statusFilter.addEventListener('change', function () { state.status = statusFilter.value; render(); });
     sortSelect.addEventListener('change', function () { state.sort = sortSelect.value; render(); });
     behindBtn.addEventListener('click', function () {
       state.behind = !state.behind;
       behindBtn.classList.toggle('active', state.behind);
       behindBtn.setAttribute('aria-pressed', state.behind ? 'true' : 'false');
       render();
+    });
+
+    // Board / List sub-view toggle
+    Array.prototype.forEach.call(document.querySelectorAll('.viewtoggle [data-view-mode]'), function (b) {
+      b.addEventListener('click', function () { setBoardView(b.getAttribute('data-view-mode')); });
     });
 
     document.getElementById('newBtn').addEventListener('click', function () { openModal(null); });
@@ -1612,6 +1752,9 @@
     boardEl.addEventListener('dragover', onDragOver);
     boardEl.addEventListener('dragleave', onDragLeave);
     boardEl.addEventListener('drop', onDrop);
+
+    // list delegation
+    if (listEl) { listEl.addEventListener('click', onListClick); listEl.addEventListener('keydown', onListKey); }
 
     // store selector
     var shopBtn = document.getElementById('shopBtn');

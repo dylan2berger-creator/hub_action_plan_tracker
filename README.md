@@ -90,8 +90,15 @@ another shop's plan.
 - **Switch stores** from the location selector in the top nav (defaults to
   Aurora; choose **All stores** to see the whole market - one action plan per
   shop across 13 stores).
-- **Filters:** root cause, owner, and a **Behind target** toggle (tasks past their
-  due date or whose plan blew its target-close date).
+- **Board or List view.** A **Board / List** toggle switches between the Kanban board
+  and a **list view** of the same tasks. The list is a filterable table (Task, Status,
+  Owner, Role, Priority, Due) grouped by status, and each row **drills into its activity
+  log** in place - click a row to expand its timeline (status changes and notes). Click
+  the pencil to open the full task editor.
+- **Filters:** root cause, **owner**, **owner role** (both views), a **Behind target**
+  toggle (tasks past their due date or whose plan blew its target-close date), and - in
+  the list view - a **status** filter. Market and Regional Managers also get the store
+  multi-select.
 - **Search** across task, owner, store, carrier, diagnosis, and metric.
 - **Move or reorder a task** by **drag and drop**: drag a card between columns to
   change its status, or drop it above/below another card to set its position within a

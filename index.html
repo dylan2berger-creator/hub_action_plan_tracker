@@ -108,6 +108,16 @@
           <select id="ownerFilter" aria-label="Filter by owner"></select>
         </label>
 
+        <label class="field select">
+          <span class="visually-hidden">Filter by owner role</span>
+          <select id="roleFilter" aria-label="Filter by owner role"></select>
+        </label>
+
+        <label class="field select">
+          <span class="visually-hidden">Filter by status</span>
+          <select id="statusFilter" aria-label="Filter by status"></select>
+        </label>
+
         <button class="btn btn-ghost toggle" id="behindBtn" aria-pressed="false">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M1 21h22L12 2zm12-3h-2v-2h2zm0-4h-2v-4h2z"/></svg>
           Behind target
@@ -125,6 +135,17 @@
 
         <span class="grow"></span>
 
+        <div class="viewtoggle" role="group" aria-label="View">
+          <button type="button" class="vt-btn" data-view-mode="board" aria-pressed="true">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 4h6v16H4zm10 0h6v16h-6z"/></svg>
+            Board
+          </button>
+          <button type="button" class="vt-btn" data-view-mode="list" aria-pressed="false">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+            List
+          </button>
+        </div>
+
         <button class="btn btn-primary" id="newBtn">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>
           New task
@@ -132,6 +153,7 @@
       </div>
 
       <div class="board" id="board" aria-label="Action plan board"></div>
+      <div class="listview" id="listView" aria-label="Action plan list" hidden></div>
       </div><!-- /viewActionPlans -->
 
       <div id="viewKpis" hidden>
