@@ -675,6 +675,13 @@ button { font-family: inherit; }
 .lt-detail { min-width: 1080px; background: #f7f9fb; border-bottom: 1px solid #eceef2; padding: 4px 14px 14px 44px; }
 .lt-detail-inner { max-width: 760px; }
 .lt-detail .ctx-head { margin-bottom: 6px; }
+.lt-head .lt-sortable { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px; }
+.lt-head .lt-sortable:hover { color: #1a1a1a; }
+.lt-arrow { font-size: 9px; line-height: 1; }
+.lt-arrow-idle { opacity: 0; }
+.lt-head .lt-sortable:hover .lt-arrow-idle { opacity: .4; }
+.lt-head .lt-sortable.sorted { color: var(--primary); }
+.lt-head .lt-sortable.sorted .lt-arrow { color: var(--primary); }
 .list-empty { padding: 28px 14px; color: var(--on-surface-variant); font-size: 13px; text-align: center; }
 .note-add { display: flex; gap: 6px; margin-top: 12px; }
 .note-add input { flex: 1; font-family: var(--font-plain); font-size: 13px; padding: 8px 10px;

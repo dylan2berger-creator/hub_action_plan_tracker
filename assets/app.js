@@ -125,7 +125,8 @@
     behind: false,
     search: '',
     sort: 'manual',
-    boardView: 'board'   // 'board' (Kanban) | 'list'
+    boardView: 'board',   // 'board' (Kanban) | 'list'
+    listSort: { key: 'status', dir: 'asc' }   // list-view column sort
   };
   function passStoreFilter(sid) { return !state.storeFilter || state.storeFilter.indexOf(sid) >= 0; }
   var editingId = null;
@@ -301,23 +302,60 @@
       '</div>'
     );
   }
+  /* list-view column sorting */
+  function cmpStr(x, y) { var a = String(x == null ? '' : x).toLowerCase(), b = String(y == null ? '' : y).toLowerCase(); return a < b ? -1 : a > b ? 1 : 0; }
+  function cmpNum(a, b) { return a === b ? 0 : a < b ? -1 : 1; }
+  function prioRank(t) { var v = PRIORITY_RANK[t.priority]; return v == null ? 9 : v; }
+  function dueMsOf(t) { return t.dueDate ? parseISO(t.dueDate).getTime() : Infinity; }
+  function updatedKeyOf(t) { var log = t.activityLog; if (!log || !log.length) return -Infinity; var e = log[log.length - 1], d = parseISO(e.date); return (d ? d.getTime() : 0) + (typeof e.time === 'number' ? e.time * 60000 : 0); }
+  function listCompare(key, dir) {
+    var mul = dir === 'desc' ? -1 : 1;
+    return function (a, b) {
+      var r = 0;
+      if (key === 'task') r = cmpStr(a.title, b.title);
+      else if (key === 'status') r = cmpNum(colIndex(a.column), colIndex(b.column));
+      else if (key === 'owner') r = cmpStr(a.ownerName, b.ownerName);
+      else if (key === 'role') r = cmpStr(a.ownerRole, b.ownerRole);
+      else if (key === 'priority') r = cmpNum(prioRank(a), prioRank(b));
+      else if (key === 'due') r = cmpNum(dueMsOf(a), dueMsOf(b));
+      else if (key === 'activity') r = cmpNum((a.activityLog || []).length, (b.activityLog || []).length);
+      else if (key === 'updated') r = cmpNum(updatedKeyOf(a), updatedKeyOf(b));
+      if (r) return r * mul;
+      // stable tiebreakers (kept ascending so equal keys read consistently)
+      r = cmpNum(colIndex(a.column), colIndex(b.column)); if (r) return r;
+      r = cmpNum(orderOf(a), orderOf(b)); if (r) return r;
+      return cmpStr(a.id, b.id);
+    };
+  }
+  function setListSort(key) {
+    var ls = state.listSort;
+    if (ls.key === key) ls.dir = ls.dir === 'asc' ? 'desc' : 'asc';
+    else { ls.key = key; ls.dir = 'asc'; }
+    render();
+  }
+  function headCell(key, cls, label) {
+    var ls = state.listSort, active = ls.key === key;
+    var arrow = active
+      ? '<span class="lt-arrow">' + (ls.dir === 'asc' ? '▲' : '▼') + '</span>'
+      : '<span class="lt-arrow lt-arrow-idle">▲</span>';
+    return '<div class="lt-cell ' + cls + ' lt-sortable' + (active ? ' sorted' : '') + '" data-sort="' + key + '" role="button" tabindex="0"' +
+      ' aria-label="Sort by ' + esc(label) + '"' + (active ? ' aria-sort="' + (ls.dir === 'asc' ? 'ascending' : 'descending') + '"' : '') + '>' +
+      esc(label) + arrow + '</div>';
+  }
   function renderList(shown) {
     var multi = scopeIds().length > 1;
-    var rows = shown.slice().sort(function (a, b) {
-      var ci = colIndex(a.column) - colIndex(b.column);   // group by status in board order
-      return ci || (orderOf(a) - orderOf(b));             // then manual order within status
-    });
+    var rows = shown.slice().sort(listCompare(state.listSort.key, state.listSort.dir));
     var head =
       '<div class="lt-head">' +
         '<div class="lt-cell lt-expand"></div>' +
-        '<div class="lt-cell lt-task">Task</div>' +
-        '<div class="lt-cell lt-status">Status</div>' +
-        '<div class="lt-cell lt-owner">Owner</div>' +
-        '<div class="lt-cell lt-role">Role</div>' +
-        '<div class="lt-cell lt-prio">Priority</div>' +
-        '<div class="lt-cell lt-due">Due</div>' +
-        '<div class="lt-cell lt-activity">Activity</div>' +
-        '<div class="lt-cell lt-updated">Last update</div>' +
+        headCell('task', 'lt-task', 'Task') +
+        headCell('status', 'lt-status', 'Status') +
+        headCell('owner', 'lt-owner', 'Owner') +
+        headCell('role', 'lt-role', 'Role') +
+        headCell('priority', 'lt-prio', 'Priority') +
+        headCell('due', 'lt-due', 'Due') +
+        headCell('activity', 'lt-activity', 'Activity') +
+        headCell('updated', 'lt-updated', 'Last update') +
         '<div class="lt-cell lt-actions"></div>' +
       '</div>';
     listEl.innerHTML = rows.length
@@ -416,6 +454,8 @@
     if (detail && detail.classList.contains('lt-detail')) detail.hidden = !open;
   }
   function onListClick(e) {
+    var sh = e.target.closest('[data-sort]');
+    if (sh) { setListSort(sh.getAttribute('data-sort')); return; }
     var ed = e.target.closest('[data-edit]');
     if (ed) { e.stopPropagation(); openModal(ed.getAttribute('data-edit')); return; }
     var row = e.target.closest('.lt-row');
@@ -423,6 +463,8 @@
   }
   function onListKey(e) {
     if (e.key !== 'Enter' && e.key !== ' ') return;
+    var sh = e.target.closest('[data-sort]');
+    if (sh) { e.preventDefault(); setListSort(sh.getAttribute('data-sort')); return; }
     var row = e.target.closest('.lt-row');
     if (row && e.target === row) { e.preventDefault(); toggleRow(row); }
   }

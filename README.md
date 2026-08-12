@@ -92,9 +92,11 @@ another shop's plan.
   shop across 13 stores).
 - **Board or List view.** A **Board / List** toggle switches between the Kanban board
   and a **list view** of the same tasks. The list is a filterable table (Task, Status,
-  Owner, Role, Priority, Due) grouped by status, and each row **drills into its activity
-  log** in place - click a row to expand its timeline (status changes and notes). Click
-  the pencil to open the full task editor.
+  Owner, Role, Priority, Due, **Activity** count, **Last update** date/time). **Click any
+  column header to sort**, click again to flip ascending/descending (the sorted column
+  shows an arrow). Each row **drills into its activity log** in place - click a row to
+  expand its timeline (status changes and notes, each timestamped). Click the pencil to
+  open the full task editor.
 - **Filters:** root cause, **owner**, **owner role** (both views), a **Behind target**
   toggle (tasks past their due date or whose plan blew its target-close date), and - in
   the list view - a **status** filter. Market and Regional Managers also get the store
