@@ -1,9 +1,9 @@
 /* ============================================================
-   The Hub — Action Plans / KPIs config
+   The Hub - Action Plans / KPIs config
    Single source of truth for every threshold, target, and
    direction used by the KPIs dashboard. Change a number here and
    the dashboard, challenged flagging, and shop detail all follow.
-   The formatting logic reads `direction` — nothing hardcodes
+   The formatting logic reads `direction` - nothing hardcodes
    "green when above target".
    ============================================================ */
 window.HUB_CONFIG = {

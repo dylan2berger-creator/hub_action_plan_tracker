@@ -1,5 +1,5 @@
 /* ============================================================
-   The Hub — Action Plans tab
+   The Hub - Action Plans tab
    Styling built from the design tokens in the shipped Hub CSS
    (colors, spacing, corners, typography) so the tab reads as a
    native part of the application.
@@ -501,7 +501,7 @@ button { font-family: inherit; }
 .form-row .err { color: var(--error-strong); font-size: 12px; display: none; }
 .form-row.invalid input { border-color: var(--error-strong); }
 .form-row.invalid .err { display: block; }
-/* the action plan is locked to the shop — one plan per shop */
+/* the action plan is locked to the shop - one plan per shop */
 .form-row select.locked, .form-row select:disabled {
   background: #f4f6f9 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='%2372808d'><path d='M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2M9 6a3 3 0 0 1 6 0v2H9z'/></svg>") no-repeat right 10px center;
   color: #41505c; cursor: not-allowed; border-style: dashed; opacity: 1; -webkit-appearance: none; appearance: none; padding-right: 30px;
@@ -530,7 +530,7 @@ button { font-family: inherit; }
 }
 
 /* ============================================================
-   Action Plans — domain board additions
+   Action Plans - domain board additions
    ============================================================ */
 
 .card-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .4px;
@@ -722,7 +722,7 @@ button { font-family: inherit; }
 .wk-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .wk-table td.var.pos { color: #2e7d32; font-weight: 700; }
 .wk-table td.var.neg { color: var(--error-strong); font-weight: 700; }
-/* weekly forecast — anchor-week picker + trailing window */
+/* weekly forecast - anchor-week picker + trailing window */
 .wk-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
 .wk-pick { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--on-surface-variant); }
 .wk-select { display: inline-flex; align-items: center; height: 30px; padding: 0 6px; background: #fff;

@@ -1,7 +1,7 @@
 /* ============================================================
-   The Hub — Action Plans (Kanban)
+   The Hub - Action Plans (Kanban)
    Renders the mock action-plan dataset (assets/data.js).
-   State is held in memory only — no persistence. Drag moves
+   State is held in memory only - no persistence. Drag moves
    tasks between columns; cards are viewable and editable.
    ============================================================ */
 (function () {
@@ -28,14 +28,14 @@
   ];
   var PRIORITY_RANK = { urgent: 0, high: 1, medium: 2, low: 3 };
 
-  var OUTCOMES = ['Improved', 'No Change', 'No Change — market driven', 'Superseded'];
+  var OUTCOMES = ['Improved', 'No Change', 'No Change - market driven', 'Superseded'];
 
   var ROOT_BY_KEY = {};
   (DATA.rootCauses || []).forEach(function (r) { ROOT_BY_KEY[r.key] = r; });
   var STORE_BY_ID = {};
   (DATA.stores || []).forEach(function (s) { STORE_BY_ID[s.id] = s; });
   // ONE action plan per shop. A shop's action plan is the locked container for
-  // getting it back on track — every task rolls up to it (a shop doesn't have 15
+  // getting it back on track - every task rolls up to it (a shop doesn't have 15
   // action plans; it has one plan with 15 tasks). The source data splits a shop
   // into several plan records, so merge them by store and push each plan's
   // carrier / root cause down onto its tasks.
@@ -77,7 +77,7 @@
   function resolveIds(storeId) {
     if (storeId === 'book') return MARKET.storeIds.slice();
     // Region-level scopes (Regional Manager) have no per-market stores in this
-    // prototype — the board shows the region's instrumented action plans (all stores).
+    // prototype - the board shows the region's instrumented action plans (all stores).
     if (storeId === 'all' || storeId === 'region' || isMarketScope(storeId)) return ALL_STORE_IDS.slice();
     return [storeId];
   }
@@ -108,7 +108,7 @@
   function fmtDateY(s) { var d = parseISO(s); if (!d) return ''; return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function uid() { taskSeq += 1; return 'T-' + taskSeq; }
-  function initials(name) { var p = String(name || '').trim().split(/\s+/).filter(Boolean); if (!p.length) return '—'; if (p.length === 1) return p[0].slice(0, 2).toUpperCase(); return (p[0][0] + p[p.length - 1][0]).toUpperCase(); }
+  function initials(name) { var p = String(name || '').trim().split(/\s+/).filter(Boolean); if (!p.length) return '-'; if (p.length === 1) return p[0].slice(0, 2).toUpperCase(); return (p[0][0] + p[p.length - 1][0]).toUpperCase(); }
   var AV = ['#2b7a8e', '#00529b', '#6a4c93', '#b5179e', '#36832f', '#c1660f', '#9d174d', '#006a64', '#3375af', '#5f5e5e'];
   function avatarColor(name) { var h = 0, s = String(name || ''); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return AV[h % AV.length]; }
   function planOf(t) { return PLAN_BY_ID[t.planId]; }
@@ -297,7 +297,7 @@
       fPlan, fTitle, fDesc, fOwner, fRole, fRoot, fStatus, fPriority, fDue, fRisk, fBlocked, fMetric, fLag,
       logWrap, noteInput;
 
-  function planLabel(p) { var s = STORE_BY_ID[p.storeId]; return (s ? s.name : p.storeId) + ' — Action plan'; }
+  function planLabel(p) { var s = STORE_BY_ID[p.storeId]; return (s ? s.name : p.storeId) + ' - Action plan'; }
   function planOptionsHTML(selectedPlanId) {
     return PLANS.slice().sort(function (a, b) {
       var sa = (STORE_BY_ID[a.storeId] || {}).name || '', sb = (STORE_BY_ID[b.storeId] || {}).name || '';
@@ -313,7 +313,7 @@
     modalTitle.textContent = t ? 'Task detail' : 'New task';
     deleteBtn.style.display = t ? 'inline-flex' : 'none';
 
-    // The action plan is locked to a shop — a task can't be reassigned to another
+    // The action plan is locked to a shop - a task can't be reassigned to another
     // shop's plan. It's only selectable when adding a NEW task from a multi-shop
     // scope (you must pick which shop's plan it joins).
     var sids = scopeIds(), singleShop = sids.length === 1 ? sids[0] : null;
@@ -625,7 +625,7 @@
   /* ====================== KPIs dashboard (rebuilt) ======================
      Shop-centric workflow: revenue attainment → challenged flagging →
      shop detail → carrier scorecard. Every threshold/target/direction
-     comes from window.HUB_CONFIG (assets/config.js) — nothing hardcodes
+     comes from window.HUB_CONFIG (assets/config.js) - nothing hardcodes
      "green above target"; the formatting reads each metric's `direction`. */
   var CFG = window.HUB_CONFIG || {};
   var CHALLENGED_PCT = (CFG.revenue && CFG.revenue.challengedVariancePct != null) ? CFG.revenue.challengedVariancePct : -0.10;
@@ -891,7 +891,7 @@
     var mktOptions = '<option value="all">All markets</option>' + mkts.map(function (m) { return '<option value="' + esc(m) + '"' + (kpiState.market === m ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('');
 
     var html = '';
-    html += '<div class="kpi-head"><p class="kpi-title" data-testid="kpi-page-title">' + esc(scopeTitle()) + ' — Revenue Attainment</p>' +
+    html += '<div class="kpi-head"><p class="kpi-title" data-testid="kpi-page-title">' + esc(scopeTitle()) + ' - Revenue Attainment</p>' +
       '<p class="mk-lead">' + esc(roleWord()) + ' · <b>' + challenged.length + '</b> of ' + ids.length + ' shops challenged (revenue ' + Math.round(CHALLENGED_PCT * 100) + '% or more below target)</p></div>';
 
     // control bar
@@ -982,10 +982,10 @@
     var html = '';
     html += '<div class="kpi-head">' + back +
       '<p class="kpi-title" data-testid="kpi-page-title">' + esc(d.name) + (challenged ? ' <span class="chal-badge">Challenged</span>' : '') + '</p>' +
-      '<p class="mk-lead">' + esc(d.market) + ' · ' + esc(d.region) + (d.carrierOnly ? ' · <b>funnel on target — carrier score is the likely cause</b>' : '') + '</p></div>';
+      '<p class="mk-lead">' + esc(d.market) + ' · ' + esc(d.region) + (d.carrierOnly ? ' · <b>funnel on target - carrier score is the likely cause</b>' : '') + '</p></div>';
 
     // funnel metrics vs target (shown first on the shop detail)
-    html += '<div class="kpi-section"><div class="kpi-section-title">Opportunity funnel — vs target</div>' +
+    html += '<div class="kpi-section"><div class="kpi-section-title">Opportunity funnel - vs target</div>' +
       '<div class="kpi-funnel">' + FUNNEL.map(function (f) {
         return funnelBoxHTML(funnelAsMetric(f), d.funnel[f.key]);
       }).join('') + '</div>' +
@@ -1011,7 +1011,7 @@
     wireShopDetail(d);
   }
 
-  /* shop-level trend chart — revenue plus optional funnel KPIs.
+  /* shop-level trend chart - revenue plus optional funnel KPIs.
      Up to two series at once; when the two use different units a second
      y-axis is drawn on the right so each keeps its own scale. */
   function funnelTarget(k) { var f = FUNNEL.filter(function (x) { return x.key === k; })[0]; return f ? f.target : null; }
@@ -1026,7 +1026,7 @@
     { key: 'arrive',   label: 'Opp → Arrive',   unit: 'd', color: '#7a5ea8', goal: funnelTarget('arrive'),
       series: function (d) { return d.funnel.trend.arrive; } }
   ];
-  // axis tick label — precision adapts to the axis span so a narrow % band doesn't print duplicate ticks
+  // axis tick label - precision adapts to the axis span so a narrow % band doesn't print duplicate ticks
   function fmtAxis(unit, v, span) {
     if (unit === '$') return money(v);
     if (unit === 'd') return (Math.round(v * 10) / 10) + 'd';
@@ -1065,7 +1065,7 @@
       var pad = span ? span * 0.12 : (Math.abs(hi) * 0.1 || 1);
       return { lo: lo - pad, hi: hi + pad };
     }
-    // each axis's range folds in its series' goal(s) and — for revenue's axis — the target, so those lines stay on-chart
+    // each axis's range folds in its series' goal(s) and - for revenue's axis - the target, so those lines stay on-chart
     var leftSeries = dual ? [series[0]] : series;
     var leftExtra = [];
     leftSeries.forEach(function (s) { if (s.def.goal != null) leftExtra.push(s.def.goal); });
@@ -1192,13 +1192,13 @@
       '<th class="num">Rules adherence</th><th class="num">Rules not adhered</th><th class="num">Cycle time</th><th class="num">CSI</th>' +
       '</tr></thead><tbody>' + body + '</tbody></table>';
     var note = 'Showing ' + shown.length + ' of ' + total + ' shops' + (roCarrier ? ' · ' + esc(roCarrier) : '') +
-      (shown.length < total ? ' — narrow with the carrier filter' : ' · click a row to open the shop');
+      (shown.length < total ? ' - narrow with the carrier filter' : ' · click a row to open the shop');
     return '<div class="ro-head"><div class="kpi-section-title sub">Shop breakdown <span class="ctx-sub">(' + total + ' shops · worst adherence first · ' + esc(MONTH_ABBR[CUR_MONTH]) + ')</span></div>' +
       '<label class="ro-filter">Carrier <select id="roCarrier">' + options + '</select></label></div>' +
       '<div class="mk-table-wrap ro-scroll">' + table + '</div>' +
       '<div class="ro-note ctx-sub">' + note + '</div>';
   }
-  /* Repair-order-level detail — one row per RO. Row count per carrier equals that
+  /* Repair-order-level detail - one row per RO. Row count per carrier equals that
      carrier's repair volume, so the totals match the carrier cards. Columns carry
      the same metrics as the trend charts, plus a rules-not-adhered count. */
   var _roCache = {};
@@ -1253,17 +1253,17 @@
       '<th class="num">Rules adherence</th><th class="num">Rules not adhered</th><th class="num">Cycle time</th><th class="num">CSI</th>' +
       '</tr></thead><tbody>' + body + '</tbody></table>';
     var note = 'Showing ' + shown.length + ' of ' + total + ' repair orders' + (roCarrier ? ' · ' + esc(roCarrier) : ' this month') +
-      (shown.length < total ? ' — filter by a carrier to see the rest' : '');
+      (shown.length < total ? ' - filter by a carrier to see the rest' : '');
     return '<div class="ro-head"><div class="kpi-section-title sub">Repair order detail <span class="ctx-sub">(' + esc(MONTH_ABBR[CUR_MONTH]) + ' · key = repair order ID)</span></div>' +
       '<label class="ro-filter">Carrier <select id="roCarrier">' + options + '</select></label></div>' +
       '<div class="mk-table-wrap ro-scroll">' + table + '</div>' +
       '<div class="ro-note ctx-sub">' + note + '</div>';
   }
-  /* Rules-adherence cluster map — heatmap of rule (row) × carrier (column); each
+  /* Rules-adherence cluster map - heatmap of rule (row) × carrier (column); each
      cell is the count of ROs where that carrier did not adhere to that rule. */
   function rulesClusterHTML(d) {
     var ros = repairOrders(d), carriers = d.carriers.map(function (c) { return c.name; });
-    var member = {};   // member[carrier][ruleIdx] — which rules belong to each carrier
+    var member = {};   // member[carrier][ruleIdx] - which rules belong to each carrier
     carriers.forEach(function (n) { var m = {}; carrierRuleSet(n).forEach(function (ri) { m[ri] = true; }); member[n] = m; });
     var counts = RULE_TEXTS.map(function () { var o = {}; carriers.forEach(function (n) { o[n] = 0; }); return o; });
     var rowTotal = RULE_TEXTS.map(function () { return 0; });
@@ -1386,7 +1386,7 @@
     });
     wireCarrierPanel(d);
   }
-  // carrier scorecard interactions — shared by the shop detail and the market/region dashboard
+  // carrier scorecard interactions - shared by the shop detail and the market/region dashboard
   function wireCarrierPanel(d) {
     function refreshPanel() {
       var panel = document.getElementById('carrierPanel');
@@ -1413,7 +1413,7 @@
         var b = e.target.closest('[data-carrier-card]'); if (b) { e.preventDefault(); toggleCard(b.getAttribute('data-carrier-card')); }
       });
     }
-    // time window inside the carrier view — shares the page period
+    // time window inside the carrier view - shares the page period
     var cpg = document.getElementById('carrPeriod');
     if (cpg) cpg.addEventListener('click', function (e) { var b = e.target.closest('[data-period]'); if (b) { kpiState.period = b.getAttribute('data-period'); renderKpiTab(); } });
     // pick which metric to trend
@@ -1448,9 +1448,9 @@
     if (note) {
       var rg = currentRegion();
       note.textContent = role === 'market'
-        ? MARKET.name + ' — a roll-up across the book of ' + MARKET.storeIds.length + ' shops, with a shop-by-shop scorecard. Drill into any shop from the selector.'
+        ? MARKET.name + ' - a roll-up across the book of ' + MARKET.storeIds.length + ' shops, with a shop-by-shop scorecard. Drill into any shop from the selector.'
         : role === 'regional'
-        ? rg.name + ' · ' + rg.division + ' — a roll-up across ' + rg.markets.length + ' markets, with a market-by-market scorecard. Drill into any market from the selector.'
+        ? rg.name + ' · ' + rg.division + ' - a roll-up across ' + rg.markets.length + ' markets, with a market-by-market scorecard. Drill into any market from the selector.'
         : 'One shop’s Action Plans and KPIs. Use the location selector to choose the shop.';
     }
     kpiState.view = 'dashboard'; kpiState.shopId = null; kpiState.market = 'all'; kpiState.gran = 'shops'; kpiState.carriers = null;
