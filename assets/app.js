@@ -304,7 +304,12 @@
         '<div class="lt-cell lt-actions"><button class="mini-btn" data-edit="' + esc(t.id) + '" aria-label="Open task details">' + editIcon() + '</button></div>' +
       '</div>' +
       '<div class="lt-detail"' + (open ? '' : ' hidden') + '>' +
-        '<div class="lt-detail-inner"><div class="ctx-head">Activity log</div>' + activityTimelineHTML(t.activityLog) +
+        '<div class="lt-detail-inner">' +
+          '<div class="lt-status-edit"><span class="lt-status-lbl">Status</span>' +
+            '<select class="lt-status-select" data-status-for="' + esc(t.id) + '" aria-label="Change status">' +
+              COLUMNS.map(function (c) { return '<option value="' + c.key + '"' + (c.key === t.column ? ' selected' : '') + '>' + esc(c.label) + '</option>'; }).join('') +
+            '</select></div>' +
+          '<div class="ctx-head">Activity log</div>' + activityTimelineHTML(t.activityLog) +
           '<div class="note-add">' +
             '<input class="lt-note-input" type="text" placeholder="Add an activity note…" maxlength="180" data-note-for="' + esc(t.id) + '" />' +
             '<button type="button" class="btn btn-ghost" data-add-note="' + esc(t.id) + '">Add</button>' +
@@ -476,6 +481,22 @@
     render();
     var ni = listEl.querySelector('.lt-note-input[data-note-for="' + id + '"]');
     if (ni) ni.focus();
+  }
+  // Change a task's status straight from the list drill-in (mirrors the modal's Status control).
+  function setListStatus(sel) {
+    var id = sel.getAttribute('data-status-for'); if (!id) return;
+    var t = findTask(id); if (!t) return;
+    var newCol = sel.value, prevCol = t.column;
+    if (newCol === prevCol) return;
+    t.column = newCol;
+    t.order = bottomOrder(newCol);            // land at the bottom of the new status
+    logStatusChange(t, prevCol, newCol);      // record the transition on the timeline
+    expandedRows[id] = true;                  // keep the row open so the new log entry stays visible
+    render();
+  }
+  function onListChange(e) {
+    var sel = e.target.closest('[data-status-for]');
+    if (sel) { e.stopPropagation(); setListStatus(sel); }
   }
   function onListClick(e) {
     var sh = e.target.closest('[data-sort]');
@@ -1921,7 +1942,7 @@
     boardEl.addEventListener('drop', onDrop);
 
     // list delegation
-    if (listEl) { listEl.addEventListener('click', onListClick); listEl.addEventListener('keydown', onListKey); }
+    if (listEl) { listEl.addEventListener('click', onListClick); listEl.addEventListener('keydown', onListKey); listEl.addEventListener('change', onListChange); }
 
     // store selector
     var shopBtn = document.getElementById('shopBtn');

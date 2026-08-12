@@ -97,8 +97,9 @@ another shop's plan.
   column header to sort**, click again to flip ascending/descending (the sorted column
   shows an arrow). Each row **drills into its activity log** in place - click a row to
   expand its timeline (status changes and notes, each timestamped and attributed to a
-  person) **and log a new activity note inline**. Click the pencil to open the full task
-  editor.
+  person), **change the task's status** from an inline dropdown (the move is logged just
+  like a drag), **and log a new activity note inline**. Click the pencil to open the full
+  task editor.
 - **Filters** are **multi-select** (checkbox dropdowns with All / Clear, showing an
   "N of M" count): root cause, **owner**, **owner role**, **insurance carrier** (in both
   views), plus a **status** filter in the list view. Also a **Behind target** toggle
