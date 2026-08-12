@@ -632,6 +632,9 @@ button { font-family: inherit; }
 .tl-item:last-child::after { display: none; }
 .tl-date { display: block; font-weight: 700; color: var(--secondary); font-size: 11.5px; }
 .tl-note { color: #1e2a33; }
+.tl-item.tl-status::before { background: var(--primary); }
+.tl-tag { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+  color: var(--primary); background: #00529b14; border: 1px solid #00529b33; border-radius: 4px; padding: 0 5px; margin-right: 3px; }
 .note-add { display: flex; gap: 6px; margin-top: 12px; }
 .note-add input { flex: 1; font-family: var(--font-plain); font-size: 13px; padding: 8px 10px;
   border: 1px solid var(--outline-variant); border-radius: var(--corner-sm); outline: none; }

@@ -114,7 +114,7 @@
   var editingId = null;
 
   /* ---------------- helpers ---------------- */
-  function shallow(o) { var n = {}; for (var k in o) n[k] = o[k]; if (o.verificationSignal) n.verificationSignal = { metric: o.verificationSignal.metric, lagDays: o.verificationSignal.lagDays }; if (o.activityLog) n.activityLog = o.activityLog.map(function (e) { return { date: e.date, note: e.note }; }); return n; }
+  function shallow(o) { var n = {}; for (var k in o) n[k] = o[k]; if (o.verificationSignal) n.verificationSignal = { metric: o.verificationSignal.metric, lagDays: o.verificationSignal.lagDays }; if (o.activityLog) n.activityLog = o.activityLog.map(function (e) { return { date: e.date, note: e.note, kind: e.kind }; }); return n; }
   function parseISO(s) { if (!s) return null; var p = String(s).split('-'); if (p.length !== 3) return null; return new Date(+p[0], +p[1] - 1, +p[2]); }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function iso(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
@@ -352,11 +352,13 @@
     var dragging = boardEl.querySelector('.card.dragging'); if (!dragging) return;
     var col = dragging.closest('.column'); if (!col) return;
     var newCol = col.getAttribute('data-col');
+    var moved = findTask(dragId), prevCol = moved ? moved.column : newCol;
     // Renumber the destination column from its live DOM order and stamp the status.
     Array.prototype.forEach.call(col.querySelectorAll('.cards .card'), function (c, i) {
       var tt = findTask(c.getAttribute('data-id'));
       if (tt) { tt.column = newCol; tt.order = i; }
     });
+    if (prevCol !== newCol) logStatusChange(moved, prevCol, newCol);   // record the status transition
     dragDropped = true;
     // A drag expresses a manual arrangement - reflect it in the sort control so the
     // drop is honored on re-render instead of snapping back to an automatic sort.
@@ -435,7 +437,10 @@
       '<div class="ctx-head">Activity log</div>' +
       (log.length
         ? '<ol class="tl">' + log.map(function (e) {
-            return '<li class="tl-item"><span class="tl-date">' + esc(fmtDate(e.date)) + '</span><span class="tl-note">' + esc(e.note) + '</span></li>';
+            var isStatus = e.kind === 'status';
+            return '<li class="tl-item' + (isStatus ? ' tl-status' : '') + '">' +
+              '<span class="tl-date">' + esc(fmtDate(e.date)) + '</span>' +
+              '<span class="tl-note">' + (isStatus ? '<span class="tl-tag">Status</span> ' : '') + esc(e.note) + '</span></li>';
           }).join('') + '</ol>'
         : '<div class="ctx-sub">No activity recorded yet.</div>') +
       '<div class="note-add">' +
@@ -454,6 +459,13 @@
     if (!t.activityLog) t.activityLog = [];
     t.activityLog.push({ date: DATA.referenceDate, note: v });
     renderContext(t.planId, t);
+  }
+
+  // Auto-record a status transition (from drag-and-drop or the editor) on the timeline.
+  function logStatusChange(t, fromKey, toKey) {
+    if (!t || fromKey === toKey) return;
+    if (!t.activityLog) t.activityLog = [];
+    t.activityLog.push({ date: DATA.referenceDate, note: colMeta(fromKey).label + ' → ' + colMeta(toKey).label, kind: 'status' });
   }
 
   function submitForm(e) {
@@ -481,10 +493,11 @@
     if (editingId) {
       var t = findTask(editingId);
       if (t) {
-        var colChanged = t.column !== data.column;
+        var prevCol = t.column;
+        var colChanged = prevCol !== data.column;
         var newOrder = colChanged ? bottomOrder(data.column) : null;   // land at the bottom of the new status
         for (var k in data) t[k] = data[k];
-        if (colChanged) t.order = newOrder;
+        if (colChanged) { t.order = newOrder; logStatusChange(t, prevCol, data.column); }   // record the status transition
       }
       toast('Task updated');
     } else {

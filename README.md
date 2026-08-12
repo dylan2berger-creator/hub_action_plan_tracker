@@ -79,8 +79,11 @@ capacity gap - all under one plan.
 (when carrier-specific), status column, priority, due date, a risk note, a blocked
 reason (when Blocked), a **verification signal** (the *name* of the metric expected
 to move + expected lag in days), and a dated **activity log** of the real
-back-and-forth. In the task editor the **Action plan is locked** to the shop - a task
-can't be reassigned to another shop's plan.
+back-and-forth. **Status changes are logged automatically**: every time a task moves
+between columns (by drag-and-drop or the editor's Status control) a **Status** entry is
+appended to its activity log, so the timeline shows how it progressed. In the task
+editor the **Action plan is locked** to the shop - a task can't be reassigned to
+another shop's plan.
 
 ## Using the board
 
