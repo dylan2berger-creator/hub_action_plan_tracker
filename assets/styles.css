@@ -631,6 +631,9 @@ button { font-family: inherit; }
 .tl-item::after { content: ""; position: absolute; left: 3px; top: 12px; bottom: -14px; width: 1px; background: var(--outline-variant); }
 .tl-item:last-child::after { display: none; }
 .tl-date { display: block; font-weight: 700; color: var(--secondary); font-size: 11.5px; }
+.tl-meta { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+.tl-by { font-size: 11.5px; font-weight: 600; color: var(--on-surface-variant); }
+.tl-by::before { content: "· "; color: var(--outline); }
 .tl-note { color: #1e2a33; }
 .tl-item.tl-status::before { background: var(--primary); }
 .tl-tag { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;

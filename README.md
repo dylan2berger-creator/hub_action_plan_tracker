@@ -79,9 +79,10 @@ capacity gap - all under one plan.
 (when carrier-specific), status column, priority, due date, a risk note, a blocked
 reason (when Blocked), a **verification signal** (the *name* of the metric expected
 to move + expected lag in days), and a dated **activity log** of the real
-back-and-forth. **Status changes are logged automatically**: every time a task moves
-between columns (by drag-and-drop or the editor's Status control) a **Status** entry is
-appended to its activity log, so the timeline shows how it progressed. In the task
+back-and-forth - each entry stamped with the **date/time and the person** who logged it.
+**Status changes are logged automatically**: every time a task moves between columns (by
+drag-and-drop or the editor's Status control) a **Status** entry is appended to its
+activity log, so the timeline shows how it progressed. In the task
 editor the **Action plan is locked** to the shop - a task can't be reassigned to
 another shop's plan.
 
@@ -95,8 +96,9 @@ another shop's plan.
   Owner, Role, Priority, Due, **Activity** count, **Last update** date/time). **Click any
   column header to sort**, click again to flip ascending/descending (the sorted column
   shows an arrow). Each row **drills into its activity log** in place - click a row to
-  expand its timeline (status changes and notes, each timestamped). Click the pencil to
-  open the full task editor.
+  expand its timeline (status changes and notes, each timestamped and attributed to a
+  person) **and log a new activity note inline**. Click the pencil to open the full task
+  editor.
 - **Filters:** root cause, **owner**, **owner role**, **insurance carrier** (all three
   in both views), a **Behind target** toggle (tasks past their due date or whose plan
   blew its target-close date), and - in the list view - a **status** filter. Market and

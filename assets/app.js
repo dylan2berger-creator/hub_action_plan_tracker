@@ -94,6 +94,7 @@
       log.forEach(function (e) {
         mins += 20 + Math.floor(r() * 140);
         if (typeof e.time !== 'number') e.time = clamp(mins, 8 * 60, 18 * 60 - 1);
+        if (!e.by) e.by = t.ownerName || '';   // historical entries: attribute to the task owner
       });
     });
   })();
@@ -133,7 +134,7 @@
   var editingId = null;
 
   /* ---------------- helpers ---------------- */
-  function shallow(o) { var n = {}; for (var k in o) n[k] = o[k]; if (o.verificationSignal) n.verificationSignal = { metric: o.verificationSignal.metric, lagDays: o.verificationSignal.lagDays }; if (o.activityLog) n.activityLog = o.activityLog.map(function (e) { return { date: e.date, note: e.note, kind: e.kind, time: e.time }; }); return n; }
+  function shallow(o) { var n = {}; for (var k in o) n[k] = o[k]; if (o.verificationSignal) n.verificationSignal = { metric: o.verificationSignal.metric, lagDays: o.verificationSignal.lagDays }; if (o.activityLog) n.activityLog = o.activityLog.map(function (e) { return { date: e.date, note: e.note, kind: e.kind, time: e.time, by: e.by }; }); return n; }
   function nowMins() { var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
   function parseISO(s) { if (!s) return null; var p = String(s).split('-'); if (p.length !== 3) return null; return new Date(+p[0], +p[1] - 1, +p[2]); }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -300,7 +301,11 @@
         '<div class="lt-cell lt-actions"><button class="mini-btn" data-edit="' + esc(t.id) + '" aria-label="Open task details">' + editIcon() + '</button></div>' +
       '</div>' +
       '<div class="lt-detail"' + (open ? '' : ' hidden') + '>' +
-        '<div class="lt-detail-inner"><div class="ctx-head">Activity log</div>' + activityTimelineHTML(t.activityLog) + '</div>' +
+        '<div class="lt-detail-inner"><div class="ctx-head">Activity log</div>' + activityTimelineHTML(t.activityLog) +
+          '<div class="note-add">' +
+            '<input class="lt-note-input" type="text" placeholder="Add an activity note…" maxlength="180" data-note-for="' + esc(t.id) + '" />' +
+            '<button type="button" class="btn btn-ghost" data-add-note="' + esc(t.id) + '">Add</button>' +
+          '</div></div>' +
       '</div>'
     );
   }
@@ -455,16 +460,38 @@
     var detail = row.nextElementSibling;
     if (detail && detail.classList.contains('lt-detail')) detail.hidden = !open;
   }
+  // Log a new activity note on a task straight from the list drill-in.
+  function addListNote(btn) {
+    var wrap = btn.closest('.note-add'); if (!wrap) return;
+    var input = wrap.querySelector('.lt-note-input'); if (!input) return;
+    var id = btn.getAttribute('data-add-note'), v = (input.value || '').trim();
+    if (!v) { input.focus(); return; }
+    var t = findTask(id); if (!t) return;
+    if (!t.activityLog) t.activityLog = [];
+    t.activityLog.push({ date: DATA.referenceDate, note: v, time: nowMins(), by: currentActor() });
+    expandedRows[id] = true;   // keep the row open so the new entry stays visible
+    render();
+    var ni = listEl.querySelector('.lt-note-input[data-note-for="' + id + '"]');
+    if (ni) ni.focus();
+  }
   function onListClick(e) {
     var sh = e.target.closest('[data-sort]');
     if (sh) { setListSort(sh.getAttribute('data-sort')); return; }
+    var an = e.target.closest('[data-add-note]');
+    if (an) { e.stopPropagation(); addListNote(an); return; }
     var ed = e.target.closest('[data-edit]');
     if (ed) { e.stopPropagation(); openModal(ed.getAttribute('data-edit')); return; }
+    if (e.target.closest('.lt-detail')) return;   // clicks inside the drill-in don't toggle the row
     var row = e.target.closest('.lt-row');
     if (row) toggleRow(row);   // drill into the task's activity log
   }
   function onListKey(e) {
+    if (e.key === 'Enter') {
+      var ni = e.target.closest('.lt-note-input');
+      if (ni) { e.preventDefault(); var wrap = ni.closest('.note-add'); var btn = wrap && wrap.querySelector('[data-add-note]'); if (btn) addListNote(btn); return; }
+    }
     if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target.closest('.lt-detail')) return;   // let the note input handle its own keys
     var sh = e.target.closest('[data-sort]');
     if (sh) { e.preventDefault(); setListSort(sh.getAttribute('data-sort')); return; }
     var row = e.target.closest('.lt-row');
@@ -607,7 +634,8 @@
     return '<ol class="tl">' + log.map(function (e) {
       var isStatus = e.kind === 'status';
       return '<li class="tl-item' + (isStatus ? ' tl-status' : '') + '">' +
-        '<span class="tl-date">' + esc(fmtDateTime(e.date, e.time)) + '</span>' +
+        '<div class="tl-meta"><span class="tl-date">' + esc(fmtDateTime(e.date, e.time)) + '</span>' +
+          (e.by ? '<span class="tl-by">' + esc(e.by) + '</span>' : '') + '</div>' +
         '<span class="tl-note">' + (isStatus ? '<span class="tl-tag">Status</span> ' : '') + esc(e.note) + '</span></li>';
     }).join('') + '</ol>';
   }
@@ -630,15 +658,23 @@
     var t = findTask(editingId); if (!t) return;
     var v = (noteInput.value || '').trim(); if (!v) return;
     if (!t.activityLog) t.activityLog = [];
-    t.activityLog.push({ date: DATA.referenceDate, note: v, time: nowMins() });
+    t.activityLog.push({ date: DATA.referenceDate, note: v, time: nowMins(), by: currentActor() });
     renderContext(t.planId, t);
   }
 
+  // The person acting in the current persona - attributed to new activity entries.
+  function currentActor() {
+    if (state.role === 'regional') return currentRegion().manager || 'Regional Manager';
+    if (state.role === 'market') return (MARKET && MARKET.manager) || 'Market Manager';
+    var sid = scopeIds()[0];                                   // GM: the shop's own GM if we can find one
+    for (var i = 0; i < tasks.length; i++) if (tasks[i].storeId === sid && /Shop GM/i.test(tasks[i].ownerRole || '')) return tasks[i].ownerName;
+    return 'Shop GM';
+  }
   // Auto-record a status transition (from drag-and-drop or the editor) on the timeline.
   function logStatusChange(t, fromKey, toKey) {
     if (!t || fromKey === toKey) return;
     if (!t.activityLog) t.activityLog = [];
-    t.activityLog.push({ date: DATA.referenceDate, note: colMeta(fromKey).label + ' → ' + colMeta(toKey).label, kind: 'status', time: nowMins() });
+    t.activityLog.push({ date: DATA.referenceDate, note: colMeta(fromKey).label + ' → ' + colMeta(toKey).label, kind: 'status', time: nowMins(), by: currentActor() });
   }
 
   function submitForm(e) {
