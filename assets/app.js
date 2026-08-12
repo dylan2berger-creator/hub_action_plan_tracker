@@ -681,8 +681,8 @@
     if (state.role === 'regional') return currentRegion().manager || 'Regional Manager';
     if (state.role === 'market') return (MARKET && MARKET.manager) || 'Market Manager';
     var sid = scopeIds()[0];                                   // GM: the shop's own GM if we can find one
-    for (var i = 0; i < tasks.length; i++) if (tasks[i].storeId === sid && /Shop GM/i.test(tasks[i].ownerRole || '')) return tasks[i].ownerName;
-    return 'Shop GM';
+    for (var i = 0; i < tasks.length; i++) if (tasks[i].storeId === sid && /General Manager/i.test(tasks[i].ownerRole || '')) return tasks[i].ownerName;
+    return 'General Manager';
   }
   // Auto-record a status transition (from drag-and-drop or the editor) on the timeline.
   function logStatusChange(t, fromKey, toKey) {
@@ -1960,7 +1960,7 @@
     fRoot.innerHTML = (DATA.rootCauses || []).map(function (r) { return '<option value="' + r.key + '">' + esc(r.label) + '</option>'; }).join('');
     if (fCarrier) fCarrier.innerHTML = '<option value="">None</option>' + CARRIERS.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
     fRole.setAttribute('list', 'roleOptions');
-    document.getElementById('roleOptions').innerHTML = ['Market Manager', 'CPM', 'RDO', 'Shop GM', 'Estimator', 'Body Technician', 'Refinish Technician', 'Painter', 'Parts Manager', 'CSR', 'National Account Manager', 'RVP', 'ADAS Calibration Tech', 'Facilities / Capex', 'HR Recruiter', 'Regional Fixed Ops', 'Sales Rep']
+    document.getElementById('roleOptions').innerHTML = ['Regional Manager', 'Account Manager', 'National Account Manager', 'Client Performance Manager (CPM)', 'General Manager', 'Estimator', 'Technician']
       .map(function (r) { return '<option value="' + esc(r) + '">'; }).join('');
 
     fPlan.addEventListener('change', function () { var pl = PLAN_BY_ID[fPlan.value]; if (pl) fRoot.value = pl.rootCauseCategory; updateCarrierReq(); renderContext(fPlan.value, editingId ? findTask(editingId) : null); });

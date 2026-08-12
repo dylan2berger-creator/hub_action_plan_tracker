@@ -8,7 +8,7 @@
 window.HUB_DATA = {
   referenceDate: "2026-08-10",
 
-  personas: ["Market Manager", "CPM", "RDO", "Shop GM", "National Account Manager", "RVP", "Sales"],
+  personas: ["Regional Manager", "Account Manager", "National Account Manager", "Client Performance Manager (CPM)", "General Manager", "Estimator", "Technician"],
 
   rootCauses: [
     { key: "drp-scorecard",     label: "DRP Scorecard",        dot: "#00529b", bg: "#dbe8f5", fg: "#0b3d6b" },
@@ -48,11 +48,11 @@ window.HUB_DATA = {
        symptoms on the scorecard and capture. parentPlanId ties them together. */
     {
       id: "AP-201", storeId: "s2", rootCauseCategory: "equipment",
-      owningPersona: "RDO", openedDate: "2026-06-20", targetCloseDate: "2026-09-15",
+      owningPersona: "Regional Manager", openedDate: "2026-06-20", targetCloseDate: "2026-09-15",
       diagnosis: "Downdraft booth #2 compressor failed; the shop is curing on a single booth. Every refinish job now queues behind one booth - this is the upstream constraint driving the store's cycle time, CSI, and capture misses. Fix the booth, most of the rest follows.",
       tasks: [
         { id: "AP-201-t1", title: "Submit capex for booth #2 compressor replacement", description: "Package quotes for a like-for-like compressor swap and expedited install; route through regional finance for emergency capex.",
-          ownerName: "Vince Russo", ownerRole: "Facilities / Capex", column: "blocked", createdDate: "2026-06-21", dueDate: "2026-08-14", priority: "urgent",
+          ownerName: "Vince Russo", ownerRole: "Regional Manager", column: "blocked", createdDate: "2026-06-21", dueDate: "2026-08-14", priority: "urgent",
           risk: "Emergency capex competes with other markets; monthly committee cadence adds delay.",
           blockedReason: "Awaiting capex approval - regional finance committee meets monthly; next review Aug 18.",
           verificationSignal: { metric: "Refinish Cycle Time", lagDays: 30 },
@@ -62,7 +62,7 @@ window.HUB_DATA = {
             { date: "2026-08-05", note: "Third quote in; RDO escalated as shop-stopping to move it up." }
           ] },
         { id: "AP-201-t2", title: "Stand up interim sublet refinish with vetted partner", description: "Route overflow refinish to a qualified sublet paint partner to keep WIP moving while booth #2 is down.",
-          ownerName: "Renee Fontaine", ownerRole: "Shop GM", column: "inprogress", createdDate: "2026-06-22", dueDate: "2026-08-12", priority: "high",
+          ownerName: "Renee Fontaine", ownerRole: "General Manager", column: "inprogress", createdDate: "2026-06-22", dueDate: "2026-08-12", priority: "high",
           risk: "Sublet quality variance and added transport days can hurt CSI further.",
           verificationSignal: { metric: "Refinish Cycle Time", lagDays: 30 },
           activityLog: [
@@ -70,7 +70,7 @@ window.HUB_DATA = {
             { date: "2026-07-30", note: "Two batches routed weekly; transport is adding a day each way." }
           ] },
         { id: "AP-201-t3", title: "Triage WIP and re-sequence promise dates on the single booth", description: "Reflow the paint schedule around one booth and reset customer promise dates so the constraint is managed, not hidden.",
-          ownerName: "Renee Fontaine", ownerRole: "Shop GM", column: "closed", createdDate: "2026-06-21", dueDate: "2026-06-28", priority: "high",
+          ownerName: "Renee Fontaine", ownerRole: "General Manager", column: "closed", createdDate: "2026-06-21", dueDate: "2026-06-28", priority: "high",
           risk: "Re-sequencing helps flow but cannot add booth capacity - a stopgap only.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 30 }, outcome: "Superseded",
           activityLog: [
@@ -81,11 +81,11 @@ window.HUB_DATA = {
     },
     {
       id: "AP-202", storeId: "s2", rootCauseCategory: "drp-scorecard", parentPlanId: "AP-201",
-      carrier: "State Farm", owningPersona: "CPM", openedDate: "2026-06-25", targetCloseDate: "2026-09-30",
+      carrier: "State Farm", owningPersona: "Client Performance Manager (CPM)", openedDate: "2026-06-25", targetCloseDate: "2026-09-30",
       diagnosis: "Keys-to-keys cycle time is out of tolerance on the State Farm Select Service scorecard. The cause is the booth outage (AP-201), not process - documenting the linkage so the carrier sees remediation in flight instead of a process failure.",
       tasks: [
         { id: "AP-202-t1", title: "Meet State Farm field rep to review scorecard metrics", description: "Walk the rep through the booth root cause and the remediation timeline so the cycle-time miss is understood in context.",
-          ownerName: "Marcus Delgado", ownerRole: "CPM", column: "inprogress", createdDate: "2026-06-26", dueDate: "2026-08-15", priority: "high",
+          ownerName: "Marcus Delgado", ownerRole: "Client Performance Manager (CPM)", column: "inprogress", createdDate: "2026-06-26", dueDate: "2026-08-15", priority: "high",
           risk: "Rep may still hold the store to program tolerance regardless of cause.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 60 },
           activityLog: [
@@ -101,7 +101,7 @@ window.HUB_DATA = {
             { date: "2026-07-18", note: "Granted for the outage window; routing hold lifted." }
           ] },
         { id: "AP-202-t3", title: "Re-baseline WIP and confirm cycle-time reporting once booth returns", description: "After the booth is restored, verify the cycle-time metric on the scorecard reflects the recovered flow.",
-          ownerName: "Marcus Delgado", ownerRole: "CPM", column: "verifying", createdDate: "2026-07-02", dueDate: "2026-09-20", priority: "medium",
+          ownerName: "Marcus Delgado", ownerRole: "Client Performance Manager (CPM)", column: "verifying", createdDate: "2026-07-02", dueDate: "2026-09-20", priority: "medium",
           risk: "Signal lags the fix by weeks; premature reads will look flat.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 60 },
           activityLog: [
@@ -112,11 +112,11 @@ window.HUB_DATA = {
     },
     {
       id: "AP-203", storeId: "s2", rootCauseCategory: "drp-scorecard", parentPlanId: "AP-201",
-      carrier: "State Farm", owningPersona: "Shop GM", openedDate: "2026-06-26", targetCloseDate: "2026-09-30",
+      carrier: "State Farm", owningPersona: "General Manager", openedDate: "2026-06-26", targetCloseDate: "2026-09-30",
       diagnosis: "CSI survey score is sliding as booth delays push promise dates. Same upstream cause as AP-201 - protect the customer experience with proactive communication until the constraint clears.",
       tasks: [
         { id: "AP-203-t1", title: "Roll out proactive delay-communication script for CSRs", description: "Give front office a script to call customers ahead of any revised promise date so delays don't surface as surprises on the survey.",
-          ownerName: "Megan O'Rourke", ownerRole: "CSR", column: "inprogress", createdDate: "2026-06-28", dueDate: "2026-08-13", priority: "high",
+          ownerName: "Megan O'Rourke", ownerRole: "Account Manager", column: "inprogress", createdDate: "2026-06-28", dueDate: "2026-08-13", priority: "high",
           risk: "Script adoption slips when the front counter is slammed.",
           verificationSignal: { metric: "CSI Survey Score", lagDays: 45 },
           activityLog: [
@@ -124,7 +124,7 @@ window.HUB_DATA = {
             { date: "2026-07-25", note: "Daily call list started for jobs with reset promise dates." }
           ] },
         { id: "AP-203-t2", title: "Call open customers with revised, realistic promise dates", description: "Work the active WIP list and reset expectations honestly rather than rolling dates silently.",
-          ownerName: "Megan O'Rourke", ownerRole: "CSR", column: "inprogress", createdDate: "2026-06-29", dueDate: "2026-08-16", priority: "medium",
+          ownerName: "Megan O'Rourke", ownerRole: "Account Manager", column: "inprogress", createdDate: "2026-06-29", dueDate: "2026-08-16", priority: "medium",
           risk: "Repeated resets on the same job still frustrate customers.",
           verificationSignal: { metric: "CSI Survey Score", lagDays: 45 },
           activityLog: [
@@ -132,7 +132,7 @@ window.HUB_DATA = {
             { date: "2026-08-01", note: "Second pass underway as sublet transport shifts a few dates again." }
           ] },
         { id: "AP-203-t3", title: "Monitor survey verbatims for delay-related themes", description: "Track the open-text survey comments for promise-date and communication themes to confirm the script is landing.",
-          ownerName: "Renee Fontaine", ownerRole: "Shop GM", column: "verifying", createdDate: "2026-07-06", dueDate: "2026-09-15", priority: "low",
+          ownerName: "Renee Fontaine", ownerRole: "General Manager", column: "verifying", createdDate: "2026-07-06", dueDate: "2026-09-15", priority: "low",
           risk: "Verbatim volume is thin week to week; trend needs weeks to read.",
           verificationSignal: { metric: "CSI Survey Score", lagDays: 45 },
           activityLog: [
@@ -143,7 +143,7 @@ window.HUB_DATA = {
     },
     {
       id: "AP-204", storeId: "s2", rootCauseCategory: "other", parentPlanId: "AP-201",
-      owningPersona: "RDO", openedDate: "2026-06-27", targetCloseDate: "2026-09-30",
+      owningPersona: "Regional Manager", openedDate: "2026-06-27", targetCloseDate: "2026-09-30",
       diagnosis: "Sublet refinish is eroding capture - in-house refinish labor and blend operations aren't being written on the sublet ROs. The booth outage is upstream, but the leakage is fixable now with estimating discipline.",
       tasks: [
         { id: "AP-204-t1", title: "Audit sublet ROs for missed blend and clearcoat operations", description: "Review recent sublet paint ROs against the estimate to catch blend, clear, and cavity-wax operations that weren't captured.",
@@ -162,7 +162,7 @@ window.HUB_DATA = {
             { date: "2026-07-03", note: "Template change drafted; checking rules adherence before rollout." }
           ] },
         { id: "AP-204-t3", title: "Coach estimators on refinish operations on sublet files", description: "Short working session on writing complete refinish operations even when paint is sublet out.",
-          ownerName: "Rob Mancini", ownerRole: "Regional Fixed Ops", column: "identified", createdDate: "2026-07-10", dueDate: "2026-08-26", priority: "low",
+          ownerName: "Rob Mancini", ownerRole: "Regional Manager", column: "identified", createdDate: "2026-07-10", dueDate: "2026-08-26", priority: "low",
           risk: "Coaching sticks only if reinforced in file reviews.",
           verificationSignal: { metric: "Estimate Accuracy", lagDays: 45 },
           activityLog: [
@@ -172,11 +172,11 @@ window.HUB_DATA = {
     },
     {
       id: "AP-205", storeId: "s2", rootCauseCategory: "personnel", parentPlanId: "AP-201",
-      owningPersona: "Shop GM", openedDate: "2026-06-28", targetCloseDate: "2026-10-15",
+      owningPersona: "General Manager", openedDate: "2026-06-28", targetCloseDate: "2026-10-15",
       diagnosis: "One painter can't clear the queue on a single booth, and even when booth #2 returns the refinish department is thin. Department-level capacity gap surfaced by the outage - needs a second painter, not just overtime.",
       tasks: [
         { id: "AP-205-t1", title: "Approve painter overtime as an interim capacity stopgap", description: "Authorize scheduled overtime for the current painter to hold the line while the booth and staffing are resolved.",
-          ownerName: "Renee Fontaine", ownerRole: "Shop GM", column: "inprogress", createdDate: "2026-06-29", dueDate: "2026-08-11", priority: "medium",
+          ownerName: "Renee Fontaine", ownerRole: "General Manager", column: "inprogress", createdDate: "2026-06-29", dueDate: "2026-08-11", priority: "medium",
           risk: "Overtime burns out the one painter and isn't sustainable.",
           verificationSignal: { metric: "Refinish Cycle Time", lagDays: 30 },
           activityLog: [
@@ -184,7 +184,7 @@ window.HUB_DATA = {
             { date: "2026-07-27", note: "Painter flagging fatigue; pushing to add a body." }
           ] },
         { id: "AP-205-t2", title: "Contract a temporary painter through staffing partner", description: "Bring in a temp painter to add booth throughput while a permanent hire is worked.",
-          ownerName: "Bianca Torres", ownerRole: "HR Recruiter", column: "blocked", createdDate: "2026-07-01", dueDate: "2026-08-20", priority: "high",
+          ownerName: "Bianca Torres", ownerRole: "Regional Manager", column: "blocked", createdDate: "2026-07-01", dueDate: "2026-08-20", priority: "high",
           risk: "Qualified temp painters are scarce in this market.",
           blockedReason: "No qualified temp painters available through the staffing agency; only unvetted candidates offered.",
           verificationSignal: { metric: "Refinish Cycle Time", lagDays: 30 },
@@ -193,7 +193,7 @@ window.HUB_DATA = {
             { date: "2026-07-31", note: "Agency came back empty on vetted painters; widening radius." }
           ] },
         { id: "AP-205-t3", title: "Cross-train a prep tech toward booth operation", description: "Begin cross-training a prepper to run the booth for simpler jobs and relieve the painter.",
-          ownerName: "Alicia Moreno", ownerRole: "Refinish Technician", column: "identified", createdDate: "2026-07-08", dueDate: "2026-09-01", priority: "low",
+          ownerName: "Alicia Moreno", ownerRole: "Technician", column: "identified", createdDate: "2026-07-08", dueDate: "2026-09-01", priority: "low",
           risk: "Cross-training pulls the prepper off the line short term.",
           verificationSignal: { metric: "Refinish Cycle Time", lagDays: 30 },
           activityLog: [
@@ -218,14 +218,14 @@ window.HUB_DATA = {
             { date: "2026-06-15", note: "Carrier acknowledged; queued for capacity review, no date." }
           ] },
         { id: "AP-101-t2", title: "Compile store capability packet for the carrier", description: "Assemble certifications, equipment list, capacity, and CBSA coverage into a packet supporting the add request.",
-          ownerName: "Dan Kowalski", ownerRole: "Shop GM", column: "identified", createdDate: "2026-03-08", dueDate: "2026-08-20", priority: "low",
+          ownerName: "Dan Kowalski", ownerRole: "General Manager", column: "identified", createdDate: "2026-03-08", dueDate: "2026-08-20", priority: "low",
           risk: "Packet goes stale if the review slips further.",
           verificationSignal: { metric: "DRP Assignment Volume", lagDays: 90 },
           activityLog: [
             { date: "2026-03-15", note: "Certifications and equipment list gathered." }
           ] },
         { id: "AP-101-t3", title: "Prepare RVP escalation letter for network review", description: "Draft an RVP-level letter reinforcing the business case for the CBSA add ahead of the carrier's capacity review.",
-          ownerName: "Lauren Petrakis", ownerRole: "RVP", column: "identified", createdDate: "2026-06-18", dueDate: "2026-09-05", priority: "low",
+          ownerName: "Lauren Petrakis", ownerRole: "Regional Manager", column: "identified", createdDate: "2026-06-18", dueDate: "2026-09-05", priority: "low",
           risk: "Escalation is only useful timed to the carrier's review window.",
           verificationSignal: { metric: "DRP Assignment Volume", lagDays: 90 },
           activityLog: [
@@ -237,11 +237,11 @@ window.HUB_DATA = {
     /* ===================== JOLIET (s3) - second cross-link (personnel → scorecard) ===================== */
     {
       id: "AP-104", storeId: "s3", rootCauseCategory: "personnel",
-      owningPersona: "Shop GM", openedDate: "2026-02-18", targetCloseDate: "2026-09-01",
+      owningPersona: "General Manager", openedDate: "2026-02-18", targetCloseDate: "2026-09-01",
       diagnosis: "Lead estimator left in February and a junior is writing complex files solo. Estimate accuracy and supplement frequency are both slipping - this is a skill-mix gap, not a headcount number. Upstream of the Progressive scorecard miss (AP-103).",
       tasks: [
         { id: "AP-104-t1", title: "Pair junior estimator with a regional estimating trainer", description: "Set a standing weekly file-review with a regional trainer to raise blueprint completeness on complex jobs.",
-          ownerName: "Rob Mancini", ownerRole: "Regional Fixed Ops", column: "inprogress", createdDate: "2026-02-20", dueDate: "2026-08-15", priority: "high",
+          ownerName: "Rob Mancini", ownerRole: "Regional Manager", column: "inprogress", createdDate: "2026-02-20", dueDate: "2026-08-15", priority: "high",
           risk: "Trainer covers multiple markets; cadence can slip.",
           verificationSignal: { metric: "Estimate Accuracy", lagDays: 60 },
           activityLog: [
@@ -249,7 +249,7 @@ window.HUB_DATA = {
             { date: "2026-07-22", note: "Complex-file completeness improving; supplements still lumpy." }
           ] },
         { id: "AP-104-t2", title: "Recruit an experienced estimator for the store", description: "Open and work a requisition for a seasoned estimator to restore the department's skill mix.",
-          ownerName: "Bianca Torres", ownerRole: "HR Recruiter", column: "blocked", createdDate: "2026-02-22", dueDate: "2026-08-10", priority: "high",
+          ownerName: "Bianca Torres", ownerRole: "Regional Manager", column: "blocked", createdDate: "2026-02-22", dueDate: "2026-08-10", priority: "high",
           risk: "Experienced estimators are scarce and comp expectations run high.",
           blockedReason: "Two candidates declined offers; compensation band under review with HR before re-posting.",
           verificationSignal: { metric: "Estimate Accuracy", lagDays: 60 },
@@ -258,7 +258,7 @@ window.HUB_DATA = {
             { date: "2026-05-30", note: "Second candidate declined on comp; band escalated to HR." }
           ] },
         { id: "AP-104-t3", title: "Interim RDO file review on high-severity jobs", description: "Have the RDO spot-review high-severity estimates until the department is back to strength.",
-          ownerName: "Priya Nair", ownerRole: "RDO", column: "inprogress", createdDate: "2026-03-04", dueDate: "2026-08-30", priority: "medium",
+          ownerName: "Priya Nair", ownerRole: "Regional Manager", column: "inprogress", createdDate: "2026-03-04", dueDate: "2026-08-30", priority: "medium",
           risk: "RDO bandwidth is limited across the region.",
           verificationSignal: { metric: "Supplement Frequency", lagDays: 45 },
           activityLog: [
@@ -269,11 +269,11 @@ window.HUB_DATA = {
     },
     {
       id: "AP-103", storeId: "s3", rootCauseCategory: "drp-scorecard", parentPlanId: "AP-104",
-      carrier: "Progressive", owningPersona: "CPM", openedDate: "2026-05-20", targetCloseDate: "2026-09-15",
+      carrier: "Progressive", owningPersona: "Client Performance Manager (CPM)", openedDate: "2026-05-20", targetCloseDate: "2026-09-15",
       diagnosis: "Supplement frequency is high on the Progressive scorecard because initial estimates are incomplete - the same estimating skill-mix gap as AP-104. Blueprinting discipline should pull it back.",
       tasks: [
         { id: "AP-103-t1", title: "Stand up full-teardown blueprinting SOP", description: "Require complete disassembly and blueprint before the estimate is finalized on all but the lightest hits.",
-          ownerName: "Doug Ferreira", ownerRole: "Shop GM", column: "identified", createdDate: "2026-05-22", dueDate: "2026-08-19", priority: "high",
+          ownerName: "Doug Ferreira", ownerRole: "General Manager", column: "identified", createdDate: "2026-05-22", dueDate: "2026-08-19", priority: "high",
           risk: "Teardown adds a step that can pressure cycle time if not staffed.",
           verificationSignal: { metric: "Supplement Frequency", lagDays: 45 },
           activityLog: [
@@ -300,11 +300,11 @@ window.HUB_DATA = {
     /* ===================== SCHAUMBURG–WOODFIELD (s4) ===================== */
     {
       id: "AP-105", storeId: "s4", rootCauseCategory: "drp-scorecard",
-      carrier: "USAA", owningPersona: "RDO", openedDate: "2026-04-15", targetCloseDate: "2026-08-31",
+      carrier: "USAA", owningPersona: "Regional Manager", openedDate: "2026-04-15", targetCloseDate: "2026-08-31",
       diagnosis: "Severity & Cost Performance is out of tolerance on the USAA scorecard - the store is writing heavier than peers on comparable damage. Calibration to USAA severity guidance, not process failure.",
       tasks: [
         { id: "AP-105-t1", title: "RDO file review of high-severity USAA repair orders", description: "Sample recent high-severity USAA files to find where severity is running above peer norms.",
-          ownerName: "Priya Nair", ownerRole: "RDO", column: "identified", createdDate: "2026-04-17", dueDate: "2026-08-18", priority: "medium",
+          ownerName: "Priya Nair", ownerRole: "Regional Manager", column: "identified", createdDate: "2026-04-17", dueDate: "2026-08-18", priority: "medium",
           risk: "Small file sample can mislead; needs enough volume to be fair.",
           verificationSignal: { metric: "Severity & Cost Performance", lagDays: 60 },
           activityLog: [
@@ -319,7 +319,7 @@ window.HUB_DATA = {
             { date: "2026-07-15", note: "Practice adjusted; now watching the scorecard for movement." }
           ] },
         { id: "AP-105-t3", title: "Monitor Severity & Cost Performance for movement", description: "Track the USAA scorecard metric monthly to confirm the calibration moved the number without hurting accuracy.",
-          ownerName: "Priya Nair", ownerRole: "RDO", column: "verifying", createdDate: "2026-05-02", dueDate: "2026-09-10", priority: "low",
+          ownerName: "Priya Nair", ownerRole: "Regional Manager", column: "verifying", createdDate: "2026-05-02", dueDate: "2026-09-10", priority: "low",
           risk: "Signal lags; a flat early read doesn't mean failure.",
           verificationSignal: { metric: "Severity & Cost Performance", lagDays: 60 },
           activityLog: [
@@ -332,18 +332,18 @@ window.HUB_DATA = {
     /* ===================== ELMHURST (s5) - under-equipped (not broken) ===================== */
     {
       id: "AP-107", storeId: "s5", rootCauseCategory: "equipment",
-      owningPersona: "RDO", openedDate: "2026-05-28", targetCloseDate: "2026-11-01",
+      owningPersona: "Regional Manager", openedDate: "2026-05-28", targetCloseDate: "2026-11-01",
       diagnosis: "Nothing is broken here - the store simply isn't equipped for in-house ADAS calibration and sublets every one. That adds days to cycle time and gives away the calibration labor. This is a capability gap, not a repair.",
       tasks: [
         { id: "AP-107-t1", title: "Build the business case for an in-house ADAS calibration rig", description: "Model in-house calibration versus sublet on cycle time and captured labor to support a capex request.",
-          ownerName: "Elaine Cho", ownerRole: "CPM", column: "identified", createdDate: "2026-05-29", dueDate: "2026-08-22", priority: "medium",
+          ownerName: "Elaine Cho", ownerRole: "Client Performance Manager (CPM)", column: "identified", createdDate: "2026-05-29", dueDate: "2026-08-22", priority: "medium",
           risk: "Case must account for training and floor space, not just the rig.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 60 },
           activityLog: [
             { date: "2026-05-30", note: "Started tallying subletted calibrations and added days per RO." }
           ] },
         { id: "AP-107-t2", title: "Submit capex for calibration rig and technician training", description: "Package the rig, targets, and I-CAR/OEM calibration training into a single capex request.",
-          ownerName: "Vince Russo", ownerRole: "Facilities / Capex", column: "blocked", createdDate: "2026-06-05", dueDate: "2026-08-29", priority: "medium",
+          ownerName: "Vince Russo", ownerRole: "Regional Manager", column: "blocked", createdDate: "2026-06-05", dueDate: "2026-08-29", priority: "medium",
           risk: "Capability capex ranks below shop-stopping repairs for funding.",
           blockedReason: "Capex request pending RVP sign-off; queued behind shop-stopping equipment requests in-region.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 60 },
@@ -352,7 +352,7 @@ window.HUB_DATA = {
             { date: "2026-07-24", note: "RVP asked to prioritize against Gambrills frame capex first." }
           ] },
         { id: "AP-107-t3", title: "Evaluate in-house rig versus a mobile calibration vendor", description: "Compare owning a rig against a scheduled mobile-calibration vendor as a lower-capex bridge.",
-          ownerName: "Elaine Cho", ownerRole: "CPM", column: "identified", createdDate: "2026-06-12", dueDate: "2026-09-02", priority: "low",
+          ownerName: "Elaine Cho", ownerRole: "Client Performance Manager (CPM)", column: "identified", createdDate: "2026-06-12", dueDate: "2026-09-02", priority: "low",
           risk: "Mobile vendors still add scheduling days versus in-house.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 60 },
           activityLog: [
@@ -364,11 +364,11 @@ window.HUB_DATA = {
     /* ===================== HAMMOND (s6) - on program, no assignments ===================== */
     {
       id: "AP-108", storeId: "s6", rootCauseCategory: "drp-participation",
-      carrier: "GEICO", owningPersona: "CPM", openedDate: "2026-06-02", targetCloseDate: "2026-08-05",
+      carrier: "GEICO", owningPersona: "Client Performance Manager (CPM)", openedDate: "2026-06-02", targetCloseDate: "2026-08-05",
       diagnosis: "The store is on GEICO ARX but assignment volume dried up. The portal capacity flag is stuck at 'full' and aged open files are suppressing routing - an administrative participation problem, not a capacity one.",
       tasks: [
         { id: "AP-108-t1", title: "Correct the stuck capacity flag in the GEICO portal", description: "Reset the portal availability flag so the store shows open for routing.",
-          ownerName: "Theo Nakamura", ownerRole: "Shop GM", column: "inprogress", createdDate: "2026-06-03", dueDate: "2026-08-12", priority: "urgent",
+          ownerName: "Theo Nakamura", ownerRole: "General Manager", column: "inprogress", createdDate: "2026-06-03", dueDate: "2026-08-12", priority: "urgent",
           risk: "Flag can revert if aged files aren't also cleared.",
           verificationSignal: { metric: "DRP Assignment Volume", lagDays: 30 },
           activityLog: [
@@ -376,7 +376,7 @@ window.HUB_DATA = {
             { date: "2026-06-05", note: "Reset submitted; confirming it holds after aged files close." }
           ] },
         { id: "AP-108-t2", title: "Close the aged open-file backlog in the portal", description: "Work the aged open-file list to completion so routing logic stops deprioritizing the store.",
-          ownerName: "Megan O'Rourke", ownerRole: "CSR", column: "inprogress", createdDate: "2026-06-04", dueDate: "2026-07-31", priority: "urgent",
+          ownerName: "Megan O'Rourke", ownerRole: "Account Manager", column: "inprogress", createdDate: "2026-06-04", dueDate: "2026-07-31", priority: "urgent",
           risk: "Some aged files are stalled on total-loss paperwork outside the store.",
           verificationSignal: { metric: "Aged Open File Count", lagDays: 15 },
           activityLog: [
@@ -384,7 +384,7 @@ window.HUB_DATA = {
             { date: "2026-07-28", note: "Closeable files worked down; a handful stuck on total-loss docs." }
           ] },
         { id: "AP-108-t3", title: "Confirm routing restored with GEICO rep", description: "Verify with the GEICO rep that assignments resume once the flag and aged files are cleared.",
-          ownerName: "Marcus Delgado", ownerRole: "CPM", column: "verifying", createdDate: "2026-06-10", dueDate: "2026-08-20", priority: "medium",
+          ownerName: "Marcus Delgado", ownerRole: "Client Performance Manager (CPM)", column: "verifying", createdDate: "2026-06-10", dueDate: "2026-08-20", priority: "medium",
           risk: "Routing can take a cycle to normalize after cleanup.",
           verificationSignal: { metric: "DRP Assignment Volume", lagDays: 30 },
           activityLog: [
@@ -397,11 +397,11 @@ window.HUB_DATA = {
     /* ===================== MUNSTER (s7) - expired certification ===================== */
     {
       id: "AP-109", storeId: "s7", rootCauseCategory: "drp-participation",
-      owningPersona: "Shop GM", openedDate: "2026-05-01", targetCloseDate: "2026-08-31",
+      owningPersona: "General Manager", openedDate: "2026-05-01", targetCloseDate: "2026-08-31",
       diagnosis: "The store dropped out of carrier routing when its I-CAR Gold Class certification lapsed. Recertification is the whole plan - restore the credential and notify carriers to reinstate routing.",
       tasks: [
         { id: "AP-109-t1", title: "Complete outstanding I-CAR role-based training hours", description: "Get body, refinish, and estimating roles back to current on required training hours for Gold Class.",
-          ownerName: "Andre Whitfield", ownerRole: "Body Technician", column: "inprogress", createdDate: "2026-05-03", dueDate: "2026-08-05", priority: "high",
+          ownerName: "Andre Whitfield", ownerRole: "Technician", column: "inprogress", createdDate: "2026-05-03", dueDate: "2026-08-05", priority: "high",
           risk: "Techs on the floor struggle to find training time during backlog.",
           verificationSignal: { metric: "Certification Status", lagDays: 15 },
           activityLog: [
@@ -409,7 +409,7 @@ window.HUB_DATA = {
             { date: "2026-07-15", note: "Refinish role complete; body role short a few hours." }
           ] },
         { id: "AP-109-t2", title: "Submit Gold Class recertification package", description: "File the recertification once role hours are complete to restore the credential.",
-          ownerName: "Theo Nakamura", ownerRole: "Shop GM", column: "identified", createdDate: "2026-05-05", dueDate: "2026-08-20", priority: "high",
+          ownerName: "Theo Nakamura", ownerRole: "General Manager", column: "identified", createdDate: "2026-05-05", dueDate: "2026-08-20", priority: "high",
           risk: "Submission blocked until the last role hours are logged.",
           verificationSignal: { metric: "Certification Status", lagDays: 15 },
           activityLog: [
@@ -428,11 +428,11 @@ window.HUB_DATA = {
     /* ===================== OAK FOREST (s8) - turnover ===================== */
     {
       id: "AP-110", storeId: "s8", rootCauseCategory: "personnel",
-      owningPersona: "Shop GM", openedDate: "2026-05-12", targetCloseDate: "2026-09-30",
+      owningPersona: "General Manager", openedDate: "2026-05-12", targetCloseDate: "2026-09-30",
       diagnosis: "Two body techs left within a month and WIP is aging as the remaining techs absorb the load. Capacity gap from turnover - stabilize the team and backfill, don't just push overtime.",
       tasks: [
         { id: "AP-110-t1", title: "Redistribute WIP and triage aging repair orders", description: "Rebalance jobs across remaining techs and prioritize the oldest WIP to stop files from aging further.",
-          ownerName: "Doug Ferreira", ownerRole: "Shop GM", column: "inprogress", createdDate: "2026-05-13", dueDate: "2026-08-14", priority: "high",
+          ownerName: "Doug Ferreira", ownerRole: "General Manager", column: "inprogress", createdDate: "2026-05-13", dueDate: "2026-08-14", priority: "high",
           risk: "Load-balancing only stretches so far with fewer hands.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 45 },
           activityLog: [
@@ -440,7 +440,7 @@ window.HUB_DATA = {
             { date: "2026-07-20", note: "Aging slowed but touch time still elevated." }
           ] },
         { id: "AP-110-t2", title: "Expedite recruiting for two body technicians", description: "Open and actively work requisitions to backfill the departed body techs.",
-          ownerName: "Bianca Torres", ownerRole: "HR Recruiter", column: "blocked", createdDate: "2026-05-14", dueDate: "2026-08-18", priority: "high",
+          ownerName: "Bianca Torres", ownerRole: "Regional Manager", column: "blocked", createdDate: "2026-05-14", dueDate: "2026-08-18", priority: "high",
           risk: "Local body-tech market is tight; pipeline is thin.",
           blockedReason: "Requisitions open; local technician market tight, few qualified applicants in pipeline.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 45 },
@@ -449,7 +449,7 @@ window.HUB_DATA = {
             { date: "2026-07-10", note: "Handful of applicants, none qualified yet; expanding sourcing." }
           ] },
         { id: "AP-110-t3", title: "Hold retention conversations with remaining technicians", description: "Meet 1:1 with the remaining techs to protect against further attrition under the added load.",
-          ownerName: "Doug Ferreira", ownerRole: "Shop GM", column: "identified", createdDate: "2026-05-20", dueDate: "2026-08-16", priority: "medium",
+          ownerName: "Doug Ferreira", ownerRole: "General Manager", column: "identified", createdDate: "2026-05-20", dueDate: "2026-08-16", priority: "medium",
           risk: "Added workload itself is a flight risk if it drags on.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 45 },
           activityLog: [
@@ -461,11 +461,11 @@ window.HUB_DATA = {
     /* ===================== GAMBRILLS (s9) - frame down (shop-stopping) ===================== */
     {
       id: "AP-111", storeId: "s9", rootCauseCategory: "equipment",
-      owningPersona: "RDO", openedDate: "2026-06-10", targetCloseDate: "2026-09-10",
+      owningPersona: "Regional Manager", openedDate: "2026-06-10", targetCloseDate: "2026-09-10",
       diagnosis: "The frame bench hydraulics failed; all structural pulls are stalled or sublet. Shop-stopping for structural work - every measurable metric on those jobs is frozen until it's repaired or replaced.",
       tasks: [
         { id: "AP-111-t1", title: "Engage emergency repair vendor for the frame bench", description: "Get a service vendor on-site to repair the frame bench hydraulics as fast as possible.",
-          ownerName: "Vince Russo", ownerRole: "Facilities / Capex", column: "blocked", createdDate: "2026-06-11", dueDate: "2026-08-01", priority: "urgent",
+          ownerName: "Vince Russo", ownerRole: "Regional Manager", column: "blocked", createdDate: "2026-06-11", dueDate: "2026-08-01", priority: "urgent",
           risk: "Repair depends on a long-lead OEM part.",
           blockedReason: "Hydraulic ram backordered from the OEM; vendor quoting a 4–6 week ETA.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 45 },
@@ -474,14 +474,14 @@ window.HUB_DATA = {
             { date: "2026-07-15", note: "Chasing a reman ram to beat the OEM lead time." }
           ] },
         { id: "AP-111-t2", title: "Submit capex for a replacement frame bench", description: "Prepare a capex option for a replacement bench in case the repair lead time is unacceptable.",
-          ownerName: "Priya Nair", ownerRole: "RDO", column: "identified", createdDate: "2026-06-14", dueDate: "2026-08-22", priority: "high",
+          ownerName: "Priya Nair", ownerRole: "Regional Manager", column: "identified", createdDate: "2026-06-14", dueDate: "2026-08-22", priority: "high",
           risk: "Replacement is a large capex versus a cheaper repair.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 45 },
           activityLog: [
             { date: "2026-06-16", note: "Replacement quote requested as a parallel path to the repair." }
           ] },
         { id: "AP-111-t3", title: "Route structural repairs to a sister store interim", description: "Sublet or transfer structural jobs to a nearby store to keep customers moving while the bench is down.",
-          ownerName: "Renee Fontaine", ownerRole: "Shop GM", column: "inprogress", createdDate: "2026-06-13", dueDate: "2026-08-16", priority: "high",
+          ownerName: "Renee Fontaine", ownerRole: "General Manager", column: "inprogress", createdDate: "2026-06-13", dueDate: "2026-08-16", priority: "high",
           risk: "Transfers add tow and coordination days and split ownership.",
           verificationSignal: { metric: "Cycle Time (keys-to-keys)", lagDays: 45 },
           activityLog: [
@@ -494,7 +494,7 @@ window.HUB_DATA = {
     /* ===================== SCHERERVILLE (s10) ===================== */
     {
       id: "AP-112", storeId: "s10", rootCauseCategory: "drp-scorecard",
-      carrier: "Liberty Mutual", owningPersona: "CPM", openedDate: "2026-03-20", targetCloseDate: "2026-08-15",
+      carrier: "Liberty Mutual", owningPersona: "Client Performance Manager (CPM)", openedDate: "2026-03-20", targetCloseDate: "2026-08-15",
       diagnosis: "Estimate accuracy is low against Liberty Mutual guidelines, driving rework and supplements. Calibration and a first-estimate QC gate should bring it back.",
       tasks: [
         { id: "AP-112-t1", title: "Calibrate estimators to Liberty Mutual guidelines", description: "Align estimating practice to Liberty's guidelines to lift first-estimate accuracy.",
@@ -506,7 +506,7 @@ window.HUB_DATA = {
             { date: "2026-06-10", note: "First-estimate rework visibly down in file reviews." }
           ] },
         { id: "AP-112-t2", title: "Run a first-estimate QC review on complex files", description: "Add a quick second set of eyes on complex first estimates before they go out.",
-          ownerName: "Elaine Cho", ownerRole: "CPM", column: "verifying", createdDate: "2026-03-28", dueDate: "2026-08-22", priority: "medium",
+          ownerName: "Elaine Cho", ownerRole: "Client Performance Manager (CPM)", column: "verifying", createdDate: "2026-03-28", dueDate: "2026-08-22", priority: "medium",
           risk: "QC step can slow throughput if it's not lightweight.",
           verificationSignal: { metric: "Estimate Accuracy", lagDays: 45 },
           activityLog: [
@@ -514,7 +514,7 @@ window.HUB_DATA = {
             { date: "2026-07-28", note: "Watching the scorecard to confirm accuracy holds." }
           ] },
         { id: "AP-112-t3", title: "Monitor Estimate Accuracy on the Liberty scorecard", description: "Track the metric to confirm the calibration and QC gate moved and held the number.",
-          ownerName: "Elaine Cho", ownerRole: "CPM", column: "verifying", createdDate: "2026-04-05", dueDate: "2026-08-25", priority: "low",
+          ownerName: "Elaine Cho", ownerRole: "Client Performance Manager (CPM)", column: "verifying", createdDate: "2026-04-05", dueDate: "2026-08-25", priority: "low",
           risk: "Improvement can regress if calibration isn't refreshed.",
           verificationSignal: { metric: "Estimate Accuracy", lagDays: 45 },
           activityLog: [
@@ -524,7 +524,7 @@ window.HUB_DATA = {
     },
     {
       id: "AP-113", storeId: "s10", rootCauseCategory: "other",
-      owningPersona: "Shop GM", openedDate: "2026-07-01", targetCloseDate: "2026-10-01",
+      owningPersona: "General Manager", openedDate: "2026-07-01", targetCloseDate: "2026-10-01",
       diagnosis: "The store has the volume but leaves money on every RO - included operations like corrosion protection, cavity wax, and feather-prime-block are routinely omitted from estimates. A rules-adherence and checklist fix.",
       tasks: [
         { id: "AP-113-t1", title: "Build an included-operations checklist into the estimating system", description: "Add a standard op checklist so included refinish and corrosion operations aren't skipped on the estimate.",
@@ -535,14 +535,14 @@ window.HUB_DATA = {
             { date: "2026-07-03", note: "Draft op checklist assembled from carrier rule sets." }
           ] },
         { id: "AP-113-t2", title: "Audit a sample of ROs for omitted included operations", description: "Review a sample of closed ROs to quantify which included operations are being missed.",
-          ownerName: "Doug Ferreira", ownerRole: "Shop GM", column: "identified", createdDate: "2026-07-05", dueDate: "2026-08-27", priority: "medium",
+          ownerName: "Doug Ferreira", ownerRole: "General Manager", column: "identified", createdDate: "2026-07-05", dueDate: "2026-08-27", priority: "medium",
           risk: "Findings need to feed coaching or the leak continues.",
           verificationSignal: { metric: "Rules Adherence Score", lagDays: 30 },
           activityLog: [
             { date: "2026-07-06", note: "Sample of recent ROs selected for the omission audit." }
           ] },
         { id: "AP-113-t3", title: "Coach estimators on the missed included operations", description: "Targeted coaching on the specific operations the audit shows are being left off.",
-          ownerName: "Rob Mancini", ownerRole: "Regional Fixed Ops", column: "identified", createdDate: "2026-07-12", dueDate: "2026-09-05", priority: "low",
+          ownerName: "Rob Mancini", ownerRole: "Regional Manager", column: "identified", createdDate: "2026-07-12", dueDate: "2026-09-05", priority: "low",
           risk: "Without reinforcement in reviews, habits revert.",
           verificationSignal: { metric: "Rules Adherence Score", lagDays: 30 },
           activityLog: [
@@ -554,11 +554,11 @@ window.HUB_DATA = {
     /* ===================== GRAND RAPIDS (s11) - market demand (no shop remedy) ===================== */
     {
       id: "AP-114", storeId: "s11", rootCauseCategory: "other",
-      owningPersona: "RVP", openedDate: "2026-04-02", targetCloseDate: "2026-06-30",
+      owningPersona: "Regional Manager", openedDate: "2026-04-02", targetCloseDate: "2026-06-30",
       diagnosis: "PIF volume decline traces to a new MSO competitor opening in the CBSA and a softer local market - there is no shop-level operational fix here. The plan is to document the market shift and escalate for a marketing and carrier-steering response, then close.",
       tasks: [
         { id: "AP-114-t1", title: "Document the CBSA PIF trend and competitor opening", description: "Compile the market picture - PIF trend and the competitor open - as the evidence packet for escalation.",
-          ownerName: "Grant Feldman", ownerRole: "Sales Rep", column: "closed", createdDate: "2026-04-03", dueDate: "2026-05-01", priority: "medium",
+          ownerName: "Grant Feldman", ownerRole: "Account Manager", column: "closed", createdDate: "2026-04-03", dueDate: "2026-05-01", priority: "medium",
           risk: "Market data trails reality by a reporting cycle.",
           verificationSignal: { metric: "PIF Volume", lagDays: 90 }, outcome: "No Change - market driven",
           activityLog: [
@@ -566,7 +566,7 @@ window.HUB_DATA = {
             { date: "2026-04-28", note: "Packet finalized for RVP and marketing review." }
           ] },
         { id: "AP-114-t2", title: "Request market/BD marketing support for the CBSA", description: "Escalate to marketing/business development for local demand-generation support in the affected CBSA.",
-          ownerName: "Lauren Petrakis", ownerRole: "RVP", column: "closed", createdDate: "2026-04-08", dueDate: "2026-05-20", priority: "medium",
+          ownerName: "Lauren Petrakis", ownerRole: "Regional Manager", column: "closed", createdDate: "2026-04-08", dueDate: "2026-05-20", priority: "medium",
           risk: "Marketing spend is prioritized across many markets.",
           verificationSignal: { metric: "PIF Volume", lagDays: 90 }, outcome: "No Change - market driven",
           activityLog: [
@@ -587,11 +587,11 @@ window.HUB_DATA = {
     /* ===================== BRANDON (s12) ===================== */
     {
       id: "AP-115", storeId: "s12", rootCauseCategory: "drp-scorecard",
-      carrier: "Nationwide", owningPersona: "Shop GM", openedDate: "2026-07-08", targetCloseDate: "2026-10-15",
+      carrier: "Nationwide", owningPersona: "General Manager", openedDate: "2026-07-08", targetCloseDate: "2026-10-15",
       diagnosis: "CSI survey score is below program threshold on Nationwide, driven by communication gaps rather than repair quality. A status-update cadence should move the number over the survey lag.",
       tasks: [
         { id: "AP-115-t1", title: "Implement milestone status-update cadence to customers", description: "Set automatic milestone updates (drop-off, teardown, paint, ready) so customers aren't left in the dark.",
-          ownerName: "Megan O'Rourke", ownerRole: "CSR", column: "inprogress", createdDate: "2026-07-09", dueDate: "2026-08-15", priority: "high",
+          ownerName: "Megan O'Rourke", ownerRole: "Account Manager", column: "inprogress", createdDate: "2026-07-09", dueDate: "2026-08-15", priority: "high",
           risk: "Automated messages feel generic if not paired with real calls.",
           verificationSignal: { metric: "CSI Survey Score", lagDays: 45 },
           activityLog: [
@@ -599,7 +599,7 @@ window.HUB_DATA = {
             { date: "2026-08-01", note: "Adding a personal call at the paint milestone for complex jobs." }
           ] },
         { id: "AP-115-t2", title: "CSR call-back on recently closed repair orders", description: "Call recently delivered customers to catch issues before the survey and close the loop.",
-          ownerName: "Megan O'Rourke", ownerRole: "CSR", column: "verifying", createdDate: "2026-07-12", dueDate: "2026-08-30", priority: "medium",
+          ownerName: "Megan O'Rourke", ownerRole: "Account Manager", column: "verifying", createdDate: "2026-07-12", dueDate: "2026-08-30", priority: "medium",
           risk: "Call-backs compete with front-counter load.",
           verificationSignal: { metric: "CSI Survey Score", lagDays: 45 },
           activityLog: [
@@ -607,7 +607,7 @@ window.HUB_DATA = {
             { date: "2026-08-04", note: "Early call-backs surfacing small fit issues to fix pre-survey." }
           ] },
         { id: "AP-115-t3", title: "Monitor survey verbatims and CSI trend", description: "Track survey comments and the CSI trend to confirm the cadence is moving the metric.",
-          ownerName: "Theo Nakamura", ownerRole: "Shop GM", column: "verifying", createdDate: "2026-07-16", dueDate: "2026-09-25", priority: "low",
+          ownerName: "Theo Nakamura", ownerRole: "General Manager", column: "verifying", createdDate: "2026-07-16", dueDate: "2026-09-25", priority: "low",
           risk: "CSI lags; needs several survey cycles to read.",
           verificationSignal: { metric: "CSI Survey Score", lagDays: 45 },
           activityLog: [
@@ -617,18 +617,18 @@ window.HUB_DATA = {
     },
     {
       id: "AP-116", storeId: "s12", rootCauseCategory: "drp-participation",
-      carrier: "Nationwide", owningPersona: "CPM", openedDate: "2026-07-10", targetCloseDate: "2026-08-01",
+      carrier: "Nationwide", owningPersona: "Client Performance Manager (CPM)", openedDate: "2026-07-10", targetCloseDate: "2026-08-01",
       diagnosis: "Nationwide routing share slipped as aged open files piled up and the portal began deprioritizing the store. On the program, but assignments are drying up - an administrative cleanup, distinct from the CSI plan.",
       tasks: [
         { id: "AP-116-t1", title: "Reconcile portal file statuses against shop management system", description: "Sync the carrier portal statuses to the true state of files so routing logic sees accurate availability.",
-          ownerName: "Elaine Cho", ownerRole: "CPM", column: "inprogress", createdDate: "2026-07-11", dueDate: "2026-08-13", priority: "high",
+          ownerName: "Elaine Cho", ownerRole: "Client Performance Manager (CPM)", column: "inprogress", createdDate: "2026-07-11", dueDate: "2026-08-13", priority: "high",
           risk: "Portal and management-system mismatches recur without a routine.",
           verificationSignal: { metric: "DRP Assignment Volume", lagDays: 30 },
           activityLog: [
             { date: "2026-07-13", note: "Status mismatch found on several files; reconciliation started." }
           ] },
         { id: "AP-116-t2", title: "Close the aged open-file backlog", description: "Work the aged open files to completion to stop the portal from deprioritizing the store.",
-          ownerName: "Theo Nakamura", ownerRole: "Shop GM", column: "inprogress", createdDate: "2026-07-12", dueDate: "2026-08-03", priority: "urgent",
+          ownerName: "Theo Nakamura", ownerRole: "General Manager", column: "inprogress", createdDate: "2026-07-12", dueDate: "2026-08-03", priority: "urgent",
           risk: "A few files are stalled on customer or carrier action.",
           verificationSignal: { metric: "Aged Open File Count", lagDays: 15 },
           activityLog: [
@@ -636,7 +636,7 @@ window.HUB_DATA = {
             { date: "2026-07-31", note: "Chasing remaining sign-offs to clear the list." }
           ] },
         { id: "AP-116-t3", title: "Confirm routing recovery with Nationwide rep", description: "Verify with the rep that routing normalizes after the portal cleanup.",
-          ownerName: "Marcus Delgado", ownerRole: "CPM", column: "identified", createdDate: "2026-07-18", dueDate: "2026-08-22", priority: "medium",
+          ownerName: "Marcus Delgado", ownerRole: "Client Performance Manager (CPM)", column: "identified", createdDate: "2026-07-18", dueDate: "2026-08-22", priority: "medium",
           risk: "Routing may take a cycle to reflect the cleanup.",
           verificationSignal: { metric: "DRP Assignment Volume", lagDays: 30 },
           activityLog: [
@@ -648,25 +648,25 @@ window.HUB_DATA = {
     /* ===================== MESA (s13) ===================== */
     {
       id: "AP-117", storeId: "s13", rootCauseCategory: "other",
-      carrier: "Farmers", owningPersona: "CPM", openedDate: "2026-07-15", targetCloseDate: "2026-10-10",
+      carrier: "Farmers", owningPersona: "Client Performance Manager (CPM)", openedDate: "2026-07-15", targetCloseDate: "2026-10-10",
       diagnosis: "The store under-captures on Farmers work - alternative parts usage and supplements run below program expectations, and rules-driven operations are missed. Volume is fine; capture discipline is the gap.",
       tasks: [
         { id: "AP-117-t1", title: "Stand up a parts-sourcing workflow for recycled/aftermarket", description: "Give estimators a sourcing step so alternative parts are considered and captured per Farmers rules.",
-          ownerName: "Hector Salas", ownerRole: "Parts Manager", column: "identified", createdDate: "2026-07-16", dueDate: "2026-08-26", priority: "medium",
+          ownerName: "Hector Salas", ownerRole: "Technician", column: "identified", createdDate: "2026-07-16", dueDate: "2026-08-26", priority: "medium",
           risk: "Alternative parts availability varies by job and region.",
           verificationSignal: { metric: "Alternative Parts Usage", lagDays: 45 },
           activityLog: [
             { date: "2026-07-17", note: "Sourcing step drafted for the estimate workflow." }
           ] },
         { id: "AP-117-t2", title: "Coach estimators on Farmers rules adherence", description: "Coaching on the specific Farmers rules where the store is under-writing operations and parts.",
-          ownerName: "Elaine Cho", ownerRole: "CPM", column: "inprogress", createdDate: "2026-07-18", dueDate: "2026-08-19", priority: "medium",
+          ownerName: "Elaine Cho", ownerRole: "Client Performance Manager (CPM)", column: "inprogress", createdDate: "2026-07-18", dueDate: "2026-08-19", priority: "medium",
           risk: "Coaching needs audit reinforcement to hold.",
           verificationSignal: { metric: "Rules Adherence Score", lagDays: 45 },
           activityLog: [
             { date: "2026-07-20", note: "First coaching session held against recent Farmers files." }
           ] },
         { id: "AP-117-t3", title: "Add a weekly rules-adherence audit on Farmers files", description: "Sample Farmers files weekly to confirm parts and operations are being captured to rule.",
-          ownerName: "Marcus Delgado", ownerRole: "CPM", column: "identified", createdDate: "2026-07-22", dueDate: "2026-08-29", priority: "low",
+          ownerName: "Marcus Delgado", ownerRole: "Client Performance Manager (CPM)", column: "identified", createdDate: "2026-07-22", dueDate: "2026-08-29", priority: "low",
           risk: "Audit only helps if findings loop back to coaching.",
           verificationSignal: { metric: "Rules Adherence Score", lagDays: 45 },
           activityLog: [
@@ -676,11 +676,11 @@ window.HUB_DATA = {
     },
     {
       id: "AP-118", storeId: "s13", rootCauseCategory: "personnel",
-      owningPersona: "Shop GM", openedDate: "2026-07-20", targetCloseDate: "2026-10-20",
+      owningPersona: "General Manager", openedDate: "2026-07-20", targetCloseDate: "2026-10-20",
       diagnosis: "The body shop out-produces paint - a single painter can't clear the refinish queue and WIP ages in front of the booth. This is a department capacity gap, not an equipment failure; the store needs a second painter.",
       tasks: [
         { id: "AP-118-t1", title: "Open a requisition for a second painter", description: "Post and work a requisition to add refinish capacity and unblock the paint queue.",
-          ownerName: "Bianca Torres", ownerRole: "HR Recruiter", column: "blocked", createdDate: "2026-07-21", dueDate: "2026-08-28", priority: "high",
+          ownerName: "Bianca Torres", ownerRole: "Regional Manager", column: "blocked", createdDate: "2026-07-21", dueDate: "2026-08-28", priority: "high",
           risk: "Painter candidates are scarce in this market.",
           blockedReason: "Requisition approved; no qualified painter applicants yet in the local pipeline.",
           verificationSignal: { metric: "Refinish Cycle Time", lagDays: 30 },
@@ -688,14 +688,14 @@ window.HUB_DATA = {
             { date: "2026-07-22", note: "Requisition approved and posted; sourcing started." }
           ] },
         { id: "AP-118-t2", title: "Authorize interim overtime for the current painter", description: "Approve limited overtime to hold refinish throughput while recruiting runs.",
-          ownerName: "Theo Nakamura", ownerRole: "Shop GM", column: "inprogress", createdDate: "2026-07-22", dueDate: "2026-08-14", priority: "medium",
+          ownerName: "Theo Nakamura", ownerRole: "General Manager", column: "inprogress", createdDate: "2026-07-22", dueDate: "2026-08-14", priority: "medium",
           risk: "Overtime is a stopgap and a burnout risk on one painter.",
           verificationSignal: { metric: "Refinish Cycle Time", lagDays: 30 },
           activityLog: [
             { date: "2026-07-24", note: "Interim OT approved for the paint department." }
           ] },
         { id: "AP-118-t3", title: "Cross-train a body tech on refinish prep", description: "Cross-train a willing body tech on prep to feed the booth and relieve the painter.",
-          ownerName: "Doug Ferreira", ownerRole: "Shop GM", column: "identified", createdDate: "2026-07-28", dueDate: "2026-09-05", priority: "low",
+          ownerName: "Doug Ferreira", ownerRole: "General Manager", column: "identified", createdDate: "2026-07-28", dueDate: "2026-09-05", priority: "low",
           risk: "Cross-training temporarily reduces body-side capacity.",
           verificationSignal: { metric: "Refinish Cycle Time", lagDays: 30 },
           activityLog: [
