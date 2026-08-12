@@ -88,12 +88,14 @@
     view: 'plans',
     role: 'gm',
     store: DATA.defaultStoreId || 'all',
+    storeFilter: null,   // MM/RM multi-select of stores (null = all in-scope)
     root: 'all',
     owner: 'all',
     behind: false,
     search: '',
     sort: 'due'
   };
+  function passStoreFilter(sid) { return !state.storeFilter || state.storeFilter.indexOf(sid) >= 0; }
   var editingId = null;
 
   /* ---------------- helpers ---------------- */
@@ -130,6 +132,7 @@
     var q = state.search.trim().toLowerCase();
     return tasks.filter(function (t) {
       if (!inScope(t.storeId)) return false;
+      if (!passStoreFilter(t.storeId)) return false;
       var p = planOf(t);
       if (state.root !== 'all') { var rc = rootOf(t); if (!rc || rc.key !== state.root) return false; }
       if (state.owner !== 'all' && t.ownerName !== state.owner) return false;
@@ -179,8 +182,8 @@
       );
     }).join('');
 
-    // stats reflect the current store scope
-    var scope = tasks.filter(function (t) { return inScope(t.storeId); });
+    // stats reflect the current store scope (and the store multi-select)
+    var scope = tasks.filter(function (t) { return inScope(t.storeId) && passStoreFilter(t.storeId); });
     var planIds = {}, storeIds = {}, blocked = 0, behind = 0;
     scope.forEach(function (t) {
       planIds[t.planId] = 1; storeIds[t.storeId] = 1;
@@ -191,7 +194,8 @@
     statBehind.textContent = behind;
     var nPlans = Object.keys(planIds).length, nTasks = scope.length;
     // singular header for a single shop (one action plan), plural for a multi-shop scope
-    if (pageTitle) pageTitle.textContent = scopeIds().length === 1 ? 'Action Plan' : 'Action Plans';
+    var effStores = state.storeFilter != null ? state.storeFilter.length : scopeIds().length;
+    if (pageTitle) pageTitle.textContent = effStores === 1 ? 'Action Plan' : 'Action Plans';
     pageSub.textContent = nPlans + ' action plan' + (nPlans === 1 ? '' : 's') +
       ' · ' + nTasks + ' task' + (nTasks === 1 ? '' : 's') + ' · as of ' + fmtDateY(DATA.referenceDate);
   }
@@ -443,8 +447,61 @@
         '<span class="store-name">' + esc(it.name) + (it.sub ? ' <span class="store-sub">' + esc(it.sub) + '</span>' : '') + '</span><span class="store-count">' + it.count + '</span></button>';
     }).join('');
   }
+  /* ---- store multi-select (Market / Regional only) ---- */
+  function inScopePlanStores() {
+    var seen = {}, out = [];
+    scopeIds().forEach(function (id) { if (PLAN_BY_STORE[id] && !seen[id]) { seen[id] = 1; var s = STORE_BY_ID[id]; out.push({ id: id, name: s ? s.name : id }); } });
+    out.sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; });
+    return out;
+  }
+  function storeFilterLabel(n) {
+    var sel = state.storeFilter;
+    if (sel == null || sel.length === n) return 'All stores';
+    if (sel.length === 0) return 'No stores';
+    return sel.length + ' of ' + n + ' stores';
+  }
+  function buildStoreFilter() {
+    var toolbar = document.querySelector('.toolbar'); if (!toolbar) return;
+    var wrap = document.getElementById('storeFilterWrap');
+    var stores = inScopePlanStores();
+    if (state.role === 'gm' || stores.length < 2) { if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap); return; }
+    if (!wrap) {
+      wrap = document.createElement('div'); wrap.id = 'storeFilterWrap'; wrap.className = 'ms-wrap';
+      var ownerField = document.getElementById('ownerFilter'); ownerField = ownerField && ownerField.closest('.field');
+      if (ownerField) toolbar.insertBefore(wrap, ownerField.nextSibling); else toolbar.insertBefore(wrap, toolbar.querySelector('.grow'));
+    }
+    var opts = stores.map(function (s) {
+      var on = state.storeFilter == null || state.storeFilter.indexOf(s.id) >= 0;
+      return '<label class="ms-opt"><input type="checkbox" data-store-opt="' + esc(s.id) + '"' + (on ? ' checked' : '') + '/><span>' + esc(s.name) + '</span></label>';
+    }).join('');
+    wrap.innerHTML =
+      '<button type="button" class="field ms-btn" id="storeFilterBtn" aria-haspopup="true" aria-expanded="false" aria-label="Filter by store">' +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C7.8 2 4 5.22 4 10.2c0 3.32 2.67 7.25 8 11.8 5.33-4.55 8-8.48 8-11.8C20 5.22 16.2 2 12 2m0 10.2a2 2 0 1 1 0-4 2 2 0 0 1 0 4"/></svg>' +
+        '<span class="ms-label">' + esc(storeFilterLabel(stores.length)) + '</span>' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m7 10 5 5 5-5z"/></svg>' +
+      '</button>' +
+      '<div class="ms-panel" id="storeFilterPanel" role="group" aria-label="Stores">' +
+        '<div class="ms-actions"><span class="ms-actions-l">Stores</span><span class="grow"></span>' +
+          '<button type="button" class="ms-link" data-ms="all">All</button><button type="button" class="ms-link" data-ms="clear">Clear</button></div>' +
+        '<div class="ms-list">' + opts + '</div>' +
+      '</div>';
+    var btn = wrap.querySelector('#storeFilterBtn'), panel = wrap.querySelector('#storeFilterPanel');
+    var setLabel = function () { wrap.querySelector('.ms-label').textContent = storeFilterLabel(stores.length); };
+    var sync = function () {
+      var checked = Array.prototype.map.call(panel.querySelectorAll('[data-store-opt]:checked'), function (c) { return c.getAttribute('data-store-opt'); });
+      state.storeFilter = checked.length === stores.length ? null : checked;
+      setLabel(); render();
+    };
+    btn.addEventListener('click', function (e) { e.stopPropagation(); var open = panel.classList.toggle('open'); btn.setAttribute('aria-expanded', open); });
+    panel.addEventListener('click', function (e) { e.stopPropagation(); });
+    panel.addEventListener('change', function (e) { if (e.target.closest('[data-store-opt]')) sync(); });
+    wrap.querySelector('[data-ms="all"]').addEventListener('click', function () { Array.prototype.forEach.call(panel.querySelectorAll('[data-store-opt]'), function (c) { c.checked = true; }); state.storeFilter = null; setLabel(); render(); });
+    wrap.querySelector('[data-ms="clear"]').addEventListener('click', function () { Array.prototype.forEach.call(panel.querySelectorAll('[data-store-opt]'), function (c) { c.checked = false; }); state.storeFilter = []; setLabel(); render(); });
+  }
+
   function setStore(id) {
     state.store = id;
+    state.storeFilter = null;   // a new scope resets the store multi-select
     var label = id === 'book' ? MARKET.name + ' · all shops'
       : id === 'region' ? currentRegion().name + ' · all markets'
       : isMarketScope(id) ? id.slice(5)
@@ -452,6 +509,7 @@
       : (STORE_BY_ID[id] ? STORE_BY_ID[id].name : id);
     document.getElementById('shopName').textContent = label;
     buildStoreMenu();
+    buildStoreFilter();
     render();
     if (state.view === 'kpis') {
       if (state.role !== 'gm') {
@@ -1463,7 +1521,7 @@
       setStore(it.getAttribute('data-store'));
       storeMenu.classList.remove('open');
     });
-    document.addEventListener('click', function () { storeMenu.classList.remove('open'); });
+    document.addEventListener('click', function () { storeMenu.classList.remove('open'); var pn = document.getElementById('storeFilterPanel'); if (pn) { pn.classList.remove('open'); var fb = document.getElementById('storeFilterBtn'); if (fb) fb.setAttribute('aria-expanded', 'false'); } });
 
     // modal refs
     overlay = document.getElementById('overlay');

@@ -582,6 +582,25 @@ button { font-family: inherit; }
 .store-item .store-count { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--muted);
   background: var(--surface-variant); border-radius: var(--corner-full); padding: 1px 8px; }
 
+/* ---- store multi-select (Action Plan toolbar, MM/RM) ---- */
+.ms-wrap { position: relative; }
+.ms-btn { cursor: pointer; }
+.ms-btn .ms-label { font-size: 14px; color: #111; white-space: nowrap; }
+.ms-panel { position: absolute; left: 0; top: 46px; width: 268px; max-height: 340px; overflow: auto;
+  background: #fff; border: 1px solid var(--outline-variant); border-radius: var(--corner-md);
+  box-shadow: var(--shadow-2); padding: 6px; display: none; z-index: 1307; }
+.ms-panel.open { display: block; }
+.ms-actions { display: flex; align-items: center; gap: 8px; padding: 4px 8px 8px; border-bottom: 1px solid #eef1f5; margin-bottom: 4px; }
+.ms-actions-l { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+.ms-actions .grow { flex: 1; }
+.ms-link { border: none; background: transparent; color: var(--primary); font-weight: 600; font-size: 12.5px; cursor: pointer; padding: 2px 4px; }
+.ms-link:hover { text-decoration: underline; }
+.ms-list { display: flex; flex-direction: column; }
+.ms-opt { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: var(--corner-sm); cursor: pointer; font-size: 14px; color: #12333c; }
+.ms-opt:hover { background: #f0f5fa; }
+.ms-opt input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0; }
+.ms-opt span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* behind-target toggle */
 .btn.toggle { color: var(--on-surface-variant); }
 .btn.toggle svg { color: #b26a00; }
