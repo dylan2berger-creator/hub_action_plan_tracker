@@ -140,7 +140,9 @@ attainment across the shops in scope, **worst-first, with the −10% line drawn 
 Density comes from controls inside the pane - a **period** selector (**3M** - the
 default, the trailing three months - **/ 6M / 12M**),
 a **market filter**, and a **Shops / Markets / Region** granularity toggle that
-re-aggregates within your own scope (a GM sees only their shop). Below the chart, a
+re-aggregates within your own scope (a GM sees only their shop). In the Regional
+Manager's **Markets** view each market bar is a **drill-down** - click one to filter to
+that market and drop to its **shops** (the challenged list and carrier panel follow). Below the chart, a
 **challenged-shop list** carries revenue variance (dollars + %) and the three funnel
 metrics as columns, each flagged against its target - plus a **Likely cause** column
 that reads **Carrier score** when the funnel is all on-target (so the interesting

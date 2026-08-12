@@ -1282,7 +1282,7 @@
     if (state.role === 'regional' && kpiState.gran === 'markets') {
       var mkts = scopeMarkets();
       if (kpiState.market && kpiState.market !== 'all') mkts = mkts.filter(function (m) { return m === kpiState.market; });
-      return mkts.map(function (m) { return aggEntity(m, shopsOfMarket(m).map(function (s) { return s.id; })); });
+      return mkts.map(function (m) { var e = aggEntity(m, shopsOfMarket(m).map(function (s) { return s.id; })); e.market = m; return e; });
     }
     // shops
     return ids.map(function (id) { var rv = revFor(id, kpiState.period), sh = shopById(id); return { key: id, name: sh.name, shop: true, variancePct: rv.variancePct, actual: rv.actual, target: rv.target }; });
@@ -1345,18 +1345,26 @@
   function raChartHTML(ents) {
     function pos(v) { return clamp((v - RA_MIN) / (RA_MAX - RA_MIN) * 100, 0, 100); }
     var zero = pos(0), thr = pos(CHALLENGED_PCT);
+    var anyMarket = false;
     var rows = ents.map(function (e) {
       var vp = e.variancePct, cls = varClass(vp), p = pos(vp);
       var left = Math.min(p, zero), width = Math.abs(p - zero);
-      var clickable = e.shop ? ' data-shop="' + esc(e.key) + '" role="button" tabindex="0"' : '';
-      return '<div class="ra-row' + (e.shop ? ' clickable' : '') + '"' + clickable + '>' +
-        '<span class="ra-name" title="' + esc(e.name) + '">' + esc(e.name) + '</span>' +
+      var clickAttr = e.shop
+        ? ' data-shop="' + esc(e.key) + '" role="button" tabindex="0" aria-label="Open ' + esc(e.name) + '"'
+        : e.market
+          ? ' data-market="' + esc(e.market) + '" role="button" tabindex="0" aria-label="Drill into ' + esc(e.name) + ' shops"'
+          : '';
+      if (e.market) anyMarket = true;
+      var nameHTML = esc(e.name) + (e.market ? '<span class="ra-drill" aria-hidden="true">›</span>' : '');
+      return '<div class="ra-row' + (e.shop || e.market ? ' clickable' : '') + '"' + clickAttr + '>' +
+        '<span class="ra-name" title="' + esc(e.name) + '">' + nameHTML + '</span>' +
         '<span class="ra-track"><span class="ra-zero" style="left:' + zero + '%"></span>' +
         '<span class="ra-thresh" style="left:' + thr + '%"></span>' +
         '<span class="ra-bar ' + cls + '" style="left:' + left + '%;width:' + width + '%"></span></span>' +
         '<span class="ra-val ' + cls + '">' + pctStr(vp) + '</span></div>';
     }).join('');
-    return '<div class="ra-legend"><span class="ra-thresh-key"></span> ' + Math.round(CHALLENGED_PCT * 100) + '% challenged line · worst first</div>' +
+    return '<div class="ra-legend"><span class="ra-thresh-key"></span> ' + Math.round(CHALLENGED_PCT * 100) + '% challenged line · worst first' +
+      (anyMarket ? ' · click a market to drill into its shops' : '') + '</div>' +
       '<div class="ra-rows">' + (rows || '<div class="ctx-sub" style="padding:10px">No shops in scope.</div>') + '</div>';
   }
 
@@ -1391,8 +1399,14 @@
     var mk = document.getElementById('dashMarket');
     if (mk) mk.addEventListener('change', function () { kpiState.market = mk.value; renderKpiTab(); });
     var root = document.getElementById('kpiRoot');
-    root.addEventListener('click', function (e) { var row = e.target.closest('[data-shop]'); if (row) openShop(row.getAttribute('data-shop')); });
-    root.addEventListener('keydown', function (e) { if (e.key !== 'Enter') return; var row = e.target.closest('[data-shop]'); if (row) openShop(row.getAttribute('data-shop')); });
+    // Drill a market bar (Regional · Markets granularity) down to its shops; open a shop otherwise.
+    function drillOrOpen(e) {
+      var mkt = e.target.closest('[data-market]');
+      if (mkt) { kpiState.market = mkt.getAttribute('data-market'); kpiState.gran = 'shops'; renderKpiTab(); return; }
+      var row = e.target.closest('[data-shop]'); if (row) openShop(row.getAttribute('data-shop'));
+    }
+    root.addEventListener('click', drillOrOpen);
+    root.addEventListener('keydown', function (e) { if (e.key !== 'Enter') return; drillOrOpen(e); });
   }
   function openShop(id) { kpiState.view = 'shop'; kpiState.shopId = id; kpiState.carriers = null; kpiState.carrierOpen = null; kpiState.roCarrier = null; renderKpiTab(); }
   function backToDashboard() { kpiState.view = 'dashboard'; kpiState.shopId = null; kpiState.carriers = null; kpiState.carrierOpen = null; kpiState.roCarrier = null; renderKpiTab(); }
