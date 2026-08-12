@@ -131,8 +131,8 @@ A shop is **Challenged** when that is **≤ −10%** (the one place this number 
 
 **Dashboard (landing, for Market & Regional Managers).** One chart: revenue
 attainment across the shops in scope, **worst-first, with the −10% line drawn on it**.
-Density comes from controls inside the pane - a **period** selector (**Prev mo**
-- the default, the last complete month - / MTD / 3M / 6M / 12M),
+Density comes from controls inside the pane - a **period** selector (**3M** - the
+default, the trailing three months - **/ 6M / 12M**),
 a **market filter**, and a **Shops / Markets / Region** granularity toggle that
 re-aggregates within your own scope (a GM sees only their shop). Below the chart, a
 **challenged-shop list** carries revenue variance (dollars + %) and the three funnel
@@ -148,7 +148,7 @@ better), Opportunity to Arrive (**7 days**, lower better).
 chart you can **add KPIs to** - plot up to two of Revenue / Opp → Estimate / Opp → RO /
 Opp → Arrive at once, and a second y-axis appears on the right when the two use
 different units; the three funnel metrics vs target; and the carrier panel below. One
-period selector (**Prev mo / MTD / 3M / 6M / 12M**) drives every trend on the page.
+period selector (**3M / 6M / 12M**) drives every trend on the page.
 
 **Carrier scorecard (DRP).** A shop scores separately **per carrier** (0–100; higher
 means more volume). Multi-select filters the carriers that actually have volume at the

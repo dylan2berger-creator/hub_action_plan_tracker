@@ -933,13 +933,13 @@
   var CARRIERS = DATA.carriers || [];
   var RULE_TEXTS = DATA.ruleTexts || [];
   // offset = how many months back the window ends (0 = through the current month; 1 = the previous complete month)
-  var PERIODS = [{ key: 'prev', label: 'Prev mo', months: 1, offset: 1 }, { key: 'mtd', label: 'MTD', months: 1, offset: 0 }, { key: 'm3', label: '3M', months: 3, offset: 0 }, { key: 'm6', label: '6M', months: 6, offset: 0 }, { key: 'm12', label: '12M', months: 12, offset: 0 }];
+  var PERIODS = [{ key: 'm3', label: '3M', months: 3, offset: 0 }, { key: 'm6', label: '6M', months: 6, offset: 0 }, { key: 'm12', label: '12M', months: 12, offset: 0 }];
   var MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function periodBtnsHTML() { return PERIODS.map(function (p) { return '<button type="button" class="seg' + (kpiState.period === p.key ? ' on' : '') + '" data-period="' + p.key + '">' + p.label + '</button>'; }).join(''); }
   var CUR_MONTH = TODAY.getMonth();
   var RA_MIN = -0.35, RA_MAX = 0.25;   // fixed revenue-variance chart domain
 
-  var kpiState = { view: 'dashboard', shopId: null, period: 'prev', gran: 'shops', market: 'all', carriers: null, chartKpis: ['revenue'], carrierOpen: null, carrierMetric: 'score', roCarrier: null };
+  var kpiState = { view: 'dashboard', shopId: null, period: 'm3', gran: 'shops', market: 'all', carriers: null, chartKpis: ['revenue'], carrierOpen: null, carrierMetric: 'score', roCarrier: null };
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function pctStr(p) { return (p >= 0 ? '+' : '−') + Math.abs(Math.round(p * 100)) + '%'; }
@@ -1028,7 +1028,7 @@
     _shopDataCache[id] = d;
     return d;
   }
-  // revenue summed over the selected period window (MTD = current month)
+  // revenue summed over the selected period window (trailing 3 / 6 / 12 months)
   function revFor(id, period) {
     var d = shopData(id); if (!d) return { actual: 0, target: 0, variancePct: 0, variance: 0 };
     var pd = PERIODS.filter(function (p) { return p.key === period; })[0] || PERIODS[0];
