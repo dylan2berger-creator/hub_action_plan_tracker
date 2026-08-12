@@ -119,11 +119,12 @@
     role: 'gm',
     store: DATA.defaultStoreId || 'all',
     storeFilter: null,   // MM/RM multi-select of stores (null = all in-scope)
-    root: 'all',
-    owner: 'all',
-    ownerRole: 'all',    // owner-role filter (both board and list)
-    carrier: 'all',      // insurance-carrier filter (both board and list)
-    status: 'all',       // status filter (list view only; the board shows all columns)
+    // multi-select filters: null = all, [] = none, [..] = subset
+    root: null,
+    owner: null,
+    ownerRole: null,     // owner-role filter (both board and list)
+    carrier: null,       // insurance-carrier filter (both board and list)
+    status: null,        // status filter (list view only; the board shows all columns)
     behind: false,
     search: '',
     sort: 'manual',
@@ -131,6 +132,8 @@
     listSort: { key: 'status', dir: 'asc' }   // list-view column sort
   };
   function passStoreFilter(sid) { return !state.storeFilter || state.storeFilter.indexOf(sid) >= 0; }
+  // Multi-select membership: null = all pass; [] = none pass; array = value must be in it.
+  function passMulti(sel, v) { return sel == null ? true : sel.indexOf(v) >= 0; }
   var editingId = null;
 
   /* ---------------- helpers ---------------- */
@@ -171,13 +174,13 @@
     return tasks.filter(function (t) {
       if (!inScope(t.storeId)) return false;
       if (!passStoreFilter(t.storeId)) return false;
-      var p = planOf(t);
-      if (state.root !== 'all') { var rc = rootOf(t); if (!rc || rc.key !== state.root) return false; }
-      if (state.owner !== 'all' && t.ownerName !== state.owner) return false;
-      if (state.ownerRole !== 'all' && (t.ownerRole || '') !== state.ownerRole) return false;
-      if (state.carrier !== 'all' && (t.carrier || '') !== state.carrier) return false;
+      var p = planOf(t), rc = rootOf(t);
+      if (!passMulti(state.root, rc ? rc.key : '')) return false;
+      if (!passMulti(state.owner, t.ownerName || '')) return false;
+      if (!passMulti(state.ownerRole, t.ownerRole || '')) return false;
+      if (!passMulti(state.carrier, t.carrier || '')) return false;
       // Status filter applies in the list view only - the board already columns by status.
-      if (state.boardView === 'list' && state.status !== 'all' && t.column !== state.status) return false;
+      if (state.boardView === 'list' && !passMulti(state.status, t.column)) return false;
       if (state.behind && !isBehind(t)) return false;
       if (q) {
         var s = storeOf(t), r = rootOf(t);
@@ -221,7 +224,7 @@
     if (boardEl) boardEl.style.display = listMode ? 'none' : '';
     if (listEl) { listEl.hidden = !listMode; listEl.style.display = listMode ? '' : 'none'; }
     var sortSel = document.getElementById('sortSelect'); if (sortSel && sortSel.closest('.field')) sortSel.closest('.field').style.display = listMode ? 'none' : '';
-    var statSel = document.getElementById('statusFilter'); if (statSel && statSel.closest('.field')) statSel.closest('.field').style.display = listMode ? '' : 'none';
+    var statWrap = document.getElementById('msStatus'); if (statWrap) statWrap.style.display = listMode ? '' : 'none';   // status filter is list-only
     Array.prototype.forEach.call(document.querySelectorAll('.viewtoggle [data-view-mode]'), function (b) {
       var on = b.getAttribute('data-view-mode') === state.boardView;
       b.classList.toggle('active', on);
@@ -796,8 +799,8 @@
     if (state.role === 'gm' || stores.length < 2) { if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap); return; }
     if (!wrap) {
       wrap = document.createElement('div'); wrap.id = 'storeFilterWrap'; wrap.className = 'ms-wrap';
-      var ownerField = document.getElementById('ownerFilter'); ownerField = ownerField && ownerField.closest('.field');
-      if (ownerField) toolbar.insertBefore(wrap, ownerField.nextSibling); else toolbar.insertBefore(wrap, toolbar.querySelector('.grow'));
+      var ownerWrap = document.getElementById('msOwner');
+      if (ownerWrap) toolbar.insertBefore(wrap, ownerWrap.nextSibling); else toolbar.insertBefore(wrap, toolbar.querySelector('.grow'));
     }
     var opts = stores.map(function (s) {
       var on = state.storeFilter == null || state.storeFilter.indexOf(s.id) >= 0;
@@ -821,7 +824,7 @@
       state.storeFilter = checked.length === stores.length ? null : checked;
       setLabel(); render();
     };
-    btn.addEventListener('click', function (e) { e.stopPropagation(); var open = panel.classList.toggle('open'); btn.setAttribute('aria-expanded', open); });
+    btn.addEventListener('click', function (e) { e.stopPropagation(); closeMsPanels(panel); var open = panel.classList.toggle('open'); btn.setAttribute('aria-expanded', open); });
     panel.addEventListener('click', function (e) { e.stopPropagation(); });
     panel.addEventListener('change', function (e) { if (e.target.closest('[data-store-opt]')) sync(); });
     wrap.querySelector('[data-ms="all"]').addEventListener('click', function () { Array.prototype.forEach.call(panel.querySelectorAll('[data-store-opt]'), function (c) { c.checked = true; }); state.storeFilter = null; setLabel(); render(); });
@@ -850,39 +853,85 @@
     }
   }
 
-  /* ---------------- filters ---------------- */
-  function refreshOwnerFilter() {
-    var sel = document.getElementById('ownerFilter');
-    var cur = sel.value;
-    var names = {};
-    tasks.forEach(function (t) { if (t.ownerName) names[t.ownerName] = 1; });
-    var list = Object.keys(names).sort();
-    sel.innerHTML = '<option value="all">All owners</option>' + list.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
-    sel.value = (cur && (cur === 'all' || names[cur])) ? cur : 'all';
-    state.owner = sel.value;
+  /* ---------------- multi-select filters (root / owner / role / carrier / status) ---------------- */
+  function distinctVals(field) {
+    var seen = {}, out = [];
+    tasks.forEach(function (t) { var v = t[field]; if (v && !seen[v]) { seen[v] = 1; out.push(v); } });
+    out.sort(function (a, b) { return a < b ? -1 : a > b ? 1 : 0; });
+    return out.map(function (v) { return { value: v, label: v }; });
   }
-  // Owner-role filter (both board and list) - distinct roles across all tasks.
-  function refreshRoleFilter() {
-    var sel = document.getElementById('roleFilter'); if (!sel) return;
-    var cur = sel.value;
-    var roles = {};
-    tasks.forEach(function (t) { if (t.ownerRole) roles[t.ownerRole] = 1; });
-    var list = Object.keys(roles).sort();
-    sel.innerHTML = '<option value="all">All roles</option>' + list.map(function (r) { return '<option value="' + esc(r) + '">' + esc(r) + '</option>'; }).join('');
-    sel.value = (cur && (cur === 'all' || roles[cur])) ? cur : 'all';
-    state.ownerRole = sel.value;
+  var MS_FILTERS = [
+    { key: 'root',      noun: 'root causes', options: function () { return (DATA.rootCauses || []).map(function (r) { return { value: r.key, label: r.label }; }); } },
+    { key: 'owner',     noun: 'owners',      options: function () { return distinctVals('ownerName'); } },
+    { key: 'ownerRole', noun: 'roles',       options: function () { return distinctVals('ownerRole'); } },
+    { key: 'carrier',   noun: 'carriers',    options: function () { return distinctVals('carrier'); } },
+    { key: 'status',    noun: 'statuses',    options: function () { return COLUMNS.map(function (c) { return { value: c.key, label: c.label }; }); } }
+  ];
+  var MS_ANCHOR = { root: 'rootFilter', owner: 'ownerFilter', ownerRole: 'roleFilter', carrier: 'carrierFilter', status: 'statusFilter' };
+  var MS_WRAPID = { root: 'msRoot', owner: 'msOwner', ownerRole: 'msRole', carrier: 'msCarrier', status: 'msStatus' };
+  var FUNNEL_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5h18l-7 8.2V21l-4-2.5v-5.3z"/></svg>';
+  function msDef(k) { for (var i = 0; i < MS_FILTERS.length; i++) if (MS_FILTERS[i].key === k) return MS_FILTERS[i]; return null; }
+  function msLabel(noun, sel, total) {
+    if (sel == null || sel.length >= total) return 'All ' + noun;
+    if (sel.length === 0) return 'No ' + noun;
+    return sel.length + ' of ' + total + ' ' + noun;
   }
-  // Insurance-carrier filter (both board and list) - distinct carriers across tasks.
-  function refreshCarrierFilter() {
-    var sel = document.getElementById('carrierFilter'); if (!sel) return;
-    var cur = sel.value;
-    var carriers = {};
-    tasks.forEach(function (t) { if (t.carrier) carriers[t.carrier] = 1; });
-    var list = Object.keys(carriers).sort();
-    sel.innerHTML = '<option value="all">All carriers</option>' + list.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
-    sel.value = (cur && (cur === 'all' || carriers[cur])) ? cur : 'all';
-    state.carrier = sel.value;
+  function closeMsPanels(except) {
+    Array.prototype.forEach.call(document.querySelectorAll('.ms-panel.open'), function (p) {
+      if (p === except) return;
+      p.classList.remove('open');
+      var b = p.parentNode && p.parentNode.querySelector('.ms-btn'); if (b) b.setAttribute('aria-expanded', 'false');
+    });
   }
+  // Build (or rebuild) one filter as an .ms-* multi-select, replacing its <select> the first time.
+  function buildFilterMs(key) {
+    var def = msDef(key); if (!def) return;
+    var wrap = document.getElementById(MS_WRAPID[key]);
+    if (!wrap) {
+      var anchor = document.getElementById(MS_ANCHOR[key]); if (!anchor) return;
+      var field = anchor.closest('.field') || anchor;
+      wrap = document.createElement('div'); wrap.className = 'ms-wrap'; wrap.id = MS_WRAPID[key];
+      field.parentNode.replaceChild(wrap, field);
+    }
+    var options = def.options(), total = options.length, sel = state[key];
+    if (sel != null) {   // prune a stale selection when the option list changes (owners/roles/carriers are data-driven)
+      var valid = {}; options.forEach(function (o) { valid[o.value] = 1; });
+      sel = sel.filter(function (v) { return valid[v]; });
+      state[key] = (sel.length >= total) ? null : sel; sel = state[key];
+    }
+    var opts = options.map(function (o) {
+      var on = sel == null || sel.indexOf(o.value) >= 0;
+      return '<label class="ms-opt"><input type="checkbox" data-ms-opt="' + esc(o.value) + '"' + (on ? ' checked' : '') + '/><span>' + esc(o.label) + '</span></label>';
+    }).join('') || '<div class="ms-opt" style="color:var(--muted);cursor:default">None</div>';
+    var nounCap = def.noun.charAt(0).toUpperCase() + def.noun.slice(1);
+    wrap.innerHTML =
+      '<button type="button" class="field ms-btn" aria-haspopup="true" aria-expanded="false" aria-label="Filter by ' + esc(def.noun) + '">' +
+        FUNNEL_ICON + '<span class="ms-label">' + esc(msLabel(def.noun, sel, total)) + '</span>' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m7 10 5 5 5-5z"/></svg>' +
+      '</button>' +
+      '<div class="ms-panel" role="group" aria-label="' + esc(nounCap) + '">' +
+        '<div class="ms-actions"><span class="ms-actions-l">' + esc(nounCap) + '</span><span class="grow"></span>' +
+          '<button type="button" class="ms-link" data-ms="all">All</button><button type="button" class="ms-link" data-ms="clear">Clear</button></div>' +
+        '<div class="ms-list">' + opts + '</div>' +
+      '</div>';
+    var btn = wrap.querySelector('.ms-btn'), panel = wrap.querySelector('.ms-panel');
+    var setLabel = function () { wrap.querySelector('.ms-label').textContent = msLabel(def.noun, state[key], total); };
+    var sync = function () {
+      var checked = Array.prototype.map.call(panel.querySelectorAll('[data-ms-opt]:checked'), function (c) { return c.getAttribute('data-ms-opt'); });
+      state[key] = checked.length >= total ? null : checked;
+      setLabel(); render();
+    };
+    btn.addEventListener('click', function (e) { e.stopPropagation(); closeMsPanels(panel); var open = panel.classList.toggle('open'); btn.setAttribute('aria-expanded', open); });
+    panel.addEventListener('click', function (e) { e.stopPropagation(); });
+    panel.addEventListener('change', function (e) { if (e.target.closest('[data-ms-opt]')) sync(); });
+    wrap.querySelector('[data-ms="all"]').addEventListener('click', function () { Array.prototype.forEach.call(panel.querySelectorAll('[data-ms-opt]'), function (c) { c.checked = true; }); state[key] = null; setLabel(); render(); });
+    wrap.querySelector('[data-ms="clear"]').addEventListener('click', function () { Array.prototype.forEach.call(panel.querySelectorAll('[data-ms-opt]'), function (c) { c.checked = false; }); state[key] = []; setLabel(); render(); });
+  }
+  function buildAllFilterMs() { MS_FILTERS.forEach(function (d) { buildFilterMs(d.key); }); }
+  // owner / role / carrier option lists are data-driven; rebuild after add/delete.
+  function refreshOwnerFilter() { buildFilterMs('owner'); }
+  function refreshRoleFilter() { buildFilterMs('ownerRole'); }
+  function refreshCarrierFilter() { buildFilterMs('carrier'); }
   function populate(sel, opts, allLabel) {
     sel.innerHTML = '<option value="all">' + esc(allLabel) + '</option>' +
       opts.map(function (o) { return '<option value="' + esc(o.key) + '">' + esc(o.label) + '</option>'; }).join('');
@@ -1841,26 +1890,12 @@
 
     // toolbar
     var search = document.getElementById('searchInput');
-    var rootFilter = document.getElementById('rootFilter');
-    var ownerFilter = document.getElementById('ownerFilter');
     var behindBtn = document.getElementById('behindBtn');
     var sortSelect = document.getElementById('sortSelect');
-    var roleFilter = document.getElementById('roleFilter');
-    var carrierFilter = document.getElementById('carrierFilter');
-    var statusFilter = document.getElementById('statusFilter');
 
-    populate(rootFilter, DATA.rootCauses || [], 'Root Causes');
-    refreshOwnerFilter();
-    refreshRoleFilter();
-    refreshCarrierFilter();
-    if (statusFilter) statusFilter.innerHTML = '<option value="all">All statuses</option>' + COLUMNS.map(function (c) { return '<option value="' + c.key + '">' + esc(c.label) + '</option>'; }).join('');
+    buildAllFilterMs();   // root / owner / role / carrier / status multi-selects (replace the plain selects)
 
     search.addEventListener('input', function () { state.search = search.value; render(); });
-    rootFilter.addEventListener('change', function () { state.root = rootFilter.value; render(); });
-    ownerFilter.addEventListener('change', function () { state.owner = ownerFilter.value; render(); });
-    if (roleFilter) roleFilter.addEventListener('change', function () { state.ownerRole = roleFilter.value; render(); });
-    if (carrierFilter) carrierFilter.addEventListener('change', function () { state.carrier = carrierFilter.value; render(); });
-    if (statusFilter) statusFilter.addEventListener('change', function () { state.status = statusFilter.value; render(); });
     sortSelect.addEventListener('change', function () { state.sort = sortSelect.value; render(); });
     behindBtn.addEventListener('click', function () {
       state.behind = !state.behind;
@@ -1898,7 +1933,7 @@
       setStore(it.getAttribute('data-store'));
       storeMenu.classList.remove('open');
     });
-    document.addEventListener('click', function () { storeMenu.classList.remove('open'); var pn = document.getElementById('storeFilterPanel'); if (pn) { pn.classList.remove('open'); var fb = document.getElementById('storeFilterBtn'); if (fb) fb.setAttribute('aria-expanded', 'false'); } });
+    document.addEventListener('click', function () { storeMenu.classList.remove('open'); closeMsPanels(); });
 
     // modal refs
     overlay = document.getElementById('overlay');

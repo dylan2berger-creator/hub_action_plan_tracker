@@ -99,10 +99,11 @@ another shop's plan.
   expand its timeline (status changes and notes, each timestamped and attributed to a
   person) **and log a new activity note inline**. Click the pencil to open the full task
   editor.
-- **Filters:** root cause, **owner**, **owner role**, **insurance carrier** (all three
-  in both views), a **Behind target** toggle (tasks past their due date or whose plan
-  blew its target-close date), and - in the list view - a **status** filter. Market and
-  Regional Managers also get the store multi-select.
+- **Filters** are **multi-select** (checkbox dropdowns with All / Clear, showing an
+  "N of M" count): root cause, **owner**, **owner role**, **insurance carrier** (in both
+  views), plus a **status** filter in the list view. Also a **Behind target** toggle
+  (tasks past their due date or whose plan blew its target-close date). Market and
+  Regional Managers additionally get the store multi-select.
 - **Search** across task, owner, store, carrier, diagnosis, and metric.
 - **Move or reorder a task** by **drag and drop**: drag a card between columns to
   change its status, or drop it above/below another card to set its position within a
