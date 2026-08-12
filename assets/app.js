@@ -121,6 +121,7 @@
     root: 'all',
     owner: 'all',
     ownerRole: 'all',    // owner-role filter (both board and list)
+    carrier: 'all',      // insurance-carrier filter (both board and list)
     status: 'all',       // status filter (list view only; the board shows all columns)
     behind: false,
     search: '',
@@ -173,6 +174,7 @@
       if (state.root !== 'all') { var rc = rootOf(t); if (!rc || rc.key !== state.root) return false; }
       if (state.owner !== 'all' && t.ownerName !== state.owner) return false;
       if (state.ownerRole !== 'all' && (t.ownerRole || '') !== state.ownerRole) return false;
+      if (state.carrier !== 'all' && (t.carrier || '') !== state.carrier) return false;
       // Status filter applies in the list view only - the board already columns by status.
       if (state.boardView === 'list' && state.status !== 'all' && t.column !== state.status) return false;
       if (state.behind && !isBehind(t)) return false;
@@ -681,13 +683,14 @@
     }
     refreshOwnerFilter();
     refreshRoleFilter();
+    refreshCarrierFilter();
     render();
     closeModal();
   }
   function deleteCurrent() {
     if (!editingId) return;
     tasks = tasks.filter(function (t) { return t.id !== editingId; });
-    refreshOwnerFilter(); refreshRoleFilter(); render(); closeModal(); toast('Task deleted');
+    refreshOwnerFilter(); refreshRoleFilter(); refreshCarrierFilter(); render(); closeModal(); toast('Task deleted');
   }
 
   /* ---------------- toast ---------------- */
@@ -816,6 +819,17 @@
     sel.innerHTML = '<option value="all">All roles</option>' + list.map(function (r) { return '<option value="' + esc(r) + '">' + esc(r) + '</option>'; }).join('');
     sel.value = (cur && (cur === 'all' || roles[cur])) ? cur : 'all';
     state.ownerRole = sel.value;
+  }
+  // Insurance-carrier filter (both board and list) - distinct carriers across tasks.
+  function refreshCarrierFilter() {
+    var sel = document.getElementById('carrierFilter'); if (!sel) return;
+    var cur = sel.value;
+    var carriers = {};
+    tasks.forEach(function (t) { if (t.carrier) carriers[t.carrier] = 1; });
+    var list = Object.keys(carriers).sort();
+    sel.innerHTML = '<option value="all">All carriers</option>' + list.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
+    sel.value = (cur && (cur === 'all' || carriers[cur])) ? cur : 'all';
+    state.carrier = sel.value;
   }
   function populate(sel, opts, allLabel) {
     sel.innerHTML = '<option value="all">' + esc(allLabel) + '</option>' +
@@ -1778,17 +1792,20 @@
     var behindBtn = document.getElementById('behindBtn');
     var sortSelect = document.getElementById('sortSelect');
     var roleFilter = document.getElementById('roleFilter');
+    var carrierFilter = document.getElementById('carrierFilter');
     var statusFilter = document.getElementById('statusFilter');
 
     populate(rootFilter, DATA.rootCauses || [], 'Root Causes');
     refreshOwnerFilter();
     refreshRoleFilter();
+    refreshCarrierFilter();
     if (statusFilter) statusFilter.innerHTML = '<option value="all">All statuses</option>' + COLUMNS.map(function (c) { return '<option value="' + c.key + '">' + esc(c.label) + '</option>'; }).join('');
 
     search.addEventListener('input', function () { state.search = search.value; render(); });
     rootFilter.addEventListener('change', function () { state.root = rootFilter.value; render(); });
     ownerFilter.addEventListener('change', function () { state.owner = ownerFilter.value; render(); });
     if (roleFilter) roleFilter.addEventListener('change', function () { state.ownerRole = roleFilter.value; render(); });
+    if (carrierFilter) carrierFilter.addEventListener('change', function () { state.carrier = carrierFilter.value; render(); });
     if (statusFilter) statusFilter.addEventListener('change', function () { state.status = statusFilter.value; render(); });
     sortSelect.addEventListener('change', function () { state.sort = sortSelect.value; render(); });
     behindBtn.addEventListener('click', function () {
