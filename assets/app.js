@@ -396,7 +396,7 @@
     }
 
     var signal = t.verificationSignal && t.verificationSignal.metric
-      ? '<div class="signal">' + eyeIcon() + 'Watching <b>' + esc(t.verificationSignal.metric) + '</b>' +
+      ? '<div class="signal">' + eyeIcon() + 'Target KPI <b>' + esc(t.verificationSignal.metric) + '</b>' +
         (t.verificationSignal.lagDays ? ' · ~' + t.verificationSignal.lagDays + 'd' : '') + '</div>'
       : '';
 
