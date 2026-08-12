@@ -84,6 +84,20 @@
     });
   })();
 
+  // Give every activity entry a deterministic time-of-day (business hours, ascending
+  // within a task's log) so the list can show a real "last update" timestamp.
+  (function seedTimes() {
+    tasks.forEach(function (t) {
+      var log = t.activityLog; if (!log || !log.length) return;
+      var r = mulberry(hashStr('time|' + (t.id || '')));
+      var mins = 8 * 60 + Math.floor(r() * 90);
+      log.forEach(function (e) {
+        mins += 20 + Math.floor(r() * 140);
+        if (typeof e.time !== 'number') e.time = clamp(mins, 8 * 60, 18 * 60 - 1);
+      });
+    });
+  })();
+
   var taskSeq = 1000;
 
   var MARKET = DATA.market || { name: 'Market', manager: '', storeIds: [] };
@@ -117,12 +131,15 @@
   var editingId = null;
 
   /* ---------------- helpers ---------------- */
-  function shallow(o) { var n = {}; for (var k in o) n[k] = o[k]; if (o.verificationSignal) n.verificationSignal = { metric: o.verificationSignal.metric, lagDays: o.verificationSignal.lagDays }; if (o.activityLog) n.activityLog = o.activityLog.map(function (e) { return { date: e.date, note: e.note, kind: e.kind }; }); return n; }
+  function shallow(o) { var n = {}; for (var k in o) n[k] = o[k]; if (o.verificationSignal) n.verificationSignal = { metric: o.verificationSignal.metric, lagDays: o.verificationSignal.lagDays }; if (o.activityLog) n.activityLog = o.activityLog.map(function (e) { return { date: e.date, note: e.note, kind: e.kind, time: e.time }; }); return n; }
+  function nowMins() { var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
   function parseISO(s) { if (!s) return null; var p = String(s).split('-'); if (p.length !== 3) return null; return new Date(+p[0], +p[1] - 1, +p[2]); }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function iso(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
   function daysBetween(a, b) { return Math.round((a - b) / 86400000); }
   function fmtDate(s) { var d = parseISO(s); if (!d) return ''; return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+  function fmtTime(mins) { if (typeof mins !== 'number') return ''; var h = Math.floor(mins / 60), m = mins % 60, ap = h < 12 ? 'AM' : 'PM', h12 = h % 12 || 12; return h12 + ':' + pad(m) + ' ' + ap; }
+  function fmtDateTime(s, mins) { var d = fmtDate(s); if (!d) return ''; var tm = fmtTime(mins); return tm ? d + ' · ' + tm : d; }
   function fmtDateY(s) { var d = parseISO(s); if (!d) return ''; return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function uid() { taskSeq += 1; return 'T-' + taskSeq; }
@@ -263,7 +280,8 @@
     var open = !!expandedRows[t.id];
     var eyebrow = (multi && s) ? '<div class="lt-store">' + esc(s.name) + '</div>' : '';
     var carrier = t.carrier ? '<span class="chip chip-gray">' + esc(t.carrier) + '</span>' : '';
-    var nLog = (t.activityLog || []).length;
+    var log = t.activityLog || [], nLog = log.length, last = nLog ? log[nLog - 1] : null;
+    var updated = last ? esc(fmtDateTime(last.date, last.time)) : '<span class="lt-muted">-</span>';
     return (
       '<div class="lt-row' + (open ? ' open' : '') + '" data-id="' + esc(t.id) + '" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '">' +
         '<div class="lt-cell lt-expand"><span class="lt-caret" aria-hidden="true">' + caretIcon() + '</span></div>' +
@@ -274,10 +292,9 @@
         '<div class="lt-cell lt-role">' + esc(t.ownerRole || '-') + '</div>' +
         '<div class="lt-cell lt-prio"><span class="chip ' + pm.chip + '">' + esc(pm.label) + '</span></div>' +
         '<div class="lt-cell lt-due">' + dueHTMLFor(t) + '</div>' +
-        '<div class="lt-cell lt-actions">' +
-          '<span class="lt-logcount" title="' + nLog + ' activity entr' + (nLog === 1 ? 'y' : 'ies') + '">' + logIcon() + nLog + '</span>' +
-          '<button class="mini-btn" data-edit="' + esc(t.id) + '" aria-label="Open task details">' + editIcon() + '</button>' +
-        '</div>' +
+        '<div class="lt-cell lt-activity"><span class="lt-logcount" title="' + nLog + ' activity entr' + (nLog === 1 ? 'y' : 'ies') + '">' + logIcon() + nLog + '</span></div>' +
+        '<div class="lt-cell lt-updated">' + updated + '</div>' +
+        '<div class="lt-cell lt-actions"><button class="mini-btn" data-edit="' + esc(t.id) + '" aria-label="Open task details">' + editIcon() + '</button></div>' +
       '</div>' +
       '<div class="lt-detail"' + (open ? '' : ' hidden') + '>' +
         '<div class="lt-detail-inner"><div class="ctx-head">Activity log</div>' + activityTimelineHTML(t.activityLog) + '</div>' +
@@ -299,6 +316,8 @@
         '<div class="lt-cell lt-role">Role</div>' +
         '<div class="lt-cell lt-prio">Priority</div>' +
         '<div class="lt-cell lt-due">Due</div>' +
+        '<div class="lt-cell lt-activity">Activity</div>' +
+        '<div class="lt-cell lt-updated">Last update</div>' +
         '<div class="lt-cell lt-actions"></div>' +
       '</div>';
     listEl.innerHTML = rows.length
@@ -544,7 +563,7 @@
     return '<ol class="tl">' + log.map(function (e) {
       var isStatus = e.kind === 'status';
       return '<li class="tl-item' + (isStatus ? ' tl-status' : '') + '">' +
-        '<span class="tl-date">' + esc(fmtDate(e.date)) + '</span>' +
+        '<span class="tl-date">' + esc(fmtDateTime(e.date, e.time)) + '</span>' +
         '<span class="tl-note">' + (isStatus ? '<span class="tl-tag">Status</span> ' : '') + esc(e.note) + '</span></li>';
     }).join('') + '</ol>';
   }
@@ -567,7 +586,7 @@
     var t = findTask(editingId); if (!t) return;
     var v = (noteInput.value || '').trim(); if (!v) return;
     if (!t.activityLog) t.activityLog = [];
-    t.activityLog.push({ date: DATA.referenceDate, note: v });
+    t.activityLog.push({ date: DATA.referenceDate, note: v, time: nowMins() });
     renderContext(t.planId, t);
   }
 
@@ -575,7 +594,7 @@
   function logStatusChange(t, fromKey, toKey) {
     if (!t || fromKey === toKey) return;
     if (!t.activityLog) t.activityLog = [];
-    t.activityLog.push({ date: DATA.referenceDate, note: colMeta(fromKey).label + ' → ' + colMeta(toKey).label, kind: 'status' });
+    t.activityLog.push({ date: DATA.referenceDate, note: colMeta(fromKey).label + ' → ' + colMeta(toKey).label, kind: 'status', time: nowMins() });
   }
 
   function submitForm(e) {
