@@ -401,7 +401,7 @@ button { font-family: inherit; }
 }
 .card:hover { box-shadow: var(--shadow-2); }
 .card:active { cursor: grabbing; }
-.card.dragging { opacity: .45; }
+.card.dragging { opacity: .5; box-shadow: none; outline: 2px dashed var(--primary); outline-offset: -1px; }
 .card.p-low    { border-left-color: var(--outline); }
 .card.p-medium { border-left-color: var(--secondary); }
 .card.p-high   { border-left-color: var(--orange-strong); }

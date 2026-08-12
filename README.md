@@ -90,8 +90,12 @@ can't be reassigned to another shop's plan.
 - **Filters:** root cause, owner, and a **Behind target** toggle (tasks past their
   due date or whose plan blew its target-close date).
 - **Search** across task, owner, store, carrier, diagnosis, and metric.
-- **Move a task** two ways: **drag** its card between columns, or open the card
-  and change its **Status** in the task detail view (then Save).
+- **Move or reorder a task** by **drag and drop**: drag a card between columns to
+  change its status, or drop it above/below another card to set its position within a
+  column. Order is **Manual** by default (drag-defined); the **Sort** menu can switch
+  to due date, priority, or plan-opened instead, and the next drag flips it back to
+  Manual. You can also open a card and change its **Status** in the task detail view
+  (then Save).
 - **Click a card** to open it: editable task fields on the left - including the
   **Status** control that moves the task between columns - and the task's
   activity-log timeline (with add-note) on the right.

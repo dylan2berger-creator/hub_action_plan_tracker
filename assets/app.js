@@ -69,6 +69,21 @@
       tasks.push(item);
     });
   });
+  // Manual ordering: every task carries an `order` within its column so it can be
+  // dragged into any slot. Seed it from the due-date order so the default (Manual)
+  // view matches the old due-date layout until the user rearranges by hand.
+  (function seedOrder() {
+    var byCol = {};
+    tasks.forEach(function (t) { (byCol[t.column] || (byCol[t.column] = [])).push(t); });
+    Object.keys(byCol).forEach(function (k) {
+      byCol[k].sort(function (a, b) {
+        var da = a.dueDate ? parseISO(a.dueDate).getTime() : Infinity;
+        var db = b.dueDate ? parseISO(b.dueDate).getTime() : Infinity;
+        return da - db;
+      }).forEach(function (t, i) { t.order = i; });
+    });
+  })();
+
   var taskSeq = 1000;
 
   var MARKET = DATA.market || { name: 'Market', manager: '', storeIds: [] };
@@ -93,7 +108,7 @@
     owner: 'all',
     behind: false,
     search: '',
-    sort: 'due'
+    sort: 'manual'
   };
   function passStoreFilter(sid) { return !state.storeFilter || state.storeFilter.indexOf(sid) >= 0; }
   var editingId = null;
@@ -147,9 +162,18 @@
       return true;
     });
   }
+  function orderOf(t) { return typeof t.order === 'number' ? t.order : 1e9; }
+  // Bottom slot of a column's manual order - used when a task is created or its
+  // status changes, so it lands at the end of its new column.
+  function bottomOrder(col) {
+    var max = -1;
+    tasks.forEach(function (t) { if (t.column === col && typeof t.order === 'number' && t.order > max) max = t.order; });
+    return max + 1;
+  }
   function sortTasks(list) {
     var s = state.sort;
     return list.slice().sort(function (a, b) {
+      if (s === 'manual') return orderOf(a) - orderOf(b);
       if (s === 'priority') return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
       if (s === 'opened') { var pa = planOf(a), pb = planOf(b); return (parseISO((pb && pb.openedDate) || '2000-01-01')) - (parseISO((pa && pa.openedDate) || '2000-01-01')); }
       var da = a.dueDate ? parseISO(a.dueDate).getTime() : Infinity;
@@ -278,18 +302,77 @@
   }
   function findTask(id) { for (var i = 0; i < tasks.length; i++) if (tasks[i].id === id) return tasks[i]; return null; }
 
-  /* ---------------- drag & drop ---------------- */
-  var dragId = null;
-  function onDragStart(e) { var c = e.target.closest('.card'); if (!c) return; dragId = c.getAttribute('data-id'); c.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', dragId); } catch (x) {} }
-  function onDragEnd(e) { var c = e.target.closest('.card'); if (c) c.classList.remove('dragging'); dragId = null; Array.prototype.forEach.call(document.querySelectorAll('.column.drag-over'), function (n) { n.classList.remove('drag-over'); }); }
-  function onDragOver(e) { var col = e.target.closest('.column'); if (!col) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; col.classList.add('drag-over'); }
-  function onDragLeave(e) { var col = e.target.closest('.column'); if (!col) return; if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over'); }
+  /* ---------------- drag & drop ----------------
+     Cards drag between columns (changes status) and reorder within a column (manual
+     order). While dragging, the card is moved live in the DOM so the gap follows the
+     pointer; on drop we read that DOM order back into the model. */
+  var dragId = null, dragDropped = false;
+
+  function onDragStart(e) {
+    var c = e.target.closest('.card'); if (!c) return;
+    dragId = c.getAttribute('data-id'); dragDropped = false;
+    c.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', dragId); } catch (x) {}
+  }
+
+  // The card the pointer sits above (insert before it); null means append to the end.
+  function dragAfter(container, y) {
+    var els = container.querySelectorAll('.card:not(.dragging)'), best = null, bestOff = -Infinity;
+    for (var i = 0; i < els.length; i++) {
+      var box = els[i].getBoundingClientRect(), off = y - box.top - box.height / 2;
+      if (off < 0 && off > bestOff) { bestOff = off; best = els[i]; }
+    }
+    return best;
+  }
+
+  function onDragOver(e) {
+    if (!dragId) return;
+    var col = e.target.closest('.column'); if (!col) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    var dragging = boardEl.querySelector('.card.dragging'); if (!dragging) return;
+    Array.prototype.forEach.call(boardEl.querySelectorAll('.column.drag-over'), function (n) { if (n !== col) n.classList.remove('drag-over'); });
+    col.classList.add('drag-over');
+    var container = col.querySelector('.cards'); if (!container) return;
+    var empty = container.querySelector('.col-empty'); if (empty) container.removeChild(empty);
+    var after = dragAfter(container, e.clientY);
+    if (after == null) { if (container.lastElementChild !== dragging) container.appendChild(dragging); }
+    else if (after !== dragging.nextSibling) container.insertBefore(dragging, after);
+  }
+
+  function onDragLeave(e) {
+    var col = e.target.closest('.column'); if (!col) return;
+    if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
+  }
+
   function onDrop(e) {
-    var col = e.target.closest('.column'); if (!col) return; e.preventDefault();
-    var id = dragId; try { id = e.dataTransfer.getData('text/plain') || dragId; } catch (x) {}
-    var t = findTask(id);
-    if (t) { t.column = col.getAttribute('data-col'); render(); }
-    col.classList.remove('drag-over');
+    if (!dragId) return;
+    e.preventDefault();
+    var dragging = boardEl.querySelector('.card.dragging'); if (!dragging) return;
+    var col = dragging.closest('.column'); if (!col) return;
+    var newCol = col.getAttribute('data-col');
+    // Renumber the destination column from its live DOM order and stamp the status.
+    Array.prototype.forEach.call(col.querySelectorAll('.cards .card'), function (c, i) {
+      var tt = findTask(c.getAttribute('data-id'));
+      if (tt) { tt.column = newCol; tt.order = i; }
+    });
+    dragDropped = true;
+    // A drag expresses a manual arrangement - reflect it in the sort control so the
+    // drop is honored on re-render instead of snapping back to an automatic sort.
+    if (state.sort !== 'manual') {
+      state.sort = 'manual';
+      var sortSel = document.getElementById('sortSelect');
+      if (sortSel) sortSel.value = 'manual';
+    }
+    render();
+  }
+
+  function onDragEnd(e) {
+    var c = e.target.closest('.card'); if (c) c.classList.remove('dragging');
+    Array.prototype.forEach.call(boardEl.querySelectorAll('.column.drag-over'), function (n) { n.classList.remove('drag-over'); });
+    var dropped = dragDropped; dragId = null; dragDropped = false;
+    if (!dropped) render();   // abandoned drag - discard the live DOM preview
   }
 
   /* ---------------- modal (edit + context) ---------------- */
@@ -397,12 +480,18 @@
     };
     if (editingId) {
       var t = findTask(editingId);
-      if (t) { for (var k in data) t[k] = data[k]; }
+      if (t) {
+        var colChanged = t.column !== data.column;
+        var newOrder = colChanged ? bottomOrder(data.column) : null;   // land at the bottom of the new status
+        for (var k in data) t[k] = data[k];
+        if (colChanged) t.order = newOrder;
+      }
       toast('Task updated');
     } else {
       data.id = uid();
       data.createdDate = DATA.referenceDate;
       data.activityLog = [];
+      data.order = bottomOrder(data.column);
       tasks.push(data);
       toast('Task added');
     }
