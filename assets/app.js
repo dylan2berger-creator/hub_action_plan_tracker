@@ -1664,7 +1664,10 @@
     var open = kpiState.carrierOpen === c.name;
     return '<div class="carr-card' + (open ? ' open' : '') + '" data-carrier-card="' + esc(c.name) + '" role="button" tabindex="0" aria-expanded="' + open + '">' +
       '<div class="carr-top"><span class="carr-name">' + esc(c.name) + '</span><span class="carr-score ' + scoreCls + '">' + c.score + '<small>/100</small></span></div>' +
-      '<div class="carr-sub">' + svgSpark(c.trend.map(function (p) { return p.value; }), '#00529b', 120, 26) + '<span class="carr-vol">' + c.volume + ' repairs</span></div>' +
+      // the mini trend-line is the carrier's DRP score over time (c.trend === trends.score);
+      // repair volume rides along underneath as context, not as the trend itself.
+      '<div class="carr-sub">' + svgSpark(c.trends.score.map(function (p) { return p.value; }), '#00529b', 120, 26) +
+        '<span class="carr-cap"><span class="carr-trend-lbl">DRP score</span><span class="carr-vol">' + c.volume + ' repairs</span></span></div>' +
       '<div class="cv-list">' + varsHTML + '</div>' +
       '<div class="carr-cta">' + (open ? 'Trend shown below ▾' : 'Click to trend a metric ▸') + '</div></div>';
   }
