@@ -289,12 +289,20 @@
     var carrier = t.carrier ? '<span class="chip chip-gray">' + esc(t.carrier) + '</span>' : '';
     var log = t.activityLog || [], nLog = log.length, last = nLog ? log[nLog - 1] : null;
     var updated = last ? esc(fmtDateTime(last.date, last.time)) : '<span class="lt-muted">-</span>';
+    // The status cell shows a static chip normally; when the row is opened (selected) CSS swaps
+    // it for the inline dropdown, so the status can be changed right where it's shown. Both are
+    // rendered so the lightweight row toggle (no re-render) can flip them via the .open class.
+    var statusCell =
+      '<span class="status-chip"><span class="status-dot" style="background:' + cm.accent + '"></span>' + esc(cm.label) + '</span>' +
+      '<select class="lt-status-select" data-status-for="' + esc(t.id) + '" aria-label="Change status">' +
+        COLUMNS.map(function (c) { return '<option value="' + c.key + '"' + (c.key === t.column ? ' selected' : '') + '>' + esc(c.label) + '</option>'; }).join('') +
+      '</select>';
     return (
       '<div class="lt-row' + (open ? ' open' : '') + '" data-id="' + esc(t.id) + '" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '">' +
         '<div class="lt-cell lt-expand"><span class="lt-caret" aria-hidden="true">' + caretIcon() + '</span></div>' +
         '<div class="lt-cell lt-task">' + eyebrow + '<div class="lt-title">' + esc(t.title) + '</div>' +
           '<div class="lt-metarow">' + catChip(root) + carrier + '</div></div>' +
-        '<div class="lt-cell lt-status"><span class="status-chip"><span class="status-dot" style="background:' + cm.accent + '"></span>' + esc(cm.label) + '</span></div>' +
+        '<div class="lt-cell lt-status">' + statusCell + '</div>' +
         '<div class="lt-cell lt-owner">' + avatarHTML(t.ownerName) + '<span class="lt-owner-name">' + esc(t.ownerName || 'Unassigned') + '</span></div>' +
         '<div class="lt-cell lt-role">' + esc(t.ownerRole || '-') + '</div>' +
         '<div class="lt-cell lt-prio"><span class="chip ' + pm.chip + '">' + esc(pm.label) + '</span></div>' +
@@ -304,12 +312,7 @@
         '<div class="lt-cell lt-actions"><button class="mini-btn" data-edit="' + esc(t.id) + '" aria-label="Open task details">' + editIcon() + '</button></div>' +
       '</div>' +
       '<div class="lt-detail"' + (open ? '' : ' hidden') + '>' +
-        '<div class="lt-detail-inner">' +
-          '<div class="lt-status-edit"><span class="lt-status-lbl">Status</span>' +
-            '<select class="lt-status-select" data-status-for="' + esc(t.id) + '" aria-label="Change status">' +
-              COLUMNS.map(function (c) { return '<option value="' + c.key + '"' + (c.key === t.column ? ' selected' : '') + '>' + esc(c.label) + '</option>'; }).join('') +
-            '</select></div>' +
-          '<div class="ctx-head">Activity log</div>' + activityTimelineHTML(t.activityLog) +
+        '<div class="lt-detail-inner"><div class="ctx-head">Activity log</div>' + activityTimelineHTML(t.activityLog) +
           '<div class="note-add">' +
             '<input class="lt-note-input" type="text" placeholder="Add an activity note…" maxlength="180" data-note-for="' + esc(t.id) + '" />' +
             '<button type="button" class="btn btn-ghost" data-add-note="' + esc(t.id) + '">Add</button>' +
@@ -505,6 +508,7 @@
     if (an) { e.stopPropagation(); addListNote(an); return; }
     var ed = e.target.closest('[data-edit]');
     if (ed) { e.stopPropagation(); openModal(ed.getAttribute('data-edit')); return; }
+    if (e.target.closest('[data-status-for]')) { e.stopPropagation(); return; }   // the inline status dropdown must not toggle the row
     if (e.target.closest('.lt-detail')) return;   // clicks inside the drill-in don't toggle the row
     var row = e.target.closest('.lt-row');
     if (row) toggleRow(row);   // drill into the task's activity log

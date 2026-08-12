@@ -680,13 +680,15 @@ button { font-family: inherit; }
 .lt-detail { min-width: 1080px; background: #f7f9fb; border-bottom: 1px solid #eceef2; padding: 4px 14px 14px 44px; }
 .lt-detail-inner { max-width: 760px; }
 .lt-detail .ctx-head { margin-bottom: 6px; }
-.lt-status-edit { display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
-  padding-bottom: 12px; border-bottom: 1px solid #eceef2; }
-.lt-status-lbl { font-family: var(--font-brand); font-weight: 700; font-size: 11px;
-  letter-spacing: .4px; text-transform: uppercase; color: var(--on-surface-variant); }
-.lt-status-select { font-family: var(--font-plain); font-size: 13px; padding: 6px 10px;
+/* Inline status editor: the status cell shows a chip normally and swaps to a dropdown while the
+   row is open (selected), so status can be changed right in the cell without a full re-render. */
+.lt-row .lt-status { display: flex; align-items: center; gap: 6px; }
+.lt-row .lt-status .lt-status-select { display: none; }
+.lt-row.open .lt-status .status-chip { display: none; }
+.lt-row.open .lt-status .lt-status-select { display: block; flex: 1 1 auto; min-width: 0; }
+.lt-status-select { font-family: var(--font-plain); font-size: 12.5px; padding: 4px 6px;
   border: 1px solid var(--outline-variant); border-radius: var(--corner-sm); background: #fff;
-  outline: none; cursor: pointer; }
+  outline: none; cursor: pointer; max-width: 100%; }
 .lt-status-select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px #00529b22; }
 .lt-head .lt-sortable { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px; }
 .lt-head .lt-sortable:hover { color: #1a1a1a; }
