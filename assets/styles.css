@@ -460,6 +460,14 @@ button { font-family: inherit; }
   padding: 18px 10px; text-align: center;
   color: var(--muted); font-size: 13px;
 }
+/* National Manager Action Plans empty state */
+.np-empty { max-width: 640px; margin: 44px auto; text-align: center; padding: 34px 30px;
+  background: #fff; border: 1px solid var(--outline-variant); border-radius: var(--corner-md); }
+.np-empty-ic { width: 46px; height: 46px; margin: 0 auto 14px; color: var(--primary); }
+.np-empty-ic svg { width: 100%; height: 100%; }
+.np-empty-h { font-family: var(--font-brand); font-weight: 700; font-size: 19px; margin: 0 0 10px; color: #1a1a1a; }
+.np-empty-p { font-size: 14px; line-height: 1.55; color: var(--on-surface-variant); margin: 0 auto 8px; max-width: 520px; }
+.np-empty-p .link-btn { font-size: 14px; margin-bottom: 0; vertical-align: baseline; }
 
 /* ------------------------------------------------------------
    Modal

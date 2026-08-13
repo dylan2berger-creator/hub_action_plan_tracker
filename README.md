@@ -42,8 +42,9 @@ each a wider scope than the last (shop → market → region → national):
   **Regions**, one worst-first bar per region) and a **division filter**. The roll-up
   **drills down**: click a **division** bar to open its regions, click a **region** bar
   to drop to that region's **shops** (a breadcrumb returns you to all regions), and any
-  shop opens its detail → carrier scorecard. The Action Plans tab still shows the
-  national roll-up of every active plan, for reference.
+  shop opens its detail → carrier scorecard. **No action-plan tasks are assigned to a
+  National Manager** - their Action Plans tab is an empty state that points back to the
+  KPIs roll-up.
 
 ![Regional Manager revenue-attainment dashboard](assets/preview-region.png)
 
