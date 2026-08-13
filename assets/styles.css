@@ -1022,3 +1022,70 @@ button { font-family: inherit; }
 .cm-total { font-weight: 800; background: #f4f6f9; color: #1e2a33; font-variant-numeric: tabular-nums; }
 .cm-foot td { border-top: 2px solid #e6e9ef; }
 .cm-foot .cm-rule { font-weight: 800; color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: .3px; }
+
+/* =================== Carrier CRM (National Manager) =================== */
+/* Carrier chip rendered as a clickable "bubble" for the National Manager. */
+.carr-link { border: 0; cursor: pointer; font: inherit; }
+.carr-link:hover { box-shadow: inset 0 0 0 1px var(--primary); filter: brightness(.98); }
+.carr-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+/* "View CRM profile" link in the task editor */
+.carr-view-btn { margin-left: 8px; border: 0; background: none; color: var(--primary); font-weight: 700;
+  font-size: 12px; cursor: pointer; padding: 0; }
+.carr-view-btn:hover { text-decoration: underline; }
+
+/* Relationship status chips + monograms */
+.cs { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: var(--corner-full);
+  font-size: 12px; font-weight: 700; white-space: nowrap; }
+.cs-pref     { background: #dff3e6; color: #14683a; }
+.cs-active   { background: #dce9f7; color: #17457d; }
+.cs-risk     { background: #fbe4d5; color: #8a3d12; }
+.cs-prospect { background: #e9e7f3; color: #4a417a; }
+.cv-mono { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+  border-radius: var(--corner-md); font-family: var(--font-brand); font-weight: 700; font-size: 15px;
+  background: #dce9f7; color: #17457d; flex: 0 0 auto; }
+.cv-mono.sm { width: 26px; height: 26px; font-size: 11px; border-radius: var(--corner-sm); }
+.cv-mono.cs-pref { background: #dff3e6; color: #14683a; }
+.cv-mono.cs-risk { background: #fbe4d5; color: #8a3d12; }
+.cv-mono.cs-prospect { background: #e9e7f3; color: #4a417a; }
+
+/* CRM table */
+.crm-wrap { margin-top: var(--sp4); }
+.crm-scroll { overflow-x: auto; border: 1px solid var(--outline-variant); border-radius: var(--corner-md); background: #fff; }
+.crm-table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 860px; }
+.crm-table thead th { text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+  color: var(--muted); padding: 11px 14px; border-bottom: 1px solid var(--outline-variant); white-space: nowrap; background: #fbfcfe; }
+.crm-table td { padding: 11px 14px; border-bottom: 1px solid #eef1f5; color: #1e2a33; vertical-align: middle; }
+.crm-table tbody tr:last-child td { border-bottom: 0; }
+.crm-table tbody tr { cursor: pointer; }
+.crm-table tbody tr:hover { background: #f5f8fc; }
+.crm-table tbody tr:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.crm-name { display: flex; align-items: center; gap: 10px; }
+.crm-cname { font-weight: 700; }
+.crm-num { text-align: center; font-variant-numeric: tabular-nums; }
+.crm-act { text-align: right; }
+
+/* Carrier profile modal */
+#carrierOverlay { z-index: 1400; }
+.carrier-modal { width: min(560px, 96vw); }
+.cmod-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp3); margin-bottom: var(--sp3); }
+.cmod-head h2 { margin: 0; }
+.cmod-x { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 4px; border-radius: var(--corner-sm);
+  display: inline-flex; }
+.cmod-x:hover { background: var(--surface-variant); color: #1e2a33; }
+.cmod-foot { display: flex; justify-content: flex-end; gap: var(--sp3); margin-top: var(--sp5); }
+
+/* Profile view */
+.cv-top { display: flex; align-items: center; gap: var(--sp3); }
+.cv-id { flex: 1 1 auto; min-width: 0; }
+.cv-name { font-family: var(--font-brand); font-weight: 700; font-size: 18px; color: #16202a; }
+.cv-prog { font-size: 13px; color: var(--on-surface-variant); }
+.cv-book { margin: var(--sp3) 0 var(--sp4); padding: 8px 12px; background: #f4f7fb; border-radius: var(--corner-sm);
+  font-size: 12.5px; font-weight: 600; color: #33506e; }
+.cv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 22px; }
+.cv-row { display: flex; flex-direction: column; padding: 7px 0; border-bottom: 1px solid #eef1f5; }
+.cv-k { font-size: 11px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--muted); }
+.cv-v { font-size: 14px; color: #1e2a33; word-break: break-word; }
+.cv-empty { color: #b6bdc7; }
+.cv-notes { margin-top: var(--sp3); }
+.cv-notes p { margin: 4px 0 0; font-size: 14px; line-height: 1.5; color: #33414d; }
+@media (max-width: 520px) { .cv-grid { grid-template-columns: 1fr; } }

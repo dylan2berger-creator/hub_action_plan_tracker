@@ -392,7 +392,7 @@
     var s = storeOf(t), root = rootOf(t), pm = priorityMeta(t.priority), cm = colMeta(t.column);
     var open = !!expandedRows[t.id];
     var eyebrow = (multi && s) ? '<div class="lt-store">' + esc(s.name) + '</div>' : '';
-    var carrier = t.carrier ? '<span class="chip chip-gray">' + esc(t.carrier) + '</span>' : '';
+    var carrier = carrierChipHTML(t.carrier);
     var log = t.activityLog || [], nLog = log.length, last = nLog ? log[nLog - 1] : null;
     var updated = last ? esc(fmtDateTime(last.date, last.time)) : '<span class="lt-muted">-</span>';
     // The status cell shows a static chip normally; when the row is opened (selected) CSS swaps
@@ -520,7 +520,7 @@
     var outcome = (t.column === 'closed' && t.outcome)
       ? '<span class="chip outcome ' + outcomeClass(t.outcome) + '">' + esc(t.outcome) + '</span>' : '';
 
-    var carrier = t.carrier ? '<span class="chip chip-gray">' + esc(t.carrier) + '</span>' : '';
+    var carrier = carrierChipHTML(t.carrier);
 
     return (
       '<article class="card p-' + esc(t.priority) + '" draggable="true" data-id="' + esc(t.id) + '" tabindex="0" role="button" aria-label="Open ' + esc(t.title) + '">' +
@@ -555,6 +555,8 @@
 
   /* ---------------- board interactions ---------------- */
   function onBoardClick(e) {
+    var cp = e.target.closest('[data-carrier-profile]');
+    if (cp) { e.stopPropagation(); openCarrier(cp.getAttribute('data-carrier-profile'), 'view'); return; }
     var ed = e.target.closest('[data-edit]');
     if (ed) { e.stopPropagation(); openModal(ed.getAttribute('data-edit')); return; }
     var card = e.target.closest('.card');
@@ -608,6 +610,8 @@
     if (sel) { e.stopPropagation(); setListStatus(sel); }
   }
   function onListClick(e) {
+    var cp = e.target.closest('[data-carrier-profile]');
+    if (cp) { e.stopPropagation(); openCarrier(cp.getAttribute('data-carrier-profile'), 'view'); return; }
     var sh = e.target.closest('[data-sort]');
     if (sh) { setListSort(sh.getAttribute('data-sort')); return; }
     var an = e.target.closest('[data-add-note]');
@@ -719,6 +723,11 @@
     row.classList.toggle('required', req);
     if (!req) row.classList.remove('invalid');   // clear a stale error once it's no longer required
   }
+  // National managers get a "View CRM profile" link next to a chosen carrier in the task editor.
+  function updateCarrierProfileLink() {
+    var b = document.getElementById('carrierProfileLink'); if (!b) return;
+    b.style.display = (state.role === 'national' && fCarrier && fCarrier.value) ? '' : 'none';
+  }
 
   function planLabel(p) { var s = STORE_BY_ID[p.storeId]; return (s ? s.name : p.storeId) + ' - Action plan'; }
   function planOptionsHTML(selectedPlanId) {
@@ -765,6 +774,7 @@
     fCarrier.value = t ? (t.carrier || '') : '';
     if (fCarrier.closest('.form-row')) fCarrier.closest('.form-row').classList.remove('invalid');
     updateCarrierReq();
+    updateCarrierProfileLink();
 
     renderContext(planId, t);
     overlay.classList.add('open');
@@ -1170,6 +1180,168 @@
   var DRP = CFG.drp || { scoreMin: 0, scoreMax: 100, variables: [] };
   var CARRIERS = DATA.carriers || [];
   var RULE_TEXTS = DATA.ruleTexts || [];
+
+  /* =================== Carrier CRM (National Manager only) ===================
+     A mini relationship profile per carrier, opened from a carrier chip on any
+     task and managed on the CRM tab. Profiles live in memory, seeded from data. */
+  var carrierProfiles = (DATA.carrierProfiles || []).map(function (c) { var n = {}; for (var k in c) n[k] = c[k]; return n; });
+  var CARRIER_STATUSES = ['Preferred', 'Active', 'At risk', 'Prospect'];
+  var CRM_OWNERS = ['Marcus Delgado', 'Elaine Cho', 'Nadia Haddad', 'Jamal Carter', 'Colin Pierce', "Megan O'Rourke", 'Grant Feldman', 'Bethany Cruz'];
+  var carrierOverlay, carrierBody, crmWrap, editingCarrier = null;
+
+  function profileByName(name) { for (var i = 0; i < carrierProfiles.length; i++) if (carrierProfiles[i].name === name) return carrierProfiles[i]; return null; }
+  function statusClass(s) { return s === 'Preferred' ? 'cs-pref' : s === 'Active' ? 'cs-active' : s === 'At risk' ? 'cs-risk' : 'cs-prospect'; }
+  function carrierMonogram(name) {
+    var w = String(name || '').trim().split(/\s+/);
+    return ((w.length >= 2 ? w[0].charAt(0) + w[1].charAt(0) : String(name || '').slice(0, 2)) || '?').toUpperCase();
+  }
+  // Live counts pulled from the task set, so a profile reflects the actual book.
+  function carrierStats(name) {
+    var plans = {}, shops = {}, open = 0, total = 0;
+    tasks.forEach(function (t) { if (t.carrier === name) { total++; plans[t.planId] = 1; shops[t.storeId] = 1; if (t.column !== 'closed') open++; } });
+    return { plans: Object.keys(plans).length, shops: Object.keys(shops).length, open: open, total: total };
+  }
+  // Carrier chip: a plain pill for most personas, a clickable "bubble" that opens the
+  // CRM profile for the National Manager.
+  function carrierChipHTML(carrier) {
+    if (!carrier) return '';
+    if (state.role === 'national') {
+      return '<button type="button" class="chip chip-gray carr-link" data-carrier-profile="' + esc(carrier) +
+        '" title="Open ' + esc(carrier) + ' CRM profile">' + esc(carrier) + '</button>';
+    }
+    return '<span class="chip chip-gray">' + esc(carrier) + '</span>';
+  }
+
+  function openCarrier(name, mode) {
+    if (!carrierOverlay) return;
+    var p = mode === 'new' ? null : profileByName(name);
+    if (mode !== 'new' && !p) return;
+    editingCarrier = mode === 'new' ? null : p.name;
+    document.getElementById('carrierModalTitle').textContent = mode === 'new' ? 'New carrier' : mode === 'edit' ? 'Edit ' + p.name : 'Carrier profile';
+    carrierBody.innerHTML = (mode === 'edit' || mode === 'new') ? carrierEditHTML(p) : carrierViewHTML(p);
+    carrierOverlay.classList.add('open');
+    var focusEl = carrierBody.querySelector('input, select, [data-cc="edit"]');
+    if (focusEl) setTimeout(function () { focusEl.focus(); }, 30);
+  }
+  function closeCarrier() { if (carrierOverlay) carrierOverlay.classList.remove('open'); editingCarrier = null; }
+
+  function cvRow(label, val) {
+    return '<div class="cv-row"><span class="cv-k">' + esc(label) + '</span>' +
+      '<span class="cv-v">' + (val ? esc(val) : '<span class="cv-empty">-</span>') + '</span></div>';
+  }
+  function carrierViewHTML(p) {
+    var st = carrierStats(p.name);
+    var book = st.plans
+      ? (st.open + ' open task' + (st.open === 1 ? '' : 's') + ' · ' + st.plans + ' action plan' + (st.plans === 1 ? '' : 's') + ' · ' + st.shops + ' shop' + (st.shops === 1 ? '' : 's'))
+      : 'No active action plans';
+    return '<div class="cv">' +
+      '<div class="cv-top">' +
+        '<span class="cv-mono ' + statusClass(p.status) + '">' + esc(carrierMonogram(p.name)) + '</span>' +
+        '<div class="cv-id"><div class="cv-name">' + esc(p.name) + '</div><div class="cv-prog">' + esc(p.program || '') + '</div></div>' +
+        '<span class="cs ' + statusClass(p.status) + '">' + esc(p.status || '-') + '</span>' +
+      '</div>' +
+      '<div class="cv-book">' + esc(book) + '</div>' +
+      '<div class="cv-grid">' +
+        cvRow('DRP program', p.program) +
+        cvRow('Relationship', p.status) +
+        cvRow('Field rep', p.rep) +
+        cvRow('Rep email', p.repEmail) +
+        cvRow('Rep phone', p.phone) +
+        cvRow('Internal owner', p.owner) +
+        cvRow('Last business review', p.lastReview ? fmtDateY(p.lastReview) : '') +
+      '</div>' +
+      '<div class="cv-notes"><span class="cv-k">Notes</span><p>' + (p.notes ? esc(p.notes) : '<span class="cv-empty">-</span>') + '</p></div>' +
+      '<div class="cmod-foot"><button type="button" class="btn btn-ghost" data-cc="close">Close</button>' +
+        '<button type="button" class="btn btn-primary" data-cc="edit">Edit profile</button></div>' +
+    '</div>';
+  }
+  function ceRow(label, id, val, type, full) {
+    return '<div class="form-row' + (full ? ' full' : '') + '"><label for="' + id + '">' + esc(label) + '</label>' +
+      '<input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val || '') + '" maxlength="120" /></div>';
+  }
+  function carrierEditHTML(p) {
+    p = p || {};
+    var isNew = !p.name;
+    var statusOpts = CARRIER_STATUSES.map(function (s) { return '<option value="' + esc(s) + '"' + (p.status === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('');
+    return '<form class="ce" id="carrierForm" novalidate>' +
+      '<div class="form-grid">' +
+        '<div class="form-row full"><label for="ceName">Carrier <span aria-hidden="true">*</span></label>' +
+          '<input id="ceName" type="text" maxlength="60" value="' + esc(p.name || '') + '"' + (isNew ? '' : ' readonly') + ' placeholder="Carrier name" /></div>' +
+        '<div class="form-row full"><label for="ceProgram">DRP program</label><input id="ceProgram" type="text" maxlength="80" value="' + esc(p.program || '') + '" /></div>' +
+        '<div class="form-row"><label for="ceStatus">Relationship</label><select id="ceStatus">' + statusOpts + '</select></div>' +
+        '<div class="form-row"><label for="ceReview">Last business review</label><input id="ceReview" type="date" value="' + esc(p.lastReview || '') + '" /></div>' +
+        ceRow('Field rep', 'ceRep', p.rep) +
+        '<div class="form-row"><label for="ceOwner">Internal owner</label><input id="ceOwner" list="ceOwnerList" maxlength="60" value="' + esc(p.owner || '') + '" />' +
+          '<datalist id="ceOwnerList">' + CRM_OWNERS.map(function (o) { return '<option value="' + esc(o) + '">'; }).join('') + '</datalist></div>' +
+        ceRow('Rep email', 'ceEmail', p.repEmail, 'email') +
+        ceRow('Rep phone', 'cePhone', p.phone, 'tel') +
+        '<div class="form-row full"><label for="ceNotes">Notes</label><textarea id="ceNotes" maxlength="280">' + esc(p.notes || '') + '</textarea></div>' +
+      '</div>' +
+      '<div class="cmod-foot">' +
+        '<button type="button" class="btn btn-ghost" data-cc="' + (isNew ? 'close' : 'cancelEdit') + '">Cancel</button>' +
+        '<button type="submit" class="btn btn-primary">Save carrier</button>' +
+      '</div>' +
+    '</form>';
+  }
+  function cval(id) { var el = document.getElementById(id); return el ? (el.value || '').trim() : ''; }
+  function saveCarrier(e) {
+    if (e) e.preventDefault();
+    var name = cval('ceName');
+    if (!name) { var ne = document.getElementById('ceName'); if (ne) ne.focus(); toast('Carrier name is required'); return; }
+    var isNew = !editingCarrier;
+    if (isNew && profileByName(name)) { toast('That carrier already exists'); return; }
+    var fields = { name: name, program: cval('ceProgram'), status: cval('ceStatus'), rep: cval('ceRep'),
+      repEmail: cval('ceEmail'), phone: cval('cePhone'), owner: cval('ceOwner'), lastReview: cval('ceReview'), notes: cval('ceNotes') };
+    var target = editingCarrier ? profileByName(editingCarrier) : null;
+    if (target) { for (var k in fields) target[k] = fields[k]; }
+    else { carrierProfiles.push(fields); registerCarrierName(name); }
+    editingCarrier = name;
+    if (state.view === 'crm') renderCrm();
+    openCarrier(name, 'view');
+    toast(isNew ? 'Carrier added' : 'Carrier updated');
+  }
+  // A new carrier profile should be assignable on tasks too.
+  function registerCarrierName(name) {
+    if (CARRIERS.indexOf(name) < 0) {
+      CARRIERS.push(name);
+      if (fCarrier) fCarrier.innerHTML = '<option value="">None</option>' + CARRIERS.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
+    }
+  }
+  function onCarrierBodyClick(e) {
+    var b = e.target.closest('[data-cc]'); if (!b) return;
+    var act = b.getAttribute('data-cc');
+    if (act === 'close') closeCarrier();
+    else if (act === 'edit') openCarrier(editingCarrier, 'edit');
+    else if (act === 'cancelEdit') { if (editingCarrier && profileByName(editingCarrier)) openCarrier(editingCarrier, 'view'); else closeCarrier(); }
+  }
+
+  function renderCrm() {
+    if (!crmWrap) return;
+    var sub = document.getElementById('crmSub');
+    if (sub) sub.textContent = carrierProfiles.length + ' carrier' + (carrierProfiles.length === 1 ? '' : 's') + ' · relationship profiles across the DRP book.';
+    var rows = carrierProfiles.map(function (p) {
+      var st = carrierStats(p.name);
+      return '<tr data-carrier-row="' + esc(p.name) + '" tabindex="0" role="button" aria-label="Open ' + esc(p.name) + ' profile">' +
+        '<td class="crm-name"><span class="cv-mono sm ' + statusClass(p.status) + '">' + esc(carrierMonogram(p.name)) + '</span><span class="crm-cname">' + esc(p.name) + '</span></td>' +
+        '<td>' + esc(p.program || '-') + '</td>' +
+        '<td><span class="cs ' + statusClass(p.status) + '">' + esc(p.status || '-') + '</span></td>' +
+        '<td>' + esc(p.rep || '-') + '</td>' +
+        '<td>' + esc(p.owner || '-') + '</td>' +
+        '<td class="crm-num">' + st.open + '</td>' +
+        '<td>' + (p.lastReview ? esc(fmtDateY(p.lastReview)) : '-') + '</td>' +
+        '<td class="crm-act"><button type="button" class="mini-btn" data-carrier-edit="' + esc(p.name) + '" aria-label="Edit ' + esc(p.name) + '">' + editIcon() + '</button></td>' +
+      '</tr>';
+    }).join('');
+    crmWrap.innerHTML = '<div class="crm-scroll"><table class="crm-table"><thead><tr>' +
+      '<th>Carrier</th><th>DRP program</th><th>Relationship</th><th>Field rep</th><th>Internal owner</th><th class="crm-num">Open tasks</th><th>Last review</th><th aria-label="Edit"></th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+  function onCrmClick(e) {
+    var ed = e.target.closest('[data-carrier-edit]');
+    if (ed) { openCarrier(ed.getAttribute('data-carrier-edit'), 'edit'); return; }
+    var row = e.target.closest('[data-carrier-row]');
+    if (row) openCarrier(row.getAttribute('data-carrier-row'), 'view');
+  }
   // offset = how many months back the window ends (0 = through the current month; 1 = the previous complete month)
   var PERIODS = [{ key: 'm3', label: '3M', months: 3, offset: 0 }, { key: 'm6', label: '6M', months: 6, offset: 0 }, { key: 'm12', label: '12M', months: 12, offset: 0 }];
   var MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -1885,7 +2057,7 @@
         carrierOrder.map(function (n) { return cell(ri, n); }).join('') +
         '<td class="cm-total">' + rowTotal[ri] + '</td></tr>';
     }).join('');
-    var footRow = '<tr class="cm-foot"><td class="cm-rule">Top 10 rules</td>' +
+    var footRow = '<tr class="cmod-foot"><td class="cm-rule">Top 10 rules</td>' +
       carrierOrder.map(function (n) { return '<td class="cm-total">' + colTotal[n] + '</td>'; }).join('') +
       '<td class="cm-total">' + grand + '</td></tr>';
     var table = '<table class="cluster-map"><thead><tr><th class="cm-rule">Rule not adhered to</th>' + headCols + '<th class="cm-total">Total</th></tr></thead>' +
@@ -2043,6 +2215,10 @@
       var on = b.getAttribute('data-role') === role;
       b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
     });
+    // The CRM tab is National-Manager-only; leaving that persona hides it and any open CRM view.
+    var navCrm = document.getElementById('navCrm');
+    if (navCrm) navCrm.style.display = role === 'national' ? '' : 'none';
+    if (role !== 'national') { closeCarrier(); if (state.view === 'crm') setView('plans'); }
     var note = document.getElementById('protoNote');
     if (note) {
       var rg = currentRegion();
@@ -2063,12 +2239,14 @@
     state.view = view;
     document.getElementById('viewActionPlans').hidden = (view !== 'plans');
     document.getElementById('viewKpis').hidden = (view !== 'kpis');
+    var vc = document.getElementById('viewCrm'); if (vc) vc.hidden = (view !== 'crm');
     Array.prototype.forEach.call(document.querySelectorAll('.nav-item[data-view]'), function (b) {
       var sel = b.getAttribute('data-view') === view;
       b.classList.toggle('selected', sel);
       if (sel) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
     if (view === 'kpis') renderKpiTab();
+    if (view === 'crm') renderCrm();
   }
   function setBoardView(v) {
     if (v !== 'board' && v !== 'list') return;
@@ -2164,13 +2342,33 @@
 
     fPlan.addEventListener('change', function () { var pl = PLAN_BY_ID[fPlan.value]; if (pl) fRoot.value = pl.rootCauseCategory; updateCarrierReq(); renderContext(fPlan.value, editingId ? findTask(editingId) : null); });
     fRoot.addEventListener('change', updateCarrierReq);
-    if (fCarrier) fCarrier.addEventListener('change', function () { fCarrier.closest('.form-row').classList.remove('invalid'); });
+    if (fCarrier) fCarrier.addEventListener('change', function () { fCarrier.closest('.form-row').classList.remove('invalid'); updateCarrierProfileLink(); });
     document.getElementById('actionForm').addEventListener('submit', submitForm);
     document.getElementById('cancelBtn').addEventListener('click', closeModal);
     deleteBtn.addEventListener('click', deleteCurrent);
     overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal(); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      if (carrierOverlay && carrierOverlay.classList.contains('open')) closeCarrier();
+      else if (overlay.classList.contains('open')) closeModal();
+    });
     fTitle.addEventListener('input', function () { fTitle.closest('.form-row').classList.remove('invalid'); });
+
+    // Carrier CRM: profile modal + tab wiring
+    carrierOverlay = document.getElementById('carrierOverlay');
+    carrierBody = document.getElementById('carrierBody');
+    crmWrap = document.getElementById('crmWrap');
+    document.getElementById('carrierClose').addEventListener('click', closeCarrier);
+    carrierOverlay.addEventListener('click', function (e) { if (e.target === carrierOverlay) closeCarrier(); });
+    carrierBody.addEventListener('click', onCarrierBodyClick);
+    carrierBody.addEventListener('submit', function (e) { if (e.target && e.target.id === 'carrierForm') saveCarrier(e); });
+    document.getElementById('newCarrierBtn').addEventListener('click', function () { openCarrier(null, 'new'); });
+    if (crmWrap) {
+      crmWrap.addEventListener('click', onCrmClick);
+      crmWrap.addEventListener('keydown', function (e) { if (e.key === 'Enter') { var r = e.target.closest('[data-carrier-row]'); if (r) { e.preventDefault(); openCarrier(r.getAttribute('data-carrier-row'), 'view'); } } });
+    }
+    var cpl = document.getElementById('carrierProfileLink');
+    if (cpl) cpl.addEventListener('click', function () { if (fCarrier && fCarrier.value) openCarrier(fCarrier.value, 'view'); });
 
     // nav: Action Plans / KPI's switch views; other tabs are inert
     Array.prototype.forEach.call(document.querySelectorAll('.nav-item'), function (btn) {

@@ -46,7 +46,24 @@ each a wider scope than the last (shop → market → region → national):
   across all shops** for company-wide visibility. **"National Manager" is a viewing
   persona only - it is never a task owner**, so no task in any plan is assigned to it
   (the owner-role taxonomy is GM / Estimator / Technician / Account Manager / National
-  Account Manager / CPM / Regional Manager).
+  Account Manager / CPM / Regional Manager). The National Manager also gets a
+  **National-only CRM tab** (see below).
+
+### Carrier CRM (National Manager only)
+
+A lightweight relationship view of the insurance carriers, sitting in a **CRM tab next
+to Action Plans that only the National Manager sees**.
+
+- **Carrier chip → profile.** For the National Manager, the carrier chip on any task
+  (board card, list row, or the task editor) becomes a clickable **bubble** that opens a
+  **mini-CRM profile** for that carrier: program, relationship status, field rep +
+  contact, internal owner (the CPM/account manager who holds the relationship), last
+  business review, notes, and a live count of open tasks / action plans / shops pulled
+  from the data.
+- **CRM tab.** A table of every carrier in the data (program, relationship, rep, owner,
+  open-task count, last review). Click a row to view the profile; **Edit** any profile or
+  add a new carrier with **+ New carrier** (a new carrier also becomes assignable on
+  tasks). Profiles are seeded from `HUB_DATA.carrierProfiles` and edited in memory.
 
 ![Regional Manager revenue-attainment dashboard](assets/preview-region.png)
 

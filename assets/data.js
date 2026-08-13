@@ -856,6 +856,22 @@ window.HUB_DATA.carriers = [
   "State Farm", "GEICO", "Progressive", "Allstate", "USAA",
   "Liberty Mutual", "Farmers", "Nationwide", "Travelers", "American Family"
 ];
+
+/* Mini-CRM carrier relationship profiles. National managers open these from a
+   carrier chip on any task, and manage them on the CRM tab. Synthetic contacts;
+   `owner` is the internal CPM / account manager who holds the relationship. */
+window.HUB_DATA.carrierProfiles = [
+  { name: "State Farm",      program: "Select Service",            status: "Preferred", rep: "Karen Whitlock", repEmail: "karen.whitlock@statefarm.example",   phone: "(309) 555-0142", owner: "Marcus Delgado", lastReview: "2026-07-15", notes: "Largest DRP relationship; highly sensitive to keys-to-keys cycle time on the Select Service scorecard." },
+  { name: "GEICO",           program: "Auto Repair Xpress (ARX)",  status: "Active",    rep: "Gwen Sato",      repEmail: "gwen.sato@geico.example",             phone: "(301) 555-0188", owner: "Grant Feldman",  lastReview: "2026-06-10", notes: "High drive-in volume; throughput and photo-estimate turnaround matter most." },
+  { name: "Progressive",     program: "Network Direct",            status: "At risk",   rep: "Nina Alvarez",   repEmail: "nina.alvarez@progressive.example",    phone: "(440) 555-0110", owner: "Megan O'Rourke", lastReview: "2026-05-30", notes: "Two shops flagged for re-inspection; recovery plan in flight to hold Network Direct standing." },
+  { name: "Allstate",        program: "Good Hands Repair Network", status: "Active",    rep: "Derek Olsen",    repEmail: "derek.olsen@allstate.example",        phone: "(847) 555-0164", owner: "Jamal Carter",   lastReview: "2026-06-28", notes: "Participation criteria under review this quarter; keep certifications current." },
+  { name: "USAA",            program: "STARS Program",             status: "Active",    rep: "Paul Nguyen",    repEmail: "paul.nguyen@usaa.example",            phone: "(210) 555-0125", owner: "Elaine Cho",     lastReview: "2026-07-02", notes: "Members-first CSI expectations; survey follow-up discipline is critical." },
+  { name: "Liberty Mutual",  program: "Preferred Shop Network",    status: "Active",    rep: "Ravi Menon",     repEmail: "ravi.menon@libertymutual.example",    phone: "(617) 555-0193", owner: "Nadia Haddad",   lastReview: "2026-06-20", notes: "Steady relationship; supplement approval turnaround is the watch item." },
+  { name: "Farmers",         program: "Circle of Dependability",   status: "Preferred", rep: "Owen Brady",     repEmail: "owen.brady@farmers.example",          phone: "(818) 555-0177", owner: "Bethany Cruz",   lastReview: "2026-07-20", notes: "Strong standing; expanding shop enrollment across the Midwest." },
+  { name: "Nationwide",      program: "On Your Side Repair Network", status: "At risk", rep: "Claire Donovan", repEmail: "claire.donovan@nationwide.example",   phone: "(614) 555-0159", owner: "Colin Pierce",   lastReview: "2026-05-18", notes: "Routing-hold risk at Brandon; active remediation with the field rep." },
+  { name: "Travelers",       program: "Preferred Repair Network",  status: "Prospect",  rep: "Simone Laurent", repEmail: "simone.laurent@travelers.example",    phone: "(860) 555-0136", owner: "Grant Feldman",  lastReview: "2026-04-10", notes: "Exploratory - not yet enrolled; national team scoping a pilot." },
+  { name: "American Family", program: "Preferred Repair Program",  status: "Prospect",  rep: "Hank Whitmore",  repEmail: "hank.whitmore@amfam.example",         phone: "(608) 555-0148", owner: "Megan O'Rourke", lastReview: "2026-03-22", notes: "Prospective relationship; early conversations on regional participation." }
+];
 window.HUB_DATA.ruleTexts = [
   "More Cost Effective Recycled Lamp Available",
   "Did You Consider Sublet Wheel Repair?",
