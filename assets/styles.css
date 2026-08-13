@@ -1201,5 +1201,8 @@ button { font-family: inherit; }
 /* CRM search + scrollable 100-carrier table with a sticky header */
 .crm-search { flex: 0 1 280px; max-width: 280px; margin: 0; }
 .crm-search input { min-width: 0; }
+/* Keep the search box and New carrier button on one row (they shrink instead of stacking) */
+#viewCrm .page-stats { flex-wrap: nowrap; align-items: center; }
+#viewCrm .crm-search { min-width: 0; }
 .crm-list-scroll { max-height: 64vh; overflow: auto; }
 .crm-list-scroll .crm-table thead th { position: sticky; top: 0; z-index: 2; }
