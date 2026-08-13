@@ -99,6 +99,112 @@
     });
   })();
 
+  // DRP-related plans (scorecard / participation) are what National and Regional
+  // managers scrutinize, and they want to see the back-and-forth from CPMs and
+  // account managers on those tasks. Build out mock CPM/AM activity so each DRP
+  // task's activity count averages ~3 (range 1-10). Deterministic (seeded PRNG),
+  // so the counts and notes are stable across reloads. Metrics referenced by name
+  // only - no scores/values/dollars (matches the dataset's rule).
+  (function seedDrpActivity() {
+    var DRP = { 'drp-scorecard': 1, 'drp-participation': 1 };
+    // Balanced pool of CPMs and account managers ("... and other account managers").
+    var POOL = [
+      { name: 'Marcus Delgado', tag: 'CPM' },
+      { name: 'Elaine Cho', tag: 'CPM' },
+      { name: 'Nadia Haddad', tag: 'CPM' },
+      { name: 'Jamal Carter', tag: "Nat'l Account Mgr" },
+      { name: 'Colin Pierce', tag: "Nat'l Account Mgr" },
+      { name: "Megan O'Rourke", tag: 'Account Mgr' },
+      { name: 'Grant Feldman', tag: 'Account Mgr' },
+      { name: 'Bethany Cruz', tag: 'Account Mgr' }
+    ];
+    // {c} = carrier name (or "carrier" when a plan has none). Qualitative only.
+    var TPL = [
+      'Reviewed the {c} scorecard trend with the field rep; noted the store as remediation-in-progress.',
+      "Shared the store's remediation timeline with the {c} program manager.",
+      'Escalated the assignment-volume dip to the {c} national account team.',
+      'Confirmed the store keeps its {c} program standing through the remediation window.',
+      'Walked the GM through the {c} scorecard categories driving the routing decision.',
+      'Asked the {c} rep to annotate the affected metric for the outage window.',
+      'Aligned with the CPM on messaging for the {c} quarterly business review.',
+      'Requested a mid-cycle scorecard pull from the {c} program to confirm the trend is turning.',
+      'Coordinated the re-inspection cadence for closed jobs with the {c} rep.',
+      'Briefed the regional team on the {c} program standing after the rep call.',
+      "Mapped the {c} participation criteria against the store's current gaps.",
+      'Set a recurring check-in with the {c} team to track scorecard recovery.',
+      'Confirmed CSI survey follow-ups are reaching {c} customers on schedule.',
+      'Documented the root-cause linkage for the {c} program so the miss reads as in-flight, not process.',
+      'Synced with the account team on the {c} keys-to-keys reporting cadence.',
+      'Flagged the store to {c} leadership as actively managed to avoid a routing hold.',
+      'Reviewed open supplements affecting the {c} cycle-time line with the estimator.',
+      'Followed up with the {c} program on reinstating full assignment volume once the trend holds.'
+    ];
+    function roleTag(role) {
+      role = role || '';
+      if (/CPM/.test(role)) return 'CPM';
+      if (/National Account/.test(role)) return "Nat'l Account Mgr";
+      if (/Account Manager/.test(role)) return 'Account Mgr';
+      return null;
+    }
+    // Per-task target total count: right-skewed weights, tuned for mean ~3 over range 1-10.
+    var W = [50, 30, 9, 4, 2, 1.5, 1, 0.5, 0.5, 1], WT = 0, wi;
+    for (wi = 0; wi < W.length; wi++) WT += W[wi];
+    function drawCount(id) {
+      var u = mulberry(hashStr('drpN|' + id))() * WT, acc = 0, i;
+      for (i = 0; i < W.length; i++) { acc += W[i]; if (u < acc) return i + 1; }
+      return W.length;
+    }
+    var items = tasks.filter(function (t) { return DRP[t.rootCauseCategory]; });
+    if (!items.length) return;
+    items.forEach(function (t) { t._drpTarget = Math.max((t.activityLog || []).length, drawCount(t.id)); });
+    // Every DRP task should surface CPM/AM activity. A task NOT owned by a CPM/AM needs at
+    // least one *added* CPM/AM entry; CPM/AM-owned tasks already show theirs (tagged below).
+    items.forEach(function (t) { if (!roleTag(t.ownerRole)) t._drpTarget = Math.max(t._drpTarget, (t.activityLog || []).length + 1); });
+    // Guarantee the range spans 1..10: force one lone-entry task (a CPM/AM-owned one, so its
+    // single entry is still theirs) to 1 and the deepest thread to 10.
+    if (!items.some(function (t) { return t._drpTarget === 1; })) {
+      var one = items.filter(function (t) { return (t.activityLog || []).length === 1 && roleTag(t.ownerRole); })[0];
+      if (one) one._drpTarget = 1;
+    }
+    if (!items.some(function (t) { return t._drpTarget === 10; })) {
+      var top = items.slice().sort(function (a, b) { return b._drpTarget - a._drpTarget; })[0];
+      if (top) top._drpTarget = 10;
+    }
+    items.forEach(function (t) {
+      var log = t.activityLog || (t.activityLog = []);
+      // Tag existing CPM/AM-owner entries with the role so authorship is legible.
+      var oTag = roleTag(t.ownerRole);
+      if (oTag) log.forEach(function (e) { if (e.by && e.by.indexOf(' · ') < 0 && e.by === t.ownerName) e.by = t.ownerName + ' · ' + oTag; });
+      var need = t._drpTarget - log.length;
+      delete t._drpTarget;
+      if (need <= 0) return;
+      var cLabel = (t.carrier && t.carrier !== '-') ? t.carrier : 'carrier';
+      var plan = PLAN_BY_ID[t.planId];
+      var firstD = log.length ? log[0].date : ((plan && plan.openedDate) || t.createdDate || DATA.referenceDate);
+      var d0 = parseISO(firstD) || parseISO(DATA.referenceDate), refD = parseISO(DATA.referenceDate);
+      var span = Math.max(6, Math.round((refD - d0) / 86400000));
+      // Shuffled authors (owner removed -> "other account managers") and distinct templates.
+      var authors = POOL.map(function (a, i) { return { a: a, k: mulberry(hashStr('auth|' + t.id + '|' + i))() }; })
+        .sort(function (x, y) { return x.k - y.k; }).map(function (o) { return o.a; })
+        .filter(function (a) { return a.name !== t.ownerName; });
+      var tpls = TPL.map(function (s, i) { return { s: s, k: mulberry(hashStr('tpl|' + t.id + '|' + i))() }; })
+        .sort(function (x, y) { return x.k - y.k; }).map(function (o) { return o.s; });
+      for (var k = 0; k < need; k++) {
+        var frac = (k + 1) / (need + 1);
+        var jit = Math.round((mulberry(hashStr('dj|' + t.id + '|' + k))() - 0.5) * (span / (need + 2)));
+        var dayOff = clamp(Math.round(frac * span) + jit, 1, span);
+        var dt = new Date(d0.getTime() + dayOff * 86400000);
+        var mins = clamp(8 * 60 + Math.floor(mulberry(hashStr('tm|' + t.id + '|' + k))() * 10 * 60), 8 * 60, 18 * 60 - 1);
+        var au = authors[k % authors.length];
+        log.push({ date: iso(dt), note: tpls[k % tpls.length].replace(/\{c\}/g, cLabel), time: mins, by: au.name + ' · ' + au.tag });
+      }
+      log.sort(function (a, b) {
+        var da = parseISO(a.date), db = parseISO(b.date), ta = da ? da.getTime() : 0, tb = db ? db.getTime() : 0;
+        return ta !== tb ? ta - tb : (a.time || 0) - (b.time || 0);
+      });
+    });
+  })();
+
   var taskSeq = 1000;
 
   var MARKET = DATA.market || { name: 'Market', manager: '', storeIds: [] };

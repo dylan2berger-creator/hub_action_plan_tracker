@@ -112,6 +112,11 @@ another shop's plan.
   person), **change the task's status right in the Status cell** (which turns into a dropdown
   while the row is open, and the move is logged just like a drag), **and log a new activity
   note inline**. Click the pencil to open the full task editor.
+  On **DRP-related plans** (DRP Scorecard / DRP Participation) - the tasks National and
+  Regional Managers scrutinize most - the activity logs are built out with **CPM and
+  account-manager** notes (each entry tagged with the author's role, e.g. *Elaine Cho ·
+  CPM*), so those timelines carry the cross-functional carrier back-and-forth. Activity
+  volume on those tasks averages ~3 entries per task and ranges from 1 to 10.
 - **Filters** are **multi-select** (checkbox dropdowns with All / Clear, showing an
   "N of M" count): root cause, **owner**, **owner role**, **insurance carrier** (in both
   views), plus a **status** filter in the list view. Also a **Behind target** toggle
