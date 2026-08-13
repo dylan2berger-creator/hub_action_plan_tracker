@@ -1074,6 +1074,12 @@ button { font-family: inherit; }
 .crm-cname { font-weight: 700; }
 .crm-num { text-align: center; font-variant-numeric: tabular-nums; }
 .crm-act { text-align: right; }
+/* Sortable column headers */
+.crm-th { cursor: pointer; user-select: none; -webkit-user-select: none; }
+.crm-th:hover, .crm-th.active { color: var(--primary); }
+.crm-th:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.crm-table thead th.crm-num { text-align: center; }
+.crm-arrow { font-size: 10px; margin-left: 4px; vertical-align: middle; }
 
 /* Carrier profile modal */
 #carrierOverlay { z-index: 1400; }

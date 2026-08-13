@@ -253,6 +253,7 @@
   function fmtTime(mins) { if (typeof mins !== 'number') return ''; var h = Math.floor(mins / 60), m = mins % 60, ap = h < 12 ? 'AM' : 'PM', h12 = h % 12 || 12; return h12 + ':' + pad(m) + ' ' + ap; }
   function fmtDateTime(s, mins) { var d = fmtDate(s); if (!d) return ''; var tm = fmtTime(mins); return tm ? d + ' · ' + tm : d; }
   function fmtDateY(s) { var d = parseISO(s); if (!d) return ''; return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+  function fmtNum(n) { return String(n == null ? 0 : n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }   // thousands separators, ICU-independent
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function uid() { taskSeq += 1; return 'T-' + taskSeq; }
   function initials(name) { var p = String(name || '').trim().split(/\s+/).filter(Boolean); if (!p.length) return '-'; if (p.length === 1) return p[0].slice(0, 2).toUpperCase(); return (p[0][0] + p[p.length - 1][0]).toUpperCase(); }
@@ -1240,6 +1241,7 @@
   var carrierProfiles = (DATA.carrierProfiles || []).map(function (c) {
     var n = {}; for (var k in c) n[k] = c[k];
     n.crmLog = (c.crmLog || []).map(function (e) { var m = {}; for (var kk in e) m[kk] = e[kk]; return m; });
+    n._flagship = true;   // curated marquee carriers; carry the network's heaviest DRP volume
     return n;
   });
   var CARRIER_STATUSES = ['Preferred', 'Active', 'At risk', 'Prospect'];
@@ -1286,8 +1288,18 @@
     (DATA.carrierRoster || []).forEach(function (e) { if (!seen[e.name]) { seen[e.name] = 1; carrierProfiles.push(synth(e)); } });
     carrierProfiles.sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; });   // alphabetical for a scannable registry
   })();
+  // Repair-order volume ~ carrier size: enrolled-shop footprint x a per-shop annual RO rate,
+  // deterministic (seeded by name). The rate is tier-weighted, with a premium for the curated
+  // flagship carriers (deepest network integration) so the marquee names lead; the broader
+  // roster tapers by tier and prospects (0 enrolled shops) land at 0.
+  var RO_TIER_RATE = { Strategic: 300, National: 200, Regional: 150, Specialty: 120, Local: 110, Prospect: 0 };
+  carrierProfiles.forEach(function (p) {
+    var f = mulberry(hashStr('rov:' + p.name))();
+    var base = p._flagship ? 520 + f * 90 : (RO_TIER_RATE.hasOwnProperty(p.tier) ? RO_TIER_RATE[p.tier] : 150) + f * 60;
+    p.roVolume = Math.round((p.enrolledShops || 0) * base);
+  });
   var carrierOverlay, carrierBody, crmWrap, editingCarrier = null;
-  var crmState = { mode: 'table', carrier: null, shopsOpen: false, query: '' };   // CRM tab: list vs profile; shops collapsed; search query
+  var crmState = { mode: 'table', carrier: null, shopsOpen: false, query: '', sort: { key: 'volume', dir: 'desc' } };   // CRM tab state; default sort = repair volume, biggest first
 
   function profileByName(name) { for (var i = 0; i < carrierProfiles.length; i++) if (carrierProfiles[i].name === name) return carrierProfiles[i]; return null; }
   function statusClass(s) { return s === 'Preferred' ? 'cs-pref' : s === 'Active' ? 'cs-active' : s === 'At risk' ? 'cs-risk' : 'cs-prospect'; }
@@ -1464,22 +1476,65 @@
     if (sub) sub.textContent = q
       ? (list.length + ' of ' + carrierProfiles.length + ' carriers match "' + crmState.query.trim() + '"')
       : (carrierProfiles.length + ' carriers · national, regional & specialty relationship profiles.');
+    // Open-task counts once, up front - reused for the cell and the "Open tasks" sort.
+    var openBy = {}; carrierProfiles.forEach(function (p) { openBy[p.name] = carrierStats(p.name).open; });
+    var sortKey = crmState.sort.key, sortDir = crmState.sort.dir;
+    function rank(arr, v) { var i = arr.indexOf(v); return i < 0 ? arr.length : i; }
+    function sortVal(p) {
+      switch (sortKey) {
+        case 'volume': return p.roVolume || 0;
+        case 'tasks': return openBy[p.name] || 0;
+        case 'review': { var d = parseISO(p.lastReview); return d ? d.getTime() : 0; }
+        case 'tier': return rank(CARRIER_TIERS, p.tier);
+        case 'status': return rank(CARRIER_STATUSES, p.status);
+        case 'owner': return (p.owner || '').toLowerCase();
+        default: return (p.name || '').toLowerCase();
+      }
+    }
+    list = list.slice().sort(function (a, b) {
+      var va = sortVal(a), vb = sortVal(b), d = 0;
+      if (va < vb) d = -1; else if (va > vb) d = 1;
+      if (sortDir === 'desc') d = -d;
+      if (d === 0) d = a.name < b.name ? -1 : a.name > b.name ? 1 : 0;   // stable A-Z tiebreak
+      return d;
+    });
+    function th(key, label, numeric) {
+      var active = sortKey === key;
+      var ariaSort = active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none';
+      var arrow = active ? '<span class="crm-arrow">' + (sortDir === 'desc' ? '▼' : '▲') + '</span>' : '';
+      return '<th class="crm-th' + (numeric ? ' crm-num' : '') + (active ? ' active' : '') + '" data-sort="' + key +
+        '" role="button" tabindex="0" aria-sort="' + ariaSort + '" title="Sort by ' + esc(label) + '">' + esc(label) + arrow + '</th>';
+    }
+    var thead = '<tr>' +
+      th('name', 'Carrier', false) +
+      th('tier', 'Tier', false) +
+      th('status', 'Relationship', false) +
+      th('volume', 'Repair volume', true) +
+      th('owner', 'Internal owner', false) +
+      th('tasks', 'Open tasks', true) +
+      th('review', 'Last review', false) +
+      '<th aria-label="Edit"></th></tr>';
     var rows = list.map(function (p) {
-      var st = carrierStats(p.name);
       return '<tr data-carrier-row="' + esc(p.name) + '" tabindex="0" role="button" aria-label="Open ' + esc(p.name) + ' profile">' +
         '<td class="crm-name"><span class="cv-mono sm ' + statusClass(p.status) + '">' + esc(carrierMonogram(p.name)) + '</span><span class="crm-cname">' + esc(p.name) + '</span></td>' +
-        '<td>' + esc(p.program || '-') + '</td>' +
-        '<td><span class="cs ' + statusClass(p.status) + '">' + esc(p.status || '-') + '</span></td>' +
         '<td>' + esc(p.tier || '-') + '</td>' +
+        '<td><span class="cs ' + statusClass(p.status) + '">' + esc(p.status || '-') + '</span></td>' +
+        '<td class="crm-num">' + fmtNum(p.roVolume || 0) + '</td>' +
         '<td>' + esc(p.owner || '-') + '</td>' +
-        '<td class="crm-num">' + st.open + '</td>' +
+        '<td class="crm-num">' + (openBy[p.name] || 0) + '</td>' +
         '<td>' + (p.lastReview ? esc(fmtDateY(p.lastReview)) : '-') + '</td>' +
         '<td class="crm-act"><button type="button" class="mini-btn" data-carrier-edit="' + esc(p.name) + '" aria-label="Edit ' + esc(p.name) + '">' + editIcon() + '</button></td>' +
       '</tr>';
     }).join('') || '<tr><td colspan="8" class="ctx-sub" style="padding:16px">No carriers match "' + esc(crmState.query.trim()) + '".</td></tr>';
-    crmWrap.innerHTML = '<div class="crm-scroll crm-list-scroll"><table class="crm-table"><thead><tr>' +
-      '<th>Carrier</th><th>DRP program</th><th>Relationship</th><th>Tier</th><th>Internal owner</th><th class="crm-num">Open tasks</th><th>Last review</th><th aria-label="Edit"></th>' +
-      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+    crmWrap.innerHTML = '<div class="crm-scroll crm-list-scroll"><table class="crm-table"><thead>' + thead + '</thead><tbody>' + rows + '</tbody></table></div>';
+  }
+  // Header-click sort: same key flips direction; a new key sorts by its natural default
+  // (size/volume, tasks, and recency descend first; text columns ascend).
+  function setCrmSort(key) {
+    var s = crmState.sort;
+    if (s.key === key) { s.dir = s.dir === 'asc' ? 'desc' : 'asc'; }
+    else { s.key = key; s.dir = (key === 'volume' || key === 'tasks' || key === 'review') ? 'desc' : 'asc'; }
+    renderCrm();
   }
 
   // Level 1 activity: each action plan for this carrier, with its tasks' activity entries.
@@ -1604,6 +1659,8 @@
       else if (a === 'toggle-shops') { crmState.shopsOpen = !crmState.shopsOpen; renderCrm(); }
       return;
     }
+    var sortTh = e.target.closest('[data-sort]');
+    if (sortTh) { setCrmSort(sortTh.getAttribute('data-sort')); return; }
     var ed = e.target.closest('[data-carrier-edit]');
     if (ed) { openCarrier(ed.getAttribute('data-carrier-edit'), 'edit'); return; }
     var row = e.target.closest('[data-carrier-row]');
@@ -2652,6 +2709,8 @@
     if (crmWrap) {
       crmWrap.addEventListener('click', onCrmClick);
       crmWrap.addEventListener('keydown', function (e) {
+        var sortTh = e.target.closest('[data-sort]');
+        if (sortTh && (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar')) { e.preventDefault(); setCrmSort(sortTh.getAttribute('data-sort')); return; }
         if (e.key !== 'Enter') return;
         var ni = e.target.closest('.crm-note-input');
         if (ni) { e.preventDefault(); addCrmNote(crmState.carrier); return; }
