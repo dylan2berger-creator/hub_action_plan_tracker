@@ -54,16 +54,29 @@ each a wider scope than the last (shop → market → region → national):
 A lightweight relationship view of the insurance carriers, sitting in a **CRM tab next
 to Action Plans that only the National Manager sees**.
 
-- **Carrier chip → profile.** For the National Manager, the carrier chip on any task
-  (board card, list row, or the task editor) becomes a clickable **bubble** that opens a
-  **mini-CRM profile** for that carrier: program, relationship status, field rep +
-  contact, internal owner (the CPM/account manager who holds the relationship), last
-  business review, notes, and a live count of open tasks / action plans / shops pulled
-  from the data.
-- **CRM tab.** A table of every carrier in the data (program, relationship, rep, owner,
-  open-task count, last review). Click a row to view the profile; **Edit** any profile or
-  add a new carrier with **+ New carrier** (a new carrier also becomes assignable on
-  tasks). Profiles are seeded from `HUB_DATA.carrierProfiles` and edited in memory.
+- **Carrier chip → simple profile (Action Plans tab).** For the National Manager, the
+  carrier chip on any task (board card, list row, or the task editor) becomes a clickable
+  **bubble** that opens a **simple mini-CRM profile**: program, relationship status, field
+  rep + contact, internal owner (the CPM/account manager who holds the relationship), last
+  business review, notes, and a live count of open tasks / action plans / shops.
+- **CRM tab → full profile.** A table of every carrier in the data (program, relationship,
+  rep, owner, open-task count, last review). Click a row to open the **full relationship
+  profile**:
+  - **Expanded overview** (~16 fields): DRP program, relationship, **tier**, **territory**,
+    **partner since**, **agreement renewal**, **review cadence**, **enrolled shops**, **DRP
+    portal**, field rep + email/phone, **secondary contact**, **escalation contact**,
+    internal owner, last review, and notes.
+  - **Two levels of activity tracking**, side by side:
+    - **Action-plan activity** - the tasks' own activity entries **grouped by action
+      plan** (each entry labeled with its task), so you see the CPM/account-manager
+      back-and-forth tied to remediation work.
+    - **Relationship activity (CRM)** - a carrier-level log **not tied to any task**
+      (e.g. an account manager reaching out to the carrier), seeded per carrier with an
+      inline **"log a relationship touchpoint"** input.
+  - **Edit** any profile from the row pencil or the detail's **Edit profile** button, or
+    add a new carrier with **+ New carrier** (a new carrier also becomes assignable on
+    tasks). Profiles + the CRM log are seeded from `HUB_DATA.carrierProfiles` and edited in
+    memory.
 
 ![Regional Manager revenue-attainment dashboard](assets/preview-region.png)
 

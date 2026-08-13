@@ -1184,10 +1184,17 @@
   /* =================== Carrier CRM (National Manager only) ===================
      A mini relationship profile per carrier, opened from a carrier chip on any
      task and managed on the CRM tab. Profiles live in memory, seeded from data. */
-  var carrierProfiles = (DATA.carrierProfiles || []).map(function (c) { var n = {}; for (var k in c) n[k] = c[k]; return n; });
+  var carrierProfiles = (DATA.carrierProfiles || []).map(function (c) {
+    var n = {}; for (var k in c) n[k] = c[k];
+    n.crmLog = (c.crmLog || []).map(function (e) { var m = {}; for (var kk in e) m[kk] = e[kk]; return m; });
+    return n;
+  });
   var CARRIER_STATUSES = ['Preferred', 'Active', 'At risk', 'Prospect'];
+  var CARRIER_TIERS = ['Strategic', 'National', 'Regional', 'Local', 'Prospect'];
+  var CARRIER_CADENCES = ['Monthly', 'Quarterly', 'Semi-annual', 'Ad hoc'];
   var CRM_OWNERS = ['Marcus Delgado', 'Elaine Cho', 'Nadia Haddad', 'Jamal Carter', 'Colin Pierce', "Megan O'Rourke", 'Grant Feldman', 'Bethany Cruz'];
   var carrierOverlay, carrierBody, crmWrap, editingCarrier = null;
+  var crmState = { mode: 'table', carrier: null };   // CRM tab: carrier list vs full profile
 
   function profileByName(name) { for (var i = 0; i < carrierProfiles.length; i++) if (carrierProfiles[i].name === name) return carrierProfiles[i]; return null; }
   function statusClass(s) { return s === 'Preferred' ? 'cs-pref' : s === 'Active' ? 'cs-active' : s === 'At risk' ? 'cs-risk' : 'cs-prospect'; }
@@ -1257,24 +1264,37 @@
   }
   function ceRow(label, id, val, type, full) {
     return '<div class="form-row' + (full ? ' full' : '') + '"><label for="' + id + '">' + esc(label) + '</label>' +
-      '<input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val || '') + '" maxlength="120" /></div>';
+      '<input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val == null ? '' : val) + '" maxlength="120" /></div>';
+  }
+  function ceSel(label, id, opts, val) {
+    return '<div class="form-row"><label for="' + id + '">' + esc(label) + '</label><select id="' + id + '">' +
+      opts.map(function (o) { return '<option value="' + esc(o) + '"' + (val === o ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
+      '</select></div>';
   }
   function carrierEditHTML(p) {
     p = p || {};
     var isNew = !p.name;
-    var statusOpts = CARRIER_STATUSES.map(function (s) { return '<option value="' + esc(s) + '"' + (p.status === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('');
     return '<form class="ce" id="carrierForm" novalidate>' +
       '<div class="form-grid">' +
         '<div class="form-row full"><label for="ceName">Carrier <span aria-hidden="true">*</span></label>' +
           '<input id="ceName" type="text" maxlength="60" value="' + esc(p.name || '') + '"' + (isNew ? '' : ' readonly') + ' placeholder="Carrier name" /></div>' +
         '<div class="form-row full"><label for="ceProgram">DRP program</label><input id="ceProgram" type="text" maxlength="80" value="' + esc(p.program || '') + '" /></div>' +
-        '<div class="form-row"><label for="ceStatus">Relationship</label><select id="ceStatus">' + statusOpts + '</select></div>' +
-        '<div class="form-row"><label for="ceReview">Last business review</label><input id="ceReview" type="date" value="' + esc(p.lastReview || '') + '" /></div>' +
+        ceSel('Relationship', 'ceStatus', CARRIER_STATUSES, p.status) +
+        ceSel('Relationship tier', 'ceTier', CARRIER_TIERS, p.tier) +
+        ceRow('Territory', 'ceTerritory', p.territory) +
+        ceSel('Review cadence', 'ceCadence', CARRIER_CADENCES, p.reviewCadence) +
+        ceRow('Partner since', 'cePartner', p.partnerSince) +
+        ceRow('Agreement renewal', 'ceRenewal', p.agreementRenewal, 'date') +
+        ceRow('Enrolled shops', 'ceShops', p.enrolledShops, 'number') +
+        ceRow('DRP portal', 'cePortal', p.portal) +
         ceRow('Field rep', 'ceRep', p.rep) +
         '<div class="form-row"><label for="ceOwner">Internal owner</label><input id="ceOwner" list="ceOwnerList" maxlength="60" value="' + esc(p.owner || '') + '" />' +
           '<datalist id="ceOwnerList">' + CRM_OWNERS.map(function (o) { return '<option value="' + esc(o) + '">'; }).join('') + '</datalist></div>' +
         ceRow('Rep email', 'ceEmail', p.repEmail, 'email') +
         ceRow('Rep phone', 'cePhone', p.phone, 'tel') +
+        ceRow('Secondary contact', 'ceSecondary', p.secondaryContact) +
+        ceRow('Escalation contact', 'ceEscalation', p.escalationEmail, 'email') +
+        ceRow('Last business review', 'ceReview', p.lastReview, 'date') +
         '<div class="form-row full"><label for="ceNotes">Notes</label><textarea id="ceNotes" maxlength="280">' + esc(p.notes || '') + '</textarea></div>' +
       '</div>' +
       '<div class="cmod-foot">' +
@@ -1290,14 +1310,19 @@
     if (!name) { var ne = document.getElementById('ceName'); if (ne) ne.focus(); toast('Carrier name is required'); return; }
     var isNew = !editingCarrier;
     if (isNew && profileByName(name)) { toast('That carrier already exists'); return; }
-    var fields = { name: name, program: cval('ceProgram'), status: cval('ceStatus'), rep: cval('ceRep'),
-      repEmail: cval('ceEmail'), phone: cval('cePhone'), owner: cval('ceOwner'), lastReview: cval('ceReview'), notes: cval('ceNotes') };
+    var shops = cval('ceShops');
+    var fields = { name: name, program: cval('ceProgram'), status: cval('ceStatus'), tier: cval('ceTier'),
+      territory: cval('ceTerritory'), reviewCadence: cval('ceCadence'), partnerSince: cval('cePartner'),
+      agreementRenewal: cval('ceRenewal'), enrolledShops: shops === '' ? '' : (parseInt(shops, 10) || 0), portal: cval('cePortal'),
+      rep: cval('ceRep'), owner: cval('ceOwner'), repEmail: cval('ceEmail'), phone: cval('cePhone'),
+      secondaryContact: cval('ceSecondary'), escalationEmail: cval('ceEscalation'), lastReview: cval('ceReview'), notes: cval('ceNotes') };
     var target = editingCarrier ? profileByName(editingCarrier) : null;
     if (target) { for (var k in fields) target[k] = fields[k]; }
-    else { carrierProfiles.push(fields); registerCarrierName(name); }
+    else { fields.crmLog = []; carrierProfiles.push(fields); registerCarrierName(name); }
     editingCarrier = name;
-    if (state.view === 'crm') renderCrm();
-    openCarrier(name, 'view');
+    // Return to wherever the edit was launched from: the CRM tab (table or full profile) or the simple modal.
+    if (state.view === 'crm') { closeCarrier(); if (isNew) { crmState.mode = 'table'; } else if (crmState.mode === 'detail') { crmState.carrier = name; } renderCrm(); }
+    else openCarrier(name, 'view');
     toast(isNew ? 'Carrier added' : 'Carrier updated');
   }
   // A new carrier profile should be assignable on tasks too.
@@ -1317,7 +1342,17 @@
 
   function renderCrm() {
     if (!crmWrap) return;
-    var sub = document.getElementById('crmSub');
+    var newBtn = document.getElementById('newCarrierBtn'), sub = document.getElementById('crmSub');
+    // Full profile (detail) view for one carrier.
+    if (crmState.mode === 'detail' && profileByName(crmState.carrier)) {
+      if (newBtn) newBtn.style.display = 'none';
+      if (sub) sub.textContent = 'Full carrier relationship profile.';
+      crmWrap.innerHTML = carrierDetailHTML(profileByName(crmState.carrier));
+      return;
+    }
+    // Carrier list (table) view.
+    crmState.mode = 'table';
+    if (newBtn) newBtn.style.display = '';
     if (sub) sub.textContent = carrierProfiles.length + ' carrier' + (carrierProfiles.length === 1 ? '' : 's') + ' · relationship profiles across the DRP book.';
     var rows = carrierProfiles.map(function (p) {
       var st = carrierStats(p.name);
@@ -1336,11 +1371,97 @@
       '<th>Carrier</th><th>DRP program</th><th>Relationship</th><th>Field rep</th><th>Internal owner</th><th class="crm-num">Open tasks</th><th>Last review</th><th aria-label="Edit"></th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
+
+  // Level 1 activity: each action plan for this carrier, with its tasks' activity entries.
+  function carrierPlanActivityHTML(name) {
+    var byPlan = {}, order = [];
+    tasks.forEach(function (t) {
+      if (t.carrier !== name) return;
+      if (!byPlan[t.planId]) { byPlan[t.planId] = []; order.push(t.planId); }
+      byPlan[t.planId].push(t);
+    });
+    if (!order.length) return '<div class="ctx-sub">No action plans for this carrier yet.</div>';
+    return order.map(function (pid) {
+      var plan = PLAN_BY_ID[pid], store = plan && STORE_BY_ID[plan.storeId];
+      var entries = [];
+      byPlan[pid].forEach(function (t) {
+        (t.activityLog || []).forEach(function (e) { entries.push({ date: e.date, time: e.time, by: e.by, note: e.note, kind: e.kind, task: t.title }); });
+      });
+      entries.sort(function (a, b) { var da = parseISO(a.date), db = parseISO(b.date), ta = da ? da.getTime() : 0, tb = db ? db.getTime() : 0; return ta !== tb ? ta - tb : (a.time || 0) - (b.time || 0); });
+      var body = entries.length ? '<ol class="tl">' + entries.map(function (e) {
+        var isStatus = e.kind === 'status';
+        return '<li class="tl-item' + (isStatus ? ' tl-status' : '') + '"><div class="tl-meta"><span class="tl-date">' + esc(fmtDateTime(e.date, e.time)) + '</span>' +
+          (e.by ? '<span class="tl-by">' + esc(e.by) + '</span>' : '') + '</div>' +
+          '<span class="tl-note"><span class="tl-task">' + esc(e.task) + '</span> ' + (isStatus ? '<span class="tl-tag">Status</span> ' : '') + esc(e.note) + '</span></li>';
+      }).join('') + '</ol>' : '<div class="ctx-sub">No activity yet.</div>';
+      return '<div class="cd-plan"><div class="cd-plan-head"><span>' + esc(store ? store.name : pid) + ' · Action plan</span><span class="cd-badge">' + entries.length + '</span></div>' + body + '</div>';
+    }).join('');
+  }
+
+  function carrierDetailHTML(p) {
+    var st = carrierStats(p.name);
+    var book = st.plans
+      ? (st.open + ' open task' + (st.open === 1 ? '' : 's') + ' · ' + st.plans + ' action plan' + (st.plans === 1 ? '' : 's') + ' · ' + st.shops + ' shop' + (st.shops === 1 ? '' : 's'))
+      : 'No active action plans';
+    if (p.enrolledShops !== '' && p.enrolledShops != null) book += ' · ' + p.enrolledShops + ' enrolled shops';
+    return '<div class="cd">' +
+      '<button type="button" class="cd-back" data-cc="back"><span aria-hidden="true">←</span> All carriers</button>' +
+      '<div class="cd-head">' +
+        '<span class="cv-mono lg ' + statusClass(p.status) + '">' + esc(carrierMonogram(p.name)) + '</span>' +
+        '<div class="cd-id"><div class="cd-name">' + esc(p.name) + ' <span class="cs ' + statusClass(p.status) + '">' + esc(p.status || '-') + '</span></div>' +
+          '<div class="cd-prog">' + esc(p.program || '') + (p.tier ? ' · ' + esc(p.tier) + ' tier' : '') + '</div></div>' +
+        '<button type="button" class="btn btn-ghost cd-edit" data-cc="edit-detail">' + editIcon() + ' Edit profile</button>' +
+      '</div>' +
+      '<div class="cd-stat">' + esc(book) + '</div>' +
+      '<div class="cd-section"><div class="cd-h">Overview</div>' +
+        '<div class="cv-grid cd-grid">' +
+          cvRow('DRP program', p.program) + cvRow('Relationship', p.status) + cvRow('Tier', p.tier) +
+          cvRow('Territory', p.territory) + cvRow('Partner since', p.partnerSince) + cvRow('Agreement renewal', p.agreementRenewal ? fmtDateY(p.agreementRenewal) : '') +
+          cvRow('Review cadence', p.reviewCadence) + cvRow('Enrolled shops', (p.enrolledShops === '' || p.enrolledShops == null) ? '' : String(p.enrolledShops)) + cvRow('DRP portal', p.portal) +
+          cvRow('Field rep', p.rep) + cvRow('Rep email', p.repEmail) + cvRow('Rep phone', p.phone) +
+          cvRow('Secondary contact', p.secondaryContact) + cvRow('Escalation contact', p.escalationEmail) + cvRow('Internal owner', p.owner) +
+          cvRow('Last business review', p.lastReview ? fmtDateY(p.lastReview) : '') +
+        '</div>' +
+        (p.notes ? '<div class="cv-notes"><span class="cv-k">Notes</span><p>' + esc(p.notes) + '</p></div>' : '') +
+      '</div>' +
+      '<div class="cd-activity">' +
+        '<div class="cd-col"><div class="cd-h">Action-plan activity <span class="cd-hsub">grouped by plan</span></div>' +
+          '<div class="cd-scroll">' + carrierPlanActivityHTML(p.name) + '</div></div>' +
+        '<div class="cd-col"><div class="cd-h">Relationship activity <span class="cd-badge crm">CRM</span> <span class="cd-hsub">not tied to a task</span></div>' +
+          '<div class="cd-scroll">' + activityTimelineHTML(p.crmLog) + '</div>' +
+          '<div class="note-add"><input class="crm-note-input" type="text" maxlength="200" placeholder="Log a relationship touchpoint…" aria-label="Log a relationship touchpoint" />' +
+            '<button type="button" class="btn btn-ghost" data-cc="add-crm-note">Add</button></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function addCrmNote(name) {
+    if (!crmWrap) return;
+    var input = crmWrap.querySelector('.crm-note-input'); if (!input) return;
+    var v = (input.value || '').trim(); if (!v) return;
+    var p = profileByName(name); if (!p) return;
+    if (!p.crmLog) p.crmLog = [];
+    p.crmLog.push({ date: DATA.referenceDate, note: v, time: nowMins(), by: currentActor() });
+    renderCrm();
+    var ni = crmWrap.querySelector('.crm-note-input'); if (ni) ni.focus();
+  }
+
+  function crmShowDetail(name) { crmState.mode = 'detail'; crmState.carrier = name; renderCrm(); }
+  function crmShowTable() { crmState.mode = 'table'; crmState.carrier = null; renderCrm(); }
   function onCrmClick(e) {
+    var cc = e.target.closest('[data-cc]');
+    if (cc) {
+      var a = cc.getAttribute('data-cc');
+      if (a === 'back') crmShowTable();
+      else if (a === 'edit-detail') openCarrier(crmState.carrier, 'edit');
+      else if (a === 'add-crm-note') addCrmNote(crmState.carrier);
+      return;
+    }
     var ed = e.target.closest('[data-carrier-edit]');
     if (ed) { openCarrier(ed.getAttribute('data-carrier-edit'), 'edit'); return; }
     var row = e.target.closest('[data-carrier-row]');
-    if (row) openCarrier(row.getAttribute('data-carrier-row'), 'view');
+    if (row) crmShowDetail(row.getAttribute('data-carrier-row'));
   }
   // offset = how many months back the window ends (0 = through the current month; 1 = the previous complete month)
   var PERIODS = [{ key: 'm3', label: '3M', months: 3, offset: 0 }, { key: 'm6', label: '6M', months: 6, offset: 0 }, { key: 'm12', label: '12M', months: 12, offset: 0 }];
@@ -2218,6 +2339,7 @@
     // The CRM tab is National-Manager-only; leaving that persona hides it and any open CRM view.
     var navCrm = document.getElementById('navCrm');
     if (navCrm) navCrm.style.display = role === 'national' ? '' : 'none';
+    crmState.mode = 'table'; crmState.carrier = null;
     if (role !== 'national') { closeCarrier(); if (state.view === 'crm') setView('plans'); }
     var note = document.getElementById('protoNote');
     if (note) {
@@ -2365,7 +2487,13 @@
     document.getElementById('newCarrierBtn').addEventListener('click', function () { openCarrier(null, 'new'); });
     if (crmWrap) {
       crmWrap.addEventListener('click', onCrmClick);
-      crmWrap.addEventListener('keydown', function (e) { if (e.key === 'Enter') { var r = e.target.closest('[data-carrier-row]'); if (r) { e.preventDefault(); openCarrier(r.getAttribute('data-carrier-row'), 'view'); } } });
+      crmWrap.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        var ni = e.target.closest('.crm-note-input');
+        if (ni) { e.preventDefault(); addCrmNote(crmState.carrier); return; }
+        var r = e.target.closest('[data-carrier-row]');
+        if (r) { e.preventDefault(); crmShowDetail(r.getAttribute('data-carrier-row')); }
+      });
     }
     var cpl = document.getElementById('carrierProfileLink');
     if (cpl) cpl.addEventListener('click', function () { if (fCarrier && fCarrier.value) openCarrier(fCarrier.value, 'view'); });
@@ -2373,7 +2501,7 @@
     // nav: Action Plans / KPI's switch views; other tabs are inert
     Array.prototype.forEach.call(document.querySelectorAll('.nav-item'), function (btn) {
       var view = btn.getAttribute('data-view');
-      if (view) { btn.addEventListener('click', function () { setView(view); }); }
+      if (view) { btn.addEventListener('click', function () { if (view === 'crm') { crmState.mode = 'table'; crmState.carrier = null; } setView(view); }); }
       else { btn.addEventListener('click', function () { toast(btn.getAttribute('data-label') + ' isn’t part of this prototype'); }); }
     });
 

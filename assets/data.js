@@ -857,20 +857,113 @@ window.HUB_DATA.carriers = [
   "Liberty Mutual", "Farmers", "Nationwide", "Travelers", "American Family"
 ];
 
-/* Mini-CRM carrier relationship profiles. National managers open these from a
-   carrier chip on any task, and manage them on the CRM tab. Synthetic contacts;
-   `owner` is the internal CPM / account manager who holds the relationship. */
+/* Mini-CRM carrier relationship profiles. National managers open a simple profile
+   from a carrier chip on any task, and the full profile (below) on the CRM tab.
+   `owner` is the internal CPM / account manager who holds the relationship.
+   `crmLog` is relationship-level activity NOT tied to any action-plan task
+   (e.g. an account manager reaching out to the carrier); action-plan activity is
+   read from the tasks themselves and grouped by plan in the full profile view. */
 window.HUB_DATA.carrierProfiles = [
-  { name: "State Farm",      program: "Select Service",            status: "Preferred", rep: "Karen Whitlock", repEmail: "karen.whitlock@statefarm.example",   phone: "(309) 555-0142", owner: "Marcus Delgado", lastReview: "2026-07-15", notes: "Largest DRP relationship; highly sensitive to keys-to-keys cycle time on the Select Service scorecard." },
-  { name: "GEICO",           program: "Auto Repair Xpress (ARX)",  status: "Active",    rep: "Gwen Sato",      repEmail: "gwen.sato@geico.example",             phone: "(301) 555-0188", owner: "Grant Feldman",  lastReview: "2026-06-10", notes: "High drive-in volume; throughput and photo-estimate turnaround matter most." },
-  { name: "Progressive",     program: "Network Direct",            status: "At risk",   rep: "Nina Alvarez",   repEmail: "nina.alvarez@progressive.example",    phone: "(440) 555-0110", owner: "Megan O'Rourke", lastReview: "2026-05-30", notes: "Two shops flagged for re-inspection; recovery plan in flight to hold Network Direct standing." },
-  { name: "Allstate",        program: "Good Hands Repair Network", status: "Active",    rep: "Derek Olsen",    repEmail: "derek.olsen@allstate.example",        phone: "(847) 555-0164", owner: "Jamal Carter",   lastReview: "2026-06-28", notes: "Participation criteria under review this quarter; keep certifications current." },
-  { name: "USAA",            program: "STARS Program",             status: "Active",    rep: "Paul Nguyen",    repEmail: "paul.nguyen@usaa.example",            phone: "(210) 555-0125", owner: "Elaine Cho",     lastReview: "2026-07-02", notes: "Members-first CSI expectations; survey follow-up discipline is critical." },
-  { name: "Liberty Mutual",  program: "Preferred Shop Network",    status: "Active",    rep: "Ravi Menon",     repEmail: "ravi.menon@libertymutual.example",    phone: "(617) 555-0193", owner: "Nadia Haddad",   lastReview: "2026-06-20", notes: "Steady relationship; supplement approval turnaround is the watch item." },
-  { name: "Farmers",         program: "Circle of Dependability",   status: "Preferred", rep: "Owen Brady",     repEmail: "owen.brady@farmers.example",          phone: "(818) 555-0177", owner: "Bethany Cruz",   lastReview: "2026-07-20", notes: "Strong standing; expanding shop enrollment across the Midwest." },
-  { name: "Nationwide",      program: "On Your Side Repair Network", status: "At risk", rep: "Claire Donovan", repEmail: "claire.donovan@nationwide.example",   phone: "(614) 555-0159", owner: "Colin Pierce",   lastReview: "2026-05-18", notes: "Routing-hold risk at Brandon; active remediation with the field rep." },
-  { name: "Travelers",       program: "Preferred Repair Network",  status: "Prospect",  rep: "Simone Laurent", repEmail: "simone.laurent@travelers.example",    phone: "(860) 555-0136", owner: "Grant Feldman",  lastReview: "2026-04-10", notes: "Exploratory - not yet enrolled; national team scoping a pilot." },
-  { name: "American Family", program: "Preferred Repair Program",  status: "Prospect",  rep: "Hank Whitmore",  repEmail: "hank.whitmore@amfam.example",         phone: "(608) 555-0148", owner: "Megan O'Rourke", lastReview: "2026-03-22", notes: "Prospective relationship; early conversations on regional participation." }
+  { name: "State Farm", program: "Select Service", status: "Preferred", tier: "Strategic", territory: "Midwest, Southeast",
+    partnerSince: "2009", agreementRenewal: "2027-01-31", reviewCadence: "Monthly", portal: "Select Service Portal", enrolledShops: 42,
+    rep: "Karen Whitlock", repEmail: "karen.whitlock@statefarm.example", phone: "(309) 555-0142",
+    secondaryContact: "Dave Kim, Regional Claims Mgr", escalationEmail: "drp.escalations@statefarm.example",
+    owner: "Marcus Delgado", lastReview: "2026-07-15",
+    notes: "Largest DRP relationship; highly sensitive to keys-to-keys cycle time on the Select Service scorecard.",
+    crmLog: [
+      { date: "2026-07-15", by: "Marcus Delgado · CPM", note: "Q3 business review with Karen Whitlock; walked the program roadmap and the cycle-time recovery plan." },
+      { date: "2026-06-02", by: "Jamal Carter · Nat'l Account Mgr", note: "Reached out to explore expanding Select Service enrollment into two new Midwest shops." },
+      { date: "2026-05-08", by: "Marcus Delgado · CPM", note: "Sent the carrier an updated regional shop roster and certification status." }
+    ] },
+  { name: "GEICO", program: "Auto Repair Xpress (ARX)", status: "Active", tier: "National", territory: "National",
+    partnerSince: "2013", agreementRenewal: "2026-11-30", reviewCadence: "Quarterly", portal: "ARX Express Portal", enrolledShops: 55,
+    rep: "Gwen Sato", repEmail: "gwen.sato@geico.example", phone: "(301) 555-0188",
+    secondaryContact: "Lena Ortiz, ARX Program Lead", escalationEmail: "arx.support@geico.example",
+    owner: "Grant Feldman", lastReview: "2026-06-10",
+    notes: "High drive-in volume; throughput and photo-estimate turnaround matter most.",
+    crmLog: [
+      { date: "2026-06-10", by: "Grant Feldman · Account Mgr", note: "Quarterly ARX review with Gwen Sato; throughput and photo-estimate turnaround on track." },
+      { date: "2026-04-22", by: "Grant Feldman · Account Mgr", note: "Introductory call with the new regional drive-in coordinator." }
+    ] },
+  { name: "Progressive", program: "Network Direct", status: "At risk", tier: "National", territory: "Midwest, Northeast",
+    partnerSince: "2015", agreementRenewal: "2026-09-30", reviewCadence: "Monthly", portal: "Network Direct Hub", enrolledShops: 38,
+    rep: "Nina Alvarez", repEmail: "nina.alvarez@progressive.example", phone: "(440) 555-0110",
+    secondaryContact: "Marcus Webb, Network Mgr", escalationEmail: "networkdirect@progressive.example",
+    owner: "Megan O'Rourke", lastReview: "2026-05-30",
+    notes: "Two shops flagged for re-inspection; recovery plan in flight to hold Network Direct standing.",
+    crmLog: [
+      { date: "2026-05-30", by: "Megan O'Rourke · Account Mgr", note: "Escalation call with Nina Alvarez on the two re-inspection flags; recovery plan agreed." },
+      { date: "2026-05-12", by: "Megan O'Rourke · Account Mgr", note: "Reached out proactively to pre-empt a routing review after the scorecard dip." },
+      { date: "2026-04-01", by: "Colin Pierce · Nat'l Account Mgr", note: "Opened renewal-terms discussion ahead of the September agreement date." }
+    ] },
+  { name: "Allstate", program: "Good Hands Repair Network", status: "Active", tier: "National", territory: "National",
+    partnerSince: "2011", agreementRenewal: "2027-03-15", reviewCadence: "Quarterly", portal: "Good Hands Network Portal", enrolledShops: 47,
+    rep: "Derek Olsen", repEmail: "derek.olsen@allstate.example", phone: "(847) 555-0164",
+    secondaryContact: "Rachel Storm, GHRN Coordinator", escalationEmail: "ghrn@allstate.example",
+    owner: "Jamal Carter", lastReview: "2026-06-28",
+    notes: "Participation criteria under review this quarter; keep certifications current.",
+    crmLog: [
+      { date: "2026-06-28", by: "Jamal Carter · Nat'l Account Mgr", note: "Participation-criteria review with Derek Olsen; confirmed certification requirements for the quarter." },
+      { date: "2026-05-19", by: "Jamal Carter · Nat'l Account Mgr", note: "Reached out to align on the updated OEM certification list." }
+    ] },
+  { name: "USAA", program: "STARS Program", status: "Active", tier: "Strategic", territory: "South, Southwest",
+    partnerSince: "2012", agreementRenewal: "2026-12-31", reviewCadence: "Monthly", portal: "STARS Member Portal", enrolledShops: 31,
+    rep: "Paul Nguyen", repEmail: "paul.nguyen@usaa.example", phone: "(210) 555-0125",
+    secondaryContact: "Tom Becker, STARS Lead", escalationEmail: "stars@usaa.example",
+    owner: "Elaine Cho", lastReview: "2026-07-02",
+    notes: "Members-first CSI expectations; survey follow-up discipline is critical.",
+    crmLog: [
+      { date: "2026-07-02", by: "Elaine Cho · CPM", note: "Monthly STARS review with Paul Nguyen; reinforced members-first CSI survey follow-up." },
+      { date: "2026-06-05", by: "Elaine Cho · CPM", note: "Reached out to coordinate a members-first survey initiative for Q3." }
+    ] },
+  { name: "Liberty Mutual", program: "Preferred Shop Network", status: "Active", tier: "Regional", territory: "Northeast",
+    partnerSince: "2016", agreementRenewal: "2027-02-28", reviewCadence: "Quarterly", portal: "Preferred Shop Portal", enrolledShops: 24,
+    rep: "Ravi Menon", repEmail: "ravi.menon@libertymutual.example", phone: "(617) 555-0193",
+    secondaryContact: "Alan Reeves, Preferred Network Rep", escalationEmail: "preferrednetwork@libertymutual.example",
+    owner: "Nadia Haddad", lastReview: "2026-06-20",
+    notes: "Steady relationship; supplement approval turnaround is the watch item.",
+    crmLog: [
+      { date: "2026-06-20", by: "Nadia Haddad · CPM", note: "Quarterly review with Ravi Menon; flagged supplement approval turnaround as the watch item." },
+      { date: "2026-05-02", by: "Nadia Haddad · CPM", note: "Reached out to align on a faster supplement-review workflow." }
+    ] },
+  { name: "Farmers", program: "Circle of Dependability", status: "Preferred", tier: "Regional", territory: "West, Midwest",
+    partnerSince: "2018", agreementRenewal: "2027-05-31", reviewCadence: "Quarterly", portal: "Circle of Dependability Portal", enrolledShops: 19,
+    rep: "Owen Brady", repEmail: "owen.brady@farmers.example", phone: "(818) 555-0177",
+    secondaryContact: "Gail Winters, Circle Program Mgr", escalationEmail: "circle@farmers.example",
+    owner: "Bethany Cruz", lastReview: "2026-07-20",
+    notes: "Strong standing; expanding shop enrollment across the Midwest.",
+    crmLog: [
+      { date: "2026-07-20", by: "Bethany Cruz · Account Mgr", note: "Reached out to Owen Brady about expanding Circle enrollment across three Midwest shops." },
+      { date: "2026-06-14", by: "Bethany Cruz · Account Mgr", note: "Semi-annual relationship check-in; standing remains strong." }
+    ] },
+  { name: "Nationwide", program: "On Your Side Repair Network", status: "At risk", tier: "National", territory: "Southeast, Midwest",
+    partnerSince: "2014", agreementRenewal: "2026-10-31", reviewCadence: "Monthly", portal: "On Your Side Portal", enrolledShops: 33,
+    rep: "Claire Donovan", repEmail: "claire.donovan@nationwide.example", phone: "(614) 555-0159",
+    secondaryContact: "Rob Sennett, OYS Network Lead", escalationEmail: "oysnetwork@nationwide.example",
+    owner: "Colin Pierce", lastReview: "2026-05-18",
+    notes: "Routing-hold risk at Brandon; active remediation with the field rep.",
+    crmLog: [
+      { date: "2026-05-18", by: "Colin Pierce · Nat'l Account Mgr", note: "Escalation with Claire Donovan on the Brandon routing-hold risk; remediation timeline shared." },
+      { date: "2026-05-04", by: "Colin Pierce · Nat'l Account Mgr", note: "Reached out ahead of the October renewal to reaffirm commitment and the recovery plan." }
+    ] },
+  { name: "Travelers", program: "Preferred Repair Network", status: "Prospect", tier: "Prospect", territory: "Exploratory",
+    partnerSince: "", agreementRenewal: "", reviewCadence: "Ad hoc", portal: "", enrolledShops: 0,
+    rep: "Simone Laurent", repEmail: "simone.laurent@travelers.example", phone: "(860) 555-0136",
+    secondaryContact: "", escalationEmail: "",
+    owner: "Grant Feldman", lastReview: "2026-04-10",
+    notes: "Exploratory - not yet enrolled; national team scoping a pilot.",
+    crmLog: [
+      { date: "2026-04-10", by: "Grant Feldman · Account Mgr", note: "Exploratory call with Simone Laurent; scoping a pilot in one region." }
+    ] },
+  { name: "American Family", program: "Preferred Repair Program", status: "Prospect", tier: "Prospect", territory: "Exploratory",
+    partnerSince: "", agreementRenewal: "", reviewCadence: "Ad hoc", portal: "", enrolledShops: 0,
+    rep: "Hank Whitmore", repEmail: "hank.whitmore@amfam.example", phone: "(608) 555-0148",
+    secondaryContact: "", escalationEmail: "",
+    owner: "Megan O'Rourke", lastReview: "2026-03-22",
+    notes: "Prospective relationship; early conversations on regional participation.",
+    crmLog: [
+      { date: "2026-03-22", by: "Megan O'Rourke · Account Mgr", note: "Initial outreach to Hank Whitmore about regional participation; early stage." }
+    ] }
 ];
 window.HUB_DATA.ruleTexts = [
   "More Cost Effective Recycled Lamp Available",

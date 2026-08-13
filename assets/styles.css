@@ -1089,3 +1089,40 @@ button { font-family: inherit; }
 .cv-notes { margin-top: var(--sp3); }
 .cv-notes p { margin: 4px 0 0; font-size: 14px; line-height: 1.5; color: #33414d; }
 @media (max-width: 520px) { .cv-grid { grid-template-columns: 1fr; } }
+
+/* =================== Carrier CRM - full profile (detail) view =================== */
+.cd { padding-top: var(--sp2); }
+.cd-back { border: 0; background: none; color: var(--primary); font-weight: 700; font-size: 13px; cursor: pointer;
+  padding: 4px 0; display: inline-flex; align-items: center; gap: 6px; }
+.cd-back:hover { text-decoration: underline; }
+.cd-head { display: flex; align-items: center; gap: var(--sp4); margin: var(--sp3) 0 var(--sp2); }
+.cv-mono.lg { width: 52px; height: 52px; font-size: 19px; }
+.cd-id { flex: 1 1 auto; min-width: 0; }
+.cd-name { display: flex; align-items: center; gap: 10px; font-family: var(--font-brand); font-weight: 700; font-size: 22px; color: #16202a; }
+.cd-prog { font-size: 13.5px; color: var(--on-surface-variant); margin-top: 2px; }
+.cd-edit { flex: 0 0 auto; }
+.cd-stat { padding: 8px 12px; background: #f4f7fb; border-radius: var(--corner-sm); font-size: 12.5px; font-weight: 600;
+  color: #33506e; display: inline-block; margin-bottom: var(--sp5); }
+.cd-section { margin-bottom: var(--sp6); }
+.cd-h { font-family: var(--font-brand); font-weight: 700; font-size: 14px; color: #1e2a33; margin-bottom: var(--sp3);
+  display: flex; align-items: center; gap: 8px; }
+.cd-hsub { font-family: var(--font-body, inherit); font-weight: 500; font-size: 11.5px; color: var(--muted); letter-spacing: .2px; }
+.cd-grid { grid-template-columns: repeat(3, 1fr); gap: 2px 26px; }
+@media (max-width: 900px) { .cd-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .cd-grid { grid-template-columns: 1fr; } }
+
+/* two activity panels side by side */
+.cd-activity { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp5); align-items: start; }
+@media (max-width: 860px) { .cd-activity { grid-template-columns: 1fr; } }
+.cd-col { border: 1px solid var(--outline-variant); border-radius: var(--corner-md); background: #fff; padding: var(--sp4); min-width: 0; }
+.cd-scroll { max-height: 360px; overflow-y: auto; padding-right: 4px; }
+.cd-scroll .tl { margin: 0; }
+.cd-plan { margin-bottom: var(--sp4); }
+.cd-plan:last-child { margin-bottom: 0; }
+.cd-plan-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; font-size: 12.5px;
+  color: #33506e; background: #eef3f9; padding: 6px 10px; border-radius: var(--corner-sm); margin-bottom: 8px; }
+.cd-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 18px; padding: 0 6px;
+  border-radius: var(--corner-full); background: #dce4ee; color: #33506e; font-size: 11px; font-weight: 700; }
+.cd-badge.crm { background: #e9e7f3; color: #4a417a; }
+.tl-task { display: inline-block; font-weight: 700; color: #2a3742; font-size: 11.5px; margin-right: 4px; }
+.tl-task::after { content: " ·"; color: var(--muted); }
