@@ -42,9 +42,11 @@ each a wider scope than the last (shop → market → region → national):
   **Regions**, one worst-first bar per region) and a **division filter**. The roll-up
   **drills down**: click a **division** bar to open its regions, click a **region** bar
   to drop to that region's **shops** (a breadcrumb returns you to all regions), and any
-  shop opens its detail → carrier scorecard. **No action-plan tasks are assigned to a
-  National Manager** - their Action Plans tab is an empty state that points back to the
-  KPIs roll-up.
+  shop opens its detail → carrier scorecard. The Action Plans tab shows **every plan
+  across all shops** for company-wide visibility. **"National Manager" is a viewing
+  persona only - it is never a task owner**, so no task in any plan is assigned to it
+  (the owner-role taxonomy is GM / Estimator / Technician / Account Manager / National
+  Account Manager / CPM / Regional Manager).
 
 ![Regional Manager revenue-attainment dashboard](assets/preview-region.png)
 

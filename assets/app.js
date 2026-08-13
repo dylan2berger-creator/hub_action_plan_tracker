@@ -108,8 +108,7 @@
     if (storeId === 'book') return MARKET.storeIds.slice();
     // Region-level scopes (Regional Manager) have no per-market stores in this
     // prototype - the board shows the region's instrumented action plans (all stores).
-    if (storeId === 'national') return [];   // National managers monitor metrics; no action-plan tasks are assigned to them
-    if (storeId === 'all' || storeId === 'region' || isMarketScope(storeId)) return ALL_STORE_IDS.slice();
+    if (storeId === 'all' || storeId === 'region' || storeId === 'national' || isMarketScope(storeId)) return ALL_STORE_IDS.slice();
     return [storeId];
   }
   function scopeIds() { return resolveIds(state.store); }
@@ -218,13 +217,6 @@
   var expandedRows = {};   // list-view: task ids whose activity log is drilled open
 
   function render() {
-    var apToolbar = document.querySelector('#viewActionPlans .toolbar');
-    var apStats = document.querySelector('#viewActionPlans .page-stats');
-    // National managers aren't assigned tasks - the Action Plans tab is an informational
-    // empty state pointing them at the KPIs roll-up instead of a task board.
-    if (state.role === 'national') { renderNationalNoTasks(apToolbar, apStats); return; }
-    if (apToolbar) apToolbar.style.display = '';
-    if (apStats) apStats.style.display = '';
     var shown = visible();
 
     // the active sub-view drives which container + toolbar controls are shown
@@ -257,26 +249,6 @@
     if (pageTitle) pageTitle.textContent = effStores === 1 ? 'Action Plan' : 'Action Plans';
     pageSub.textContent = nPlans + ' action plan' + (nPlans === 1 ? '' : 's') +
       ' · ' + nTasks + ' task' + (nTasks === 1 ? '' : 's') + ' · as of ' + fmtDateY(DATA.referenceDate);
-  }
-
-  // National Manager Action Plans: an empty state, since no tasks are assigned at this level.
-  function renderNationalNoTasks(apToolbar, apStats) {
-    if (apToolbar) apToolbar.style.display = 'none';
-    if (apStats) apStats.style.display = 'none';
-    if (listEl) { listEl.hidden = true; listEl.style.display = 'none'; }
-    if (pageTitle) pageTitle.textContent = 'Action Plans';
-    if (pageSub) pageSub.textContent = 'National managers monitor performance across regions - no action-plan tasks are assigned at this level.';
-    if (!boardEl) return;
-    boardEl.style.display = 'block';
-    boardEl.innerHTML =
-      '<div class="np-empty">' +
-        '<div class="np-empty-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h2v18H3zm4 10h3v8H7zm5-6h3v14h-3zm5 3h3v11h-3z"/></svg></div>' +
-        '<h2 class="np-empty-h">No tasks are assigned to a National Manager</h2>' +
-        '<p class="np-empty-p">National managers monitor performance across every region and division. Action plans are owned and worked at the shop, market, and regional levels - not assigned at the national level.</p>' +
-        '<p class="np-empty-p">Open the <button type="button" class="link-btn" id="npToKpis">KPIs tab</button> for the cross-region revenue-attainment roll-up.</p>' +
-      '</div>';
-    var toKpis = document.getElementById('npToKpis');
-    if (toKpis) toKpis.addEventListener('click', function () { setView('kpis'); });
   }
 
   /* ---- Kanban board ---- */
