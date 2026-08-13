@@ -1259,7 +1259,7 @@
       '</div>' +
       '<div class="cv-notes"><span class="cv-k">Notes</span><p>' + (p.notes ? esc(p.notes) : '<span class="cv-empty">-</span>') + '</p></div>' +
       '<div class="cmod-foot"><button type="button" class="btn btn-ghost" data-cc="close">Close</button>' +
-        '<button type="button" class="btn btn-primary" data-cc="edit">Edit profile</button></div>' +
+        '<button type="button" class="btn btn-primary" data-cc="open-crm">Open full profile in CRM →</button></div>' +
     '</div>';
   }
   function ceRow(label, id, val, type, full) {
@@ -1336,8 +1336,16 @@
     var b = e.target.closest('[data-cc]'); if (!b) return;
     var act = b.getAttribute('data-cc');
     if (act === 'close') closeCarrier();
-    else if (act === 'edit') openCarrier(editingCarrier, 'edit');
-    else if (act === 'cancelEdit') { if (editingCarrier && profileByName(editingCarrier)) openCarrier(editingCarrier, 'view'); else closeCarrier(); }
+    // The Action Plans simple view is read-only; its primary action navigates to the
+    // full, editable profile on the CRM tab.
+    else if (act === 'open-crm') {
+      var name = editingCarrier;
+      closeCarrier();
+      closeModal();   // also dismiss the task editor if the simple view was opened from it
+      if (name) { crmState.mode = 'detail'; crmState.carrier = name; crmState.shopsOpen = false; setView('crm'); }
+    }
+    // Cancel from the (CRM-only) edit form returns to the CRM tab rather than the simple view.
+    else if (act === 'cancelEdit') { if (state.view === 'crm') closeCarrier(); else if (editingCarrier && profileByName(editingCarrier)) openCarrier(editingCarrier, 'view'); else closeCarrier(); }
   }
 
   function renderCrm() {
