@@ -224,6 +224,17 @@ regions lighter), with a realistic minority of challenged shops - including a fe
 revenue is behind but the funnel is entirely on target, so **the carrier score is the
 only remaining explanation.**
 
+**Create an action-plan task from any metric surface.** Diagnosing a shop is where the
+work is identified, so tasks can be filed **without leaving the KPIs tab**. One pattern -
+a small **`+`** that appears on hover/focus with the tooltip *"Create action plan task"* -
+sits on every metric surface: each **funnel box**, each **carrier scorecard card**, each
+**rules-heatmap cell**, and each **shops-table row** on the market/region dashboards.
+Clicking it opens the **same global task modal** on the KPIs tab, **prefilled** from that
+surface (the shop's action plan, and where relevant the carrier, DRP root cause, and the
+metric as the verification signal). On save, a toast offers an opt-in **"View in Action
+Plans"** rather than yanking you out of your diagnosis. (Groundwork for pulling
+out-of-the-box task sets from Playbooks later.)
+
 ![Regional Manager revenue-attainment dashboard](assets/preview-region.png)
 
 ![Shop detail - funnel on target, carrier scorecard the cause](assets/preview-kpis.png)

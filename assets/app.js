@@ -739,7 +739,20 @@
     }).join('');
   }
 
-  function openModal(id) {
+  // A task needs a plan to join. Every shop with data can be tasked, so mint a lightweight
+  // plan for a shop that doesn't have one yet (only Orland Park lacks a seeded plan).
+  function ensurePlanForStore(storeId) {
+    if (PLAN_BY_STORE[storeId]) return PLAN_BY_STORE[storeId];
+    var plan = { id: 'AP-' + storeId, storeId: storeId, rootCauseCategory: 'other',
+      owningPersona: '', openedDate: DATA.referenceDate, targetCloseDate: '', diagnosis: '', tasks: [] };
+    PLANS.push(plan); PLAN_BY_ID[plan.id] = plan; PLAN_BY_STORE[storeId] = plan;
+    return plan;
+  }
+
+  // pre = optional prefill { storeId, carrier, rootCause, metric, title } used when a task
+  // is launched from a KPI metric surface (locks the plan to that shop, seeds the fields).
+  function openModal(id, pre) {
+    pre = pre || {};
     editingId = id || null;
     var t = id ? findTask(id) : null;
     modalTitle.textContent = t ? 'Task detail' : 'New task';
@@ -749,10 +762,12 @@
     // shop's plan. It's only selectable when adding a NEW task from a multi-shop
     // scope (you must pick which shop's plan it joins).
     var sids = scopeIds(), singleShop = sids.length === 1 ? sids[0] : null;
-    var planStoreId = t ? t.storeId : (singleShop || (PLAN_BY_STORE[state.store] ? state.store : (PLANS[0] && PLANS[0].storeId)));
+    var preStore = (!t && pre.storeId && shopById(pre.storeId)) ? pre.storeId : null;
+    if (preStore) ensurePlanForStore(preStore);
+    var planStoreId = t ? t.storeId : (preStore || singleShop || (PLAN_BY_STORE[state.store] ? state.store : (PLANS[0] && PLANS[0].storeId)));
     var thePlan = PLAN_BY_STORE[planStoreId] || PLANS[0];
     var planId = thePlan && thePlan.id;
-    var lockPlan = !!t || singleShop != null;
+    var lockPlan = !!t || singleShop != null || !!preStore;
 
     fPlan.disabled = lockPlan;
     fPlan.classList.toggle('locked', lockPlan);
@@ -772,6 +787,12 @@
     fMetric.value = t && t.verificationSignal ? (t.verificationSignal.metric || '') : '';
     fLag.value = t && t.verificationSignal && t.verificationSignal.lagDays != null ? t.verificationSignal.lagDays : '';
     fCarrier.value = t ? (t.carrier || '') : '';
+    if (!t) {   // seed a KPI-launched task from the metric surface it came from
+      if (pre.rootCause) fRoot.value = pre.rootCause;
+      if (pre.carrier) fCarrier.value = pre.carrier;
+      if (pre.metric) fMetric.value = pre.metric;
+      if (pre.title) fTitle.value = pre.title;
+    }
     if (fCarrier.closest('.form-row')) fCarrier.closest('.form-row').classList.remove('invalid');
     updateCarrierReq();
     updateCarrierProfileLink();
@@ -876,7 +897,12 @@
       data.activityLog = [];
       data.order = bottomOrder(data.column);
       tasks.push(data);
-      toast('Task added');
+      // Launched from the KPI tab: don't punt the user to Action Plans - keep them in
+      // their diagnosis and offer an opt-in link to go see the task they just filed.
+      if (state.view === 'kpis') {
+        var newId = data.id;
+        toast('Task added to the action plan', { label: 'View in Action Plans', fn: function () { setView('plans'); openModal(newId); } });
+      } else toast('Task added');
     }
     refreshOwnerFilter();
     refreshRoleFilter();
@@ -892,7 +918,19 @@
 
   /* ---------------- toast ---------------- */
   var toastEl, toastTimer;
-  function toast(m) { toastEl.textContent = m; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 1900); }
+  // Optional action = { label, fn } renders an opt-in link in the toast (e.g. "View in Action Plans").
+  function toast(m, action) {
+    toastEl.innerHTML = '';
+    var msg = document.createElement('span'); msg.className = 'toast-msg'; msg.textContent = m; toastEl.appendChild(msg);
+    if (action && action.label) {
+      var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'toast-action'; btn.textContent = action.label;
+      btn.addEventListener('click', function () { toastEl.classList.remove('show'); clearTimeout(toastTimer); if (action.fn) action.fn(); });
+      toastEl.appendChild(btn);
+    }
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, action ? 5200 : 1900);
+  }
 
   /* ---------------- store selector (nav) ---------------- */
   function buildStoreMenu() {
@@ -1150,9 +1188,24 @@
   function arrowUp() { return '<svg class="mcb-arrow" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m4 12 1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8z"/></svg>'; }
   function arrowDown() { return '<svg class="mcb-arrow" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m20 12-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8z"/></svg>'; }
 
-  function funnelBoxHTML(m, v) {
+  // One launch point, everywhere: a hover/focus "+" that opens the task modal on the KPI
+  // tab, prefilled with the metric surface's context. Same icon, tooltip, and modal each time.
+  function addTaskBtn(pre) {
+    pre = pre || {};
+    var a = ' data-add-task="1"';
+    if (pre.shop) a += ' data-shop="' + esc(pre.shop) + '"';
+    if (pre.carrier) a += ' data-carrier="' + esc(pre.carrier) + '"';
+    if (pre.root) a += ' data-root="' + esc(pre.root) + '"';
+    if (pre.metric) a += ' data-metric="' + esc(pre.metric) + '"';
+    if (pre.title) a += ' data-title="' + esc(pre.title) + '"';
+    return '<button type="button" class="kpi-addtask' + (pre.cls ? ' ' + pre.cls : '') + '" title="Create action plan task" aria-label="Create action plan task"' + a +
+      '><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg></button>';
+  }
+
+  function funnelBoxHTML(m, v, pre) {
     var d = kpiDelta(m, v), cls = d.ahead ? 'ahead' : 'behind';
     return '<div class="mcb" data-name="' + esc(m.label) + '">' +
+      (pre ? addTaskBtn(pre) : '') +
       '<div class="mcb-label"><span>' + esc(m.label) + '</span>' + infoIcon(m.info) + '</div>' +
       '<div class="mcb-boxes">' +
         '<div class="mcb-box actual"><b>' + esc(fmtVal(v, m.unit)) + '</b><span>Actual</span></div>' +
@@ -1921,7 +1974,8 @@
     // funnel metrics vs target (shown first on the shop detail)
     html += '<div class="kpi-section"><div class="kpi-section-title">Opportunity funnel - vs target</div>' +
       '<div class="kpi-funnel">' + FUNNEL.map(function (f) {
-        return funnelBoxHTML(funnelAsMetric(f), d.funnel[f.key]);
+        return funnelBoxHTML(funnelAsMetric(f), d.funnel[f.key],
+          { shop: id, root: 'other', metric: f.label, title: 'Improve ' + f.label + ' at ' + d.name });
       }).join('') + '</div>' +
       '</div>';
 
@@ -2073,7 +2127,8 @@
   function carrierPanelHTML(d) {
     var sel = selectedCarriers(d);
     var chips = d.carriers.map(function (c) { var on = sel.indexOf(c.name) >= 0; return '<button type="button" class="carr-chip' + (on ? ' on' : '') + '" data-carrier="' + esc(c.name) + '" aria-pressed="' + on + '">' + esc(c.name) + '</button>'; }).join('');
-    var cards = d.carriers.filter(function (c) { return sel.indexOf(c.name) >= 0; }).map(function (c) { return carrierCardHTML(c); }).join('');
+    var forShop = d.scoped ? null : d.id;   // carrier cards are shop-scoped only on the shop detail
+    var cards = d.carriers.filter(function (c) { return sel.indexOf(c.name) >= 0; }).map(function (c) { return carrierCardHTML(c, forShop); }).join('');
     // trend panel for the opened carrier (only while it is still in the selected set)
     var openCarrier = kpiState.carrierOpen ? d.carriers.filter(function (c) { return c.name === kpiState.carrierOpen && sel.indexOf(c.name) >= 0; })[0] : null;
     var trendHTML = openCarrier ? carrierTrendPanelHTML(openCarrier) : '';
@@ -2116,7 +2171,7 @@
     var body = shown.map(function (r) {
       var a = r.a;
       return '<tr data-shop="' + esc(r.id) + '" role="button" tabindex="0" aria-label="Open ' + esc(r.name) + '">' +
-        '<td class="ro-id">' + esc(r.name) + '</td>' + (showMkt ? '<td>' + esc(r.market) + '</td>' : '') +
+        '<td class="ro-id">' + esc(r.name) + addTaskBtn({ shop: r.id, root: 'other', title: 'Recover ' + r.name + ' to target', cls: 'kpi-addtask-row' }) + '</td>' + (showMkt ? '<td>' + esc(r.market) + '</td>' : '') +
         '<td class="num">' + a.volume + '</td><td class="num">' + a.score + '</td><td class="num">' + f1(a.estAccuracy) + '%</td>' +
         '<td class="num ' + (a.rulesAdherence >= avgAdh ? 'ok' : 'bad') + '">' + f1(a.rulesAdherence) + '%</td>' +
         '<td class="num">' + a.notAdhered + '</td><td class="num">' + f1(a.cycleTime) + 'd</td><td class="num">' + Math.round(a.csi) + '</td></tr>';
@@ -2196,6 +2251,8 @@
   /* Rules-adherence cluster map - heatmap of rule (row) × carrier (column); each
      cell is the count of ROs where that carrier did not adhere to that rule. */
   function rulesClusterHTML(d) {
+    var forShop = d.scoped ? null : d.id;   // heatmap cells are shop-scoped only on the shop detail
+    var shopName = forShop ? ((shopById(forShop) || {}).name || 'shop') : '';
     var ros = repairOrders(d), carriers = d.carriers.map(function (c) { return c.name; });
     var member = {};   // member[carrier][ruleIdx] - which rules belong to each carrier
     carriers.forEach(function (n) { var m = {}; carrierRuleSet(n).forEach(function (ri) { m[ri] = true; }); member[n] = m; });
@@ -2214,7 +2271,9 @@
       var count = counts[ri][n];
       if (!count) return '<td class="cm-cell cm-zero">0</td>';
       var t = count / maxCell, a = (0.14 + 0.82 * t).toFixed(2), fg = t > 0.5 ? '#fff' : '#5a3410';
-      return '<td class="cm-cell" style="background:rgba(193,102,15,' + a + ');color:' + fg + '">' + count + '</td>';
+      var add = forShop ? addTaskBtn({ shop: forShop, carrier: n, root: 'drp-scorecard', metric: 'Rules adherence',
+        title: "Address '" + RULE_TEXTS[ri] + "' for " + n + ' at ' + shopName, cls: 'kpi-addtask-cell' }) : '';
+      return '<td class="cm-cell' + (forShop ? ' cm-cell-task' : '') + '" style="background:rgba(193,102,15,' + a + ');color:' + fg + '">' + count + add + '</td>';
     }
     var headCols = carrierOrder.map(function (n) { return '<th class="cm-carrier">' + esc(n) + '</th>'; }).join('');
     var bodyRows = ruleOrder.map(function (ri) {
@@ -2286,7 +2345,7 @@
       '<polyline fill="none" stroke="' + m.color + '" stroke-width="2" points="' + line + '"/>' + dots + xlabs + axis + '</svg>' +
       '</div>';
   }
-  function carrierCardHTML(c) {
+  function carrierCardHTML(c, shopId) {
     var varsHTML = DRP.variables.map(function (v) {
       var cur = c.vars[v.key], avg = c.shopAvg[v.key];
       var better = v.direction === 'lower' ? cur <= avg : cur >= avg;
@@ -2298,6 +2357,7 @@
     var scoreCls = c.score >= 80 ? 'ok' : c.score >= 65 ? 'warn' : 'bad';
     var open = kpiState.carrierOpen === c.name;
     return '<div class="carr-card' + (open ? ' open' : '') + '" data-carrier-card="' + esc(c.name) + '" role="button" tabindex="0" aria-expanded="' + open + '">' +
+      (shopId ? addTaskBtn({ shop: shopId, carrier: c.name, root: 'drp-scorecard', metric: 'DRP score', title: 'Improve ' + c.name + ' DRP score at ' + ((shopById(shopId) || {}).name || 'shop') }) : '') +
       '<div class="carr-top"><span class="carr-name">' + esc(c.name) + '</span><span class="carr-score ' + scoreCls + '">' + c.score + '<small>/100</small></span></div>' +
       // the mini trend-line is the carrier's DRP score over time (c.trend === trends.score).
       '<div class="carr-sub">' + svgSpark(c.trends.score.map(function (p) { return p.value; }), '#00529b', 120, 26) +
@@ -2541,6 +2601,22 @@
     }
     var cpl = document.getElementById('carrierProfileLink');
     if (cpl) cpl.addEventListener('click', function () { if (fCarrier && fCarrier.value) openCarrier(fCarrier.value, 'view'); });
+
+    // KPI metric surfaces -> create an action-plan task. Capture-phase so the "+" is handled
+    // before the surface's own click (carrier-card toggle, shop-row drill); opens the shared
+    // task modal on the KPI tab, prefilled from the surface's data-* context.
+    var kpiRootEl = document.getElementById('kpiRoot');
+    if (kpiRootEl) kpiRootEl.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-add-task]'); if (!b) return;
+      e.stopPropagation(); e.preventDefault();
+      openModal(null, {
+        storeId: b.getAttribute('data-shop') || null,
+        carrier: b.getAttribute('data-carrier') || '',
+        rootCause: b.getAttribute('data-root') || '',
+        metric: b.getAttribute('data-metric') || '',
+        title: b.getAttribute('data-title') || ''
+      });
+    }, true);
 
     // nav: Action Plans / KPI's switch views; other tabs are inert
     Array.prototype.forEach.call(document.querySelectorAll('.nav-item'), function (btn) {
