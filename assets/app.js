@@ -1243,11 +1243,51 @@
     return n;
   });
   var CARRIER_STATUSES = ['Preferred', 'Active', 'At risk', 'Prospect'];
-  var CARRIER_TIERS = ['Strategic', 'National', 'Regional', 'Local', 'Prospect'];
+  var CARRIER_TIERS = ['Strategic', 'National', 'Regional', 'Specialty', 'Local', 'Prospect'];
   var CARRIER_CADENCES = ['Monthly', 'Quarterly', 'Semi-annual', 'Ad hoc'];
   var CRM_OWNERS = ['Marcus Delgado', 'Elaine Cho', 'Nadia Haddad', 'Jamal Carter', 'Colin Pierce', "Megan O'Rourke", 'Grant Feldman', 'Bethany Cruz'];
+  var CRM_OWNER_ROLES = { 'Marcus Delgado': 'CPM', 'Elaine Cho': 'CPM', 'Nadia Haddad': 'CPM', 'Jamal Carter': "Nat'l Account Mgr", 'Colin Pierce': "Nat'l Account Mgr", "Megan O'Rourke": 'Account Mgr', 'Grant Feldman': 'Account Mgr', 'Bethany Cruz': 'Account Mgr' };
+  // Synthesize full profiles (deterministically, seeded by name) for the broader carrier
+  // roster so the CRM tab holds ~100 national/regional/specialty carriers.
+  (function seedRoster() {
+    var seen = {}; carrierProfiles.forEach(function (c) { seen[c.name] = 1; });
+    var FIRST = ['Alex', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Jamie', 'Avery', 'Quinn', 'Cameron', 'Drew', 'Hayden', 'Reese', 'Sydney', 'Devon', 'Parker', 'Rowan', 'Sawyer', 'Blake', 'Dana', 'Erin', 'Gale', 'Harper', 'Kelsey', 'Logan', 'Noel', 'Presley', 'Shannon', 'Terry', 'Wren'];
+    var LAST = ['Bennett', 'Carver', 'Delaney', 'Ellis', 'Fowler', 'Grayson', 'Holloway', 'Iverson', 'Jennings', 'Kirby', 'Langston', 'Mercer', 'Nash', 'Ortega', 'Prescott', 'Ramsey', 'Sullivan', 'Thornton', 'Underwood', 'Vaughn', 'Whitaker', 'Yates', 'Ashford', 'Brennan', 'Callahan', 'Donovan', 'Everett', 'Fitzgerald', 'Harrington', 'Lindquist'];
+    var PROG = ['Direct Repair Program', 'Preferred Repair Network', 'Certified Shop Program', 'Approved Repair Network', 'Preferred Shop Network'];
+    function synth(e) {
+      var name = e.name, tier = e.tier || 'Regional', terr = e.territory || '';
+      var r = mulberry(hashStr('crmsyn:' + name));
+      function pick(a) { return a[Math.floor(r() * a.length)]; }
+      var u = r();
+      var status = tier === 'National' ? (u < 0.25 ? 'Preferred' : u < 0.82 ? 'Active' : u < 0.92 ? 'At risk' : 'Prospect')
+        : tier === 'Specialty' ? (u < 0.5 ? 'Active' : u < 0.78 ? 'Prospect' : 'At risk')
+        : (u < 0.12 ? 'Preferred' : u < 0.68 ? 'Active' : u < 0.83 ? 'Prospect' : 'At risk');
+      var prospect = status === 'Prospect';
+      var rep = pick(FIRST) + ' ' + pick(LAST);
+      var owner = pick(CRM_OWNERS), tag = CRM_OWNER_ROLES[owner] || 'Account Mgr';
+      var cadence = prospect ? 'Ad hoc' : pick(tier === 'National' ? ['Monthly', 'Quarterly'] : tier === 'Specialty' ? ['Quarterly', 'Ad hoc'] : ['Quarterly', 'Semi-annual']);
+      var enrolled = prospect ? Math.floor(r() * 3) : (tier === 'National' ? 15 + Math.floor(r() * 45) : tier === 'Specialty' ? 3 + Math.floor(r() * 15) : 2 + Math.floor(r() * 22));
+      var lastReview = '2026-' + pad(prospect ? 1 + Math.floor(r() * 4) : 1 + Math.floor(r() * 7)) + '-' + pad(1 + Math.floor(r() * 27));
+      var notes = prospect ? ('Prospective ' + tier.toLowerCase() + ' relationship (' + (terr || 'exploratory') + '); not yet enrolled.')
+        : tier === 'National' ? ('National program; steady volume across the book.' + (status === 'At risk' ? ' Standing at risk - active follow-up.' : ''))
+        : tier === 'Specialty' ? ('Nonstandard / specialty carrier; watch supplement and cycle-time terms.' + (status === 'At risk' ? ' At-risk this cycle.' : ''))
+        : ('Regional carrier (' + (terr || 'regional') + '); managed at the market level.' + (status === 'At risk' ? ' Standing at risk - active follow-up.' : ''));
+      return {
+        name: name, program: name + ' ' + pick(PROG), status: status, tier: tier, territory: terr,
+        partnerSince: prospect ? '' : '' + (2004 + Math.floor(r() * 20)),
+        agreementRenewal: prospect ? '' : (2026 + (r() < 0.5 ? 0 : 1)) + '-' + pad(1 + Math.floor(r() * 12)) + '-' + pad(1 + Math.floor(r() * 27)),
+        reviewCadence: cadence, portal: prospect ? '' : name + ' ' + pick(['Portal', 'Shop Portal', 'Network Portal']), enrolledShops: enrolled,
+        rep: rep, repEmail: rep.toLowerCase().replace(/[^a-z]+/g, '.') + '@' + name.toLowerCase().replace(/[^a-z0-9]+/g, '') + '.example',
+        phone: '(' + (200 + Math.floor(r() * 700)) + ') 555-0' + (100 + Math.floor(r() * 900)),
+        secondaryContact: '', escalationEmail: '', owner: owner, lastReview: lastReview, notes: notes,
+        crmLog: prospect ? [] : [{ date: lastReview, by: owner + ' · ' + tag, note: (cadence === 'Monthly' ? 'Monthly' : cadence === 'Quarterly' ? 'Quarterly' : 'Periodic') + ' check-in with ' + rep + '; program standing reviewed.' }]
+      };
+    }
+    (DATA.carrierRoster || []).forEach(function (e) { if (!seen[e.name]) { seen[e.name] = 1; carrierProfiles.push(synth(e)); } });
+    carrierProfiles.sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; });   // alphabetical for a scannable registry
+  })();
   var carrierOverlay, carrierBody, crmWrap, editingCarrier = null;
-  var crmState = { mode: 'table', carrier: null, shopsOpen: false };   // CRM tab: carrier list vs full profile; shops table collapsed by default
+  var crmState = { mode: 'table', carrier: null, shopsOpen: false, query: '' };   // CRM tab: list vs profile; shops collapsed; search query
 
   function profileByName(name) { for (var i = 0; i < carrierProfiles.length; i++) if (carrierProfiles[i].name === name) return carrierProfiles[i]; return null; }
   function statusClass(s) { return s === 'Preferred' ? 'cs-pref' : s === 'Active' ? 'cs-active' : s === 'At risk' ? 'cs-risk' : 'cs-prospect'; }
@@ -1404,32 +1444,41 @@
   function renderCrm() {
     if (!crmWrap) return;
     var newBtn = document.getElementById('newCarrierBtn'), sub = document.getElementById('crmSub');
+    var searchWrap = document.getElementById('crmSearchWrap');
     // Full profile (detail) view for one carrier.
     if (crmState.mode === 'detail' && profileByName(crmState.carrier)) {
       if (newBtn) newBtn.style.display = 'none';
+      if (searchWrap) searchWrap.style.display = 'none';
       if (sub) sub.textContent = 'Full carrier relationship profile.';
       crmWrap.innerHTML = carrierDetailHTML(profileByName(crmState.carrier));
       return;
     }
-    // Carrier list (table) view.
+    // Carrier list (table) view, filtered by the search query.
     crmState.mode = 'table';
     if (newBtn) newBtn.style.display = '';
-    if (sub) sub.textContent = carrierProfiles.length + ' carrier' + (carrierProfiles.length === 1 ? '' : 's') + ' · relationship profiles across the DRP book.';
-    var rows = carrierProfiles.map(function (p) {
+    if (searchWrap) searchWrap.style.display = '';
+    var q = (crmState.query || '').trim().toLowerCase();
+    var list = q ? carrierProfiles.filter(function (p) {
+      return [p.name, p.program, p.rep, p.owner, p.tier, p.territory, p.status].some(function (f) { return (f || '').toLowerCase().indexOf(q) >= 0; });
+    }) : carrierProfiles;
+    if (sub) sub.textContent = q
+      ? (list.length + ' of ' + carrierProfiles.length + ' carriers match "' + crmState.query.trim() + '"')
+      : (carrierProfiles.length + ' carriers · national, regional & specialty relationship profiles.');
+    var rows = list.map(function (p) {
       var st = carrierStats(p.name);
       return '<tr data-carrier-row="' + esc(p.name) + '" tabindex="0" role="button" aria-label="Open ' + esc(p.name) + ' profile">' +
         '<td class="crm-name"><span class="cv-mono sm ' + statusClass(p.status) + '">' + esc(carrierMonogram(p.name)) + '</span><span class="crm-cname">' + esc(p.name) + '</span></td>' +
         '<td>' + esc(p.program || '-') + '</td>' +
         '<td><span class="cs ' + statusClass(p.status) + '">' + esc(p.status || '-') + '</span></td>' +
-        '<td>' + esc(p.rep || '-') + '</td>' +
+        '<td>' + esc(p.tier || '-') + '</td>' +
         '<td>' + esc(p.owner || '-') + '</td>' +
         '<td class="crm-num">' + st.open + '</td>' +
         '<td>' + (p.lastReview ? esc(fmtDateY(p.lastReview)) : '-') + '</td>' +
         '<td class="crm-act"><button type="button" class="mini-btn" data-carrier-edit="' + esc(p.name) + '" aria-label="Edit ' + esc(p.name) + '">' + editIcon() + '</button></td>' +
       '</tr>';
-    }).join('');
-    crmWrap.innerHTML = '<div class="crm-scroll"><table class="crm-table"><thead><tr>' +
-      '<th>Carrier</th><th>DRP program</th><th>Relationship</th><th>Field rep</th><th>Internal owner</th><th class="crm-num">Open tasks</th><th>Last review</th><th aria-label="Edit"></th>' +
+    }).join('') || '<tr><td colspan="8" class="ctx-sub" style="padding:16px">No carriers match "' + esc(crmState.query.trim()) + '".</td></tr>';
+    crmWrap.innerHTML = '<div class="crm-scroll crm-list-scroll"><table class="crm-table"><thead><tr>' +
+      '<th>Carrier</th><th>DRP program</th><th>Relationship</th><th>Tier</th><th>Internal owner</th><th class="crm-num">Open tasks</th><th>Last review</th><th aria-label="Edit"></th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
@@ -2598,6 +2647,8 @@
     carrierBody.addEventListener('click', onCarrierBodyClick);
     carrierBody.addEventListener('submit', function (e) { if (e.target && e.target.id === 'carrierForm') saveCarrier(e); });
     document.getElementById('newCarrierBtn').addEventListener('click', function () { openCarrier(null, 'new'); });
+    var crmSearch = document.getElementById('crmSearch');
+    if (crmSearch) crmSearch.addEventListener('input', function () { crmState.query = crmSearch.value || ''; if (state.view === 'crm' && crmState.mode !== 'detail') renderCrm(); });
     if (crmWrap) {
       crmWrap.addEventListener('click', onCrmClick);
       crmWrap.addEventListener('keydown', function (e) {

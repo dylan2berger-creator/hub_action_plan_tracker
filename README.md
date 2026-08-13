@@ -59,9 +59,12 @@ to Action Plans that only the National Manager sees**.
   **bubble** that opens a **simple mini-CRM profile**: program, relationship status, field
   rep + contact, internal owner (the CPM/account manager who holds the relationship), last
   business review, notes, and a live count of open tasks / action plans / shops.
-- **CRM tab → full profile.** A table of every carrier in the data (program, relationship,
-  rep, owner, open-task count, last review). Click a row to open the **full relationship
-  profile**:
+- **CRM tab → full profile.** A searchable, alphabetized table of **~100 carriers** -
+  national, regional, and specialty - with a **carrier search** box (filters by name,
+  program, rep, owner, tier, territory) and a sticky-header scroll. Columns: program,
+  relationship, **tier**, internal owner, open-task count, last review. Ten carriers carry
+  rich hand-authored profiles; the rest are synthesized deterministically from the roster
+  in `HUB_DATA.carrierRoster`. Click a row to open the **full relationship profile**:
   - **Expanded overview** (~16 fields): DRP program, relationship, **tier**, **territory**,
     **partner since**, **agreement renewal**, **review cadence**, **enrolled shops**, **DRP
     portal**, field rep + email/phone, **secondary contact**, **escalation contact**,

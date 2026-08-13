@@ -1191,3 +1191,9 @@ button { font-family: inherit; }
 /* trend-line data points as task launch points (transparent hit circle + hover halo) */
 .kpi-addtask-dot { fill: transparent; pointer-events: all; cursor: pointer; transition: fill .1s ease; }
 .kpi-addtask-dot:hover, .kpi-addtask-dot:focus-visible { fill: rgba(0, 82, 155, .18); outline: none; }
+
+/* CRM search + scrollable 100-carrier table with a sticky header */
+.crm-search { flex: 0 1 280px; max-width: 280px; margin: 0; }
+.crm-search input { min-width: 0; }
+.crm-list-scroll { max-height: 64vh; overflow: auto; }
+.crm-list-scroll .crm-table thead th { position: sticky; top: 0; z-index: 2; }
