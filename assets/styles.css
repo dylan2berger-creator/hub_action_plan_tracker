@@ -323,6 +323,7 @@ button { font-family: inherit; }
   border-radius: var(--corner-sm);
   border: 1px solid transparent;
   font-family: var(--font-plain); font-weight: 600; font-size: 14px;
+  white-space: nowrap;
   cursor: pointer;
   transition: filter .15s, background .15s, box-shadow .15s;
 }
@@ -1201,8 +1202,9 @@ button { font-family: inherit; }
 /* CRM search + scrollable 100-carrier table with a sticky header */
 .crm-search { flex: 0 1 280px; max-width: 280px; margin: 0; }
 .crm-search input { min-width: 0; }
-/* Keep the search box and New carrier button on one row (they shrink instead of stacking) */
+/* Keep the search box and New carrier button on one row (search shrinks; button holds its size) */
 #viewCrm .page-stats { flex-wrap: nowrap; align-items: center; }
 #viewCrm .crm-search { min-width: 0; }
+#viewCrm .page-stats .btn { flex-shrink: 0; }
 .crm-list-scroll { max-height: 64vh; overflow: auto; }
 .crm-list-scroll .crm-table thead th { position: sticky; top: 0; z-index: 2; }
