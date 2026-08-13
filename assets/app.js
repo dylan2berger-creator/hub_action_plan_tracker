@@ -2131,7 +2131,7 @@
     var cards = d.carriers.filter(function (c) { return sel.indexOf(c.name) >= 0; }).map(function (c) { return carrierCardHTML(c, forShop); }).join('');
     // trend panel for the opened carrier (only while it is still in the selected set)
     var openCarrier = kpiState.carrierOpen ? d.carriers.filter(function (c) { return c.name === kpiState.carrierOpen && sel.indexOf(c.name) >= 0; })[0] : null;
-    var trendHTML = openCarrier ? carrierTrendPanelHTML(openCarrier) : '';
+    var trendHTML = openCarrier ? carrierTrendPanelHTML(openCarrier, forShop) : '';
     return '<div class="kpi-section-title">Carrier scorecard <span class="ctx-sub">(DRP · ' + d.carriers.length + ' carriers with volume)</span></div>' +
       '<div class="carr-chips" id="carrChips" role="group" aria-label="Filter carriers">' + chips + '</div>' +
       '<div class="carr-cards" id="carrCards">' + cards + '</div>' +
@@ -2305,7 +2305,7 @@
     if (unit === 'd') return (Math.round(v * 10) / 10) + 'd';
     return '' + Math.round(v);   // score / CSI / repair volume (count)
   }
-  function carrierTrendPanelHTML(c) {
+  function carrierTrendPanelHTML(c, shopId) {
     var m = carrierMetricByKey(kpiState.carrierMetric), win = chartWindow();
     var pts = (c.trends[m.key] || c.trends.score).slice(win.start, win.end);
     var labels = pts.map(function (p) { return p.label; });
@@ -2319,6 +2319,15 @@
     function Y(v) { return padT + (H - padT - mB) * (1 - (v - lo2) / (span || 1)); }
     var line = pts.map(function (p, i) { return X(i) + ',' + Y(p.value); }).join(' ');
     var dots = pts.map(function (p, i) { return '<circle cx="' + X(i) + '" cy="' + Y(p.value) + '" r="2.5" fill="' + m.color + '"/>'; }).join('');
+    // Each data point is a task launch point (shop detail only): a larger transparent hit
+    // circle over the bullet, revealed with a halo on hover, carrying that point's context.
+    var shopName = shopId ? ((shopById(shopId) || {}).name || 'shop') : '';
+    var hits = shopId ? pts.map(function (p, i) {
+      var title = 'Improve ' + c.name + ' ' + m.label + ' (' + p.label + ') at ' + shopName;
+      return '<circle class="kpi-addtask-dot" cx="' + X(i) + '" cy="' + Y(p.value) + '" r="9"' +
+        ' data-add-task="1" data-shop="' + esc(shopId) + '" data-carrier="' + esc(c.name) + '" data-root="drp-scorecard"' +
+        ' data-metric="' + esc(m.label) + '" data-title="' + esc(title) + '"><title>Create action plan task</title></circle>';
+    }).join('') : '';
     var xlabs = labels.map(function (lab, i) { return '<text x="' + X(i) + '" y="' + (H - 4) + '" class="rc-x">' + esc(lab) + '</text>'; }).join('');
     // three ticks; add a decimal only when whole-number ticks would collide (flat count series)
     var tickV = [hi2, hi2 - span / 2, lo2];
@@ -2342,7 +2351,7 @@
       '<button type="button" class="link-btn ctrend-close" data-carrier-close="1">Close ✕</button></div></div>' +
       '<div class="kser-group" id="carrMetrics" role="group" aria-label="Select carrier metric to trend">' + btns + '</div>' +
       '<svg viewBox="0 0 ' + W + ' ' + H + '" class="rc-svg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' + esc(c.name + ' ' + m.label) + ' trend">' +
-      '<polyline fill="none" stroke="' + m.color + '" stroke-width="2" points="' + line + '"/>' + dots + xlabs + axis + '</svg>' +
+      '<polyline fill="none" stroke="' + m.color + '" stroke-width="2" points="' + line + '"/>' + dots + xlabs + axis + hits + '</svg>' +
       '</div>';
   }
   function carrierCardHTML(c, shopId) {

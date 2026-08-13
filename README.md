@@ -228,7 +228,9 @@ only remaining explanation.**
 work is identified, so tasks can be filed **without leaving the KPIs tab**. One pattern -
 a small **`+`** that appears on hover/focus with the tooltip *"Create action plan task"* -
 sits on every metric surface: each **funnel box**, each **carrier scorecard card**, each
-**rules-heatmap cell**, and each **shops-table row** on the market/region dashboards.
+**rules-heatmap cell**, each **data point along a carrier's trend line** (the bullet gets a
+hover halo + the same tooltip, and seeds the task with that carrier, metric, and month),
+and each **shops-table row** on the market/region dashboards.
 Clicking it opens the **same global task modal** on the KPIs tab, **prefilled** from that
 surface (the shop's action plan, and where relevant the carrier, DRP root cause, and the
 metric as the verification signal). On save, a toast offers an opt-in **"View in Action

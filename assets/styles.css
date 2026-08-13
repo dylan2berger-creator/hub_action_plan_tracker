@@ -1188,3 +1188,6 @@ button { font-family: inherit; }
 /* toast opt-in action (toast itself is click-through; re-enable the button) */
 .toast-action { pointer-events: auto; margin-left: 14px; border: 0; background: none; color: #8fbff2; font: inherit; font-weight: 700; cursor: pointer; padding: 0; }
 .toast-action:hover { text-decoration: underline; color: #fff; }
+/* trend-line data points as task launch points (transparent hit circle + hover halo) */
+.kpi-addtask-dot { fill: transparent; pointer-events: all; cursor: pointer; transition: fill .1s ease; }
+.kpi-addtask-dot:hover, .kpi-addtask-dot:focus-visible { fill: rgba(0, 82, 155, .18); outline: none; }
