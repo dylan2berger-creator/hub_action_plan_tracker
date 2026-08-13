@@ -108,7 +108,7 @@
     if (storeId === 'book') return MARKET.storeIds.slice();
     // Region-level scopes (Regional Manager) have no per-market stores in this
     // prototype - the board shows the region's instrumented action plans (all stores).
-    if (storeId === 'all' || storeId === 'region' || isMarketScope(storeId)) return ALL_STORE_IDS.slice();
+    if (storeId === 'all' || storeId === 'region' || storeId === 'national' || isMarketScope(storeId)) return ALL_STORE_IDS.slice();
     return [storeId];
   }
   function scopeIds() { return resolveIds(state.store); }
@@ -703,6 +703,7 @@
 
   // The person acting in the current persona - attributed to new activity entries.
   function currentActor() {
+    if (state.role === 'national') return 'National Manager';
     if (state.role === 'regional') return currentRegion().manager || 'Regional Manager';
     if (state.role === 'market') return (MARKET && MARKET.manager) || 'Market Manager';
     var sid = scopeIds()[0];                                   // GM: the shop's own GM if we can find one
@@ -796,6 +797,10 @@
       var bookPlans = MARKET.storeIds.reduce(function (a, id) { return a + planCount(id); }, 0);
       items = [{ id: 'book', name: 'All my shops', count: bookPlans, sub: MARKET.storeIds.length + ' shops' }]
         .concat(MARKET.storeIds.map(function (id) { var s = STORE_BY_ID[id]; return { id: id, name: s ? s.name : id, count: planCount(id) }; }));
+    } else if (state.role === 'national') {
+      var natPlans = ALL_STORE_IDS.reduce(function (a, id) { return a + planCount(id); }, 0);
+      items = [{ id: 'national', name: 'All shops', count: natPlans, sub: REGIONS.length + ' regions' }]
+        .concat((DATA.stores || []).map(function (s) { return { id: s.id, name: s.name, count: taskCounts[s.id] || 0 }; }));
     } else {
       items = (DATA.stores || []).map(function (s) { return { id: s.id, name: s.name, count: taskCounts[s.id] || 0 }; });
     }
@@ -861,6 +866,7 @@
     state.storeFilter = null;   // a new scope resets the store multi-select
     var label = id === 'book' ? MARKET.name + ' · all shops'
       : id === 'region' ? currentRegion().name + ' · all markets'
+      : id === 'national' ? 'All shops · ' + REGIONS.length + ' regions'
       : isMarketScope(id) ? id.slice(5)
       : id === 'all' ? 'All stores'
       : (STORE_BY_ID[id] ? STORE_BY_ID[id].name : id);
@@ -870,7 +876,7 @@
     render();
     if (state.view === 'kpis') {
       if (state.role !== 'gm') {
-        if (id === 'region' || id === 'book' || id === 'all') { kpiState.market = 'all'; kpiState.view = 'dashboard'; kpiState.shopId = null; }
+        if (id === 'region' || id === 'book' || id === 'all' || id === 'national') { kpiState.market = 'all'; kpiState.view = 'dashboard'; kpiState.shopId = null; }
         else if (isMarketScope(id)) { kpiState.market = id.slice(5); kpiState.view = 'dashboard'; kpiState.shopId = null; }
         else if (shopById(id)) { kpiState.view = 'shop'; kpiState.shopId = id; }
       }
@@ -1065,7 +1071,7 @@
   var CUR_MONTH = TODAY.getMonth();
   var RA_MIN = -0.35, RA_MAX = 0.25;   // fixed revenue-variance chart domain
 
-  var kpiState = { view: 'dashboard', shopId: null, period: 'm3', gran: 'shops', market: 'all', carriers: null, chartKpis: ['revenue'], carrierOpen: null, carrierMetric: 'score', roCarrier: null };
+  var kpiState = { view: 'dashboard', shopId: null, period: 'm3', gran: 'shops', market: 'all', division: 'all', region: null, carriers: null, chartKpis: ['revenue'], carrierOpen: null, carrierMetric: 'score', roCarrier: null };
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function pctStr(p) { return (p >= 0 ? '+' : '−') + Math.abs(Math.round(p * 100)) + '%'; }
@@ -1095,6 +1101,12 @@
     return out;
   }
   function shopsOfRegion(rg) { var out = []; rg.markets.forEach(function (m) { out = out.concat(shopsOfMarket(m)); }); return out; }
+  // National Manager scope: every region across all divisions.
+  var DIVISIONS = []; REGIONS.forEach(function (r) { if (r.division && DIVISIONS.indexOf(r.division) < 0) DIVISIONS.push(r.division); });
+  function regionsOfDivision(d) { return REGIONS.filter(function (r) { return r.division === d; }); }
+  function shopsOfDivision(d) { var out = []; regionsOfDivision(d).forEach(function (r) { out = out.concat(shopsOfRegion(r)); }); return out; }
+  function nationalRegions() { return (kpiState.division && kpiState.division !== 'all') ? regionsOfDivision(kpiState.division) : REGIONS.slice(); }
+  function shopsOfNation() { var out = []; nationalRegions().forEach(function (r) { out = out.concat(shopsOfRegion(r)); }); return out; }
   function shopById(id) {
     if (SHOP_BY_ID[id]) return SHOP_BY_ID[id];
     var st = STORE_BY_ID[id];
@@ -1206,7 +1218,11 @@
   /* ---- scope resolution (persona + in-pane market filter) ---- */
   function baseShopIds() {
     var ids;
-    if (state.role === 'regional') ids = shopsOfRegion(currentRegion()).map(function (s) { return s.id; });
+    if (state.role === 'national') {
+      var shops = (kpiState.region && REGION_BY_ID[kpiState.region]) ? shopsOfRegion(REGION_BY_ID[kpiState.region]) : shopsOfNation();
+      ids = shops.map(function (s) { return s.id; });
+    }
+    else if (state.role === 'regional') ids = shopsOfRegion(currentRegion()).map(function (s) { return s.id; });
     else if (state.role === 'market') ids = (MARKET.storeIds || []).slice();
     else ids = [state.store];
     if (kpiState.market && kpiState.market !== 'all') ids = ids.filter(function (id) { var sh = shopById(id); return sh && sh.market === kpiState.market; });
@@ -1218,6 +1234,8 @@
     var sh = shopById(state.store); return sh ? [sh.market] : [];
   }
   function scopeTitle() {
+    if (state.role === 'national') return (kpiState.region && REGION_BY_ID[kpiState.region]) ? REGION_BY_ID[kpiState.region].name
+      : (kpiState.division && kpiState.division !== 'all') ? kpiState.division : 'All Regions';
     if (state.role === 'regional') return currentRegion().name;
     if (state.role === 'market') return MARKET.name;
     var sh = shopById(state.store); return sh ? sh.name : 'Shop';
@@ -1227,7 +1245,7 @@
   var _scopeCarrierCache = {};
   function scopeMonth(i) { var mi = (CUR_MONTH - 11 + i + 1200) % 12; return { mi: mi, label: MONTH_ABBR[mi] }; }
   function scopeCarrierData() {
-    var key = state.role + '|' + (kpiState.market || 'all') + '|' + (state.role === 'regional' ? currentRegion().id : MARKET.name);
+    var key = state.role + '|' + (kpiState.market || 'all') + '|' + (state.role === 'national' ? ('nat:' + (kpiState.division || 'all') + ':' + (kpiState.region || 'all')) : state.role === 'regional' ? currentRegion().id : MARKET.name);
     if (_scopeCarrierCache[key]) return _scopeCarrierCache[key];
     var ids = baseShopIds(), byName = {};
     ids.forEach(function (id) {
@@ -1277,6 +1295,18 @@
   // chart entities depending on granularity
   function chartEntities() {
     var ids = baseShopIds();
+    if (state.role === 'national') {
+      if (kpiState.region && REGION_BY_ID[kpiState.region]) {                                            // drilled into a region -> its shops
+        return ids.map(function (id) { var rv = revFor(id, kpiState.period), sh = shopById(id); return { key: id, name: sh.name, shop: true, variancePct: rv.variancePct, actual: rv.actual, target: rv.target }; });
+      }
+      if (kpiState.gran === 'national') return [aggEntity('National', ids)];
+      if (kpiState.gran === 'divisions') {
+        return DIVISIONS.filter(function (d) { return kpiState.division === 'all' || d === kpiState.division; })
+          .map(function (d) { var e = aggEntity(d, shopsOfDivision(d).map(function (s) { return s.id; })); e.division = d; return e; });
+      }
+      // regions (default)
+      return nationalRegions().map(function (r) { var e = aggEntity(r.name, shopsOfRegion(r).map(function (s) { return s.id; })); e.regionId = r.id; e.regionName = r.name; return e; });
+    }
     if (state.role === 'market' && kpiState.gran !== 'shops') return [aggEntity(MARKET.name, ids)];      // MM: markets/region collapse to one bar
     if (state.role === 'regional' && kpiState.gran === 'region') return [aggEntity(currentRegion().name, ids)];
     if (state.role === 'regional' && kpiState.gran === 'markets') {
@@ -1312,8 +1342,18 @@
     var granBtns = '';
     if (state.role === 'regional') granBtns = ['shops', 'markets', 'region'].map(function (g) { return '<button type="button" class="seg' + (kpiState.gran === g ? ' on' : '') + '" data-gran="' + g + '">' + g.charAt(0).toUpperCase() + g.slice(1) + '</button>'; }).join('');
     else if (state.role === 'market') granBtns = ['shops', 'markets', 'region'].map(function (g) { return '<button type="button" class="seg' + (kpiState.gran === g ? ' on' : '') + '" data-gran="' + g + '">' + (g === 'shops' ? 'Shops' : g === 'markets' ? 'Market' : 'Book') + '</button>'; }).join('');
+    else if (state.role === 'national') granBtns = ['regions', 'divisions', 'national'].map(function (g) { return '<button type="button" class="seg' + (!kpiState.region && kpiState.gran === g ? ' on' : '') + '" data-gran="' + g + '">' + (g === 'national' ? 'National' : g.charAt(0).toUpperCase() + g.slice(1)) + '</button>'; }).join('');
     var mkts = scopeMarkets();
     var mktOptions = '<option value="all">All markets</option>' + mkts.map(function (m) { return '<option value="' + esc(m) + '"' + (kpiState.market === m ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('');
+    // National uses a Division filter in place of the Market filter; a region drill hides it behind a breadcrumb.
+    var inRegionMode = state.role === 'national' && kpiState.region && REGION_BY_ID[kpiState.region];
+    var filterCtl;
+    if (state.role === 'national') {
+      var divOptions = '<option value="all">All divisions</option>' + DIVISIONS.map(function (d) { return '<option value="' + esc(d) + '"' + (kpiState.division === d ? ' selected' : '') + '>' + esc(d) + '</option>'; }).join('');
+      filterCtl = inRegionMode ? '' : '<label class="wk-select dash-mkt"><span class="dash-mkt-l">Filter</span><select id="dashDivision" aria-label="Division filter">' + divOptions + '</select></label>';
+    } else {
+      filterCtl = '<label class="wk-select dash-mkt"><span class="dash-mkt-l">Filter</span><select id="dashMarket" aria-label="Market filter">' + mktOptions + '</select></label>';
+    }
 
     var html = '';
     html += '<div class="kpi-head"><p class="kpi-title" data-testid="kpi-page-title">' + esc(scopeTitle()) + ' - Revenue Attainment</p>' +
@@ -1323,8 +1363,10 @@
     html += '<div class="dash-controls">' +
       '<div class="seg-group" id="dashPeriod" role="group" aria-label="Period">' + periodBtns + '</div>' +
       (granBtns ? '<div class="seg-group" id="dashGran" role="group" aria-label="Granularity">' + granBtns + '</div>' : '') +
-      '<label class="wk-select dash-mkt"><span class="dash-mkt-l">Filter</span><select id="dashMarket" aria-label="Market filter">' + mktOptions + '</select></label>' +
+      filterCtl +
       '</div>';
+    if (inRegionMode) html += '<div class="dash-crumb"><button type="button" class="link-btn" id="natBack">← All regions</button>' +
+      '<span class="crumb-sep">·</span><span class="crumb-here">' + esc(REGION_BY_ID[kpiState.region].name) + ' shops</span></div>';
 
     // chart
     html += '<div class="ra-chart" id="raChart">' + raChartHTML(ents) + '</div>';
@@ -1340,23 +1382,25 @@
     wireDashboard();
     wireCarrierPanel(scopeCarrierData());
   }
-  function roleWord() { return state.role === 'regional' ? 'Regional Manager · ' + currentRegion().division : state.role === 'market' ? 'Market Manager' : 'General Manager'; }
+  function roleWord() { return state.role === 'national' ? 'National Manager' : state.role === 'regional' ? 'Regional Manager · ' + currentRegion().division : state.role === 'market' ? 'Market Manager' : 'General Manager'; }
 
   function raChartHTML(ents) {
     function pos(v) { return clamp((v - RA_MIN) / (RA_MAX - RA_MIN) * 100, 0, 100); }
     var zero = pos(0), thr = pos(CHALLENGED_PCT);
-    var anyMarket = false;
+    var drillHint = '';
     var rows = ents.map(function (e) {
       var vp = e.variancePct, cls = varClass(vp), p = pos(vp);
       var left = Math.min(p, zero), width = Math.abs(p - zero);
-      var clickAttr = e.shop
-        ? ' data-shop="' + esc(e.key) + '" role="button" tabindex="0" aria-label="Open ' + esc(e.name) + '"'
-        : e.market
-          ? ' data-market="' + esc(e.market) + '" role="button" tabindex="0" aria-label="Drill into ' + esc(e.name) + ' shops"'
-          : '';
-      if (e.market) anyMarket = true;
-      var nameHTML = esc(e.name) + (e.market ? '<span class="ra-drill" aria-hidden="true">›</span>' : '');
-      return '<div class="ra-row' + (e.shop || e.market ? ' clickable' : '') + '"' + clickAttr + '>' +
+      // Each bar can be a leaf (shop -> detail) or a drill (market/division/region -> next level down).
+      var drill = e.shop ? { attr: 'data-shop="' + esc(e.key) + '"', label: 'Open ' + e.name, chev: false }
+        : e.market ? { attr: 'data-market="' + esc(e.market) + '"', label: 'Drill into ' + e.name + ' shops', chev: true, hint: 'click a market to drill into its shops' }
+        : e.division ? { attr: 'data-division="' + esc(e.division) + '"', label: 'Drill into ' + e.name + ' regions', chev: true, hint: 'click a division to drill into its regions' }
+        : e.regionId ? { attr: 'data-region="' + esc(e.regionId) + '"', label: 'Drill into ' + e.name + ' shops', chev: true, hint: 'click a region to drill into its shops' }
+        : null;
+      var clickAttr = drill ? ' ' + drill.attr + ' role="button" tabindex="0" aria-label="' + esc(drill.label) + '"' : '';
+      if (drill && drill.chev && !drillHint) drillHint = drill.hint;
+      var nameHTML = esc(e.name) + (drill && drill.chev ? '<span class="ra-drill" aria-hidden="true">›</span>' : '');
+      return '<div class="ra-row' + (drill ? ' clickable' : '') + '"' + clickAttr + '>' +
         '<span class="ra-name" title="' + esc(e.name) + '">' + nameHTML + '</span>' +
         '<span class="ra-track"><span class="ra-zero" style="left:' + zero + '%"></span>' +
         '<span class="ra-thresh" style="left:' + thr + '%"></span>' +
@@ -1364,7 +1408,7 @@
         '<span class="ra-val ' + cls + '">' + pctStr(vp) + '</span></div>';
     }).join('');
     return '<div class="ra-legend"><span class="ra-thresh-key"></span> ' + Math.round(CHALLENGED_PCT * 100) + '% challenged line · worst first' +
-      (anyMarket ? ' · click a market to drill into its shops' : '') + '</div>' +
+      (drillHint ? ' · ' + drillHint : '') + '</div>' +
       '<div class="ra-rows">' + (rows || '<div class="ctx-sub" style="padding:10px">No shops in scope.</div>') + '</div>';
   }
 
@@ -1395,12 +1439,20 @@
     var pg = document.getElementById('dashPeriod');
     if (pg) pg.addEventListener('click', function (e) { var b = e.target.closest('[data-period]'); if (b) { kpiState.period = b.getAttribute('data-period'); renderKpiTab(); } });
     var gg = document.getElementById('dashGran');
-    if (gg) gg.addEventListener('click', function (e) { var b = e.target.closest('[data-gran]'); if (b) { kpiState.gran = b.getAttribute('data-gran'); renderKpiTab(); } });
+    if (gg) gg.addEventListener('click', function (e) { var b = e.target.closest('[data-gran]'); if (b) { kpiState.gran = b.getAttribute('data-gran'); kpiState.region = null; renderKpiTab(); } });
     var mk = document.getElementById('dashMarket');
     if (mk) mk.addEventListener('change', function () { kpiState.market = mk.value; renderKpiTab(); });
+    var dv = document.getElementById('dashDivision');
+    if (dv) dv.addEventListener('change', function () { kpiState.division = dv.value; kpiState.region = null; renderKpiTab(); });
+    var nb = document.getElementById('natBack');
+    if (nb) nb.addEventListener('click', function () { kpiState.region = null; kpiState.gran = 'regions'; renderKpiTab(); });
     var root = document.getElementById('kpiRoot');
-    // Drill a market bar (Regional · Markets granularity) down to its shops; open a shop otherwise.
+    // Drill a bar down one level (division -> regions, region -> shops, market -> shops); open a shop otherwise.
     function drillOrOpen(e) {
+      var div = e.target.closest('[data-division]');
+      if (div) { kpiState.division = div.getAttribute('data-division'); kpiState.gran = 'regions'; kpiState.region = null; renderKpiTab(); return; }
+      var reg = e.target.closest('[data-region]');
+      if (reg) { kpiState.region = reg.getAttribute('data-region'); renderKpiTab(); return; }
       var mkt = e.target.closest('[data-market]');
       if (mkt) { kpiState.market = mkt.getAttribute('data-market'); kpiState.gran = 'shops'; renderKpiTab(); return; }
       var row = e.target.closest('[data-shop]'); if (row) openShop(row.getAttribute('data-shop'));
@@ -1612,7 +1664,7 @@
       return a ? { id: id, name: sd.name, market: sd.market, a: a } : null;
     }).filter(Boolean).sort(function (x, y) { return x.a.rulesAdherence - y.a.rulesAdherence; });   // worst adherence first
     var total = rows.length, CAP = 200, shown = rows.slice(0, CAP);
-    var showMkt = state.role === 'regional';
+    var showMkt = state.role === 'regional' || state.role === 'national';
     var avgAdh = (d.carriers[0] && d.carriers[0].shopAvg) ? d.carriers[0].shopAvg.rulesAdherence : 70;
     var f1 = function (x) { return Math.round(x * 10) / 10; };
     var options = '<option value="">All carriers</option>' + d.carriers.map(function (c) {
@@ -1892,10 +1944,12 @@
         ? MARKET.name + ' - a roll-up across the book of ' + MARKET.storeIds.length + ' shops, with a shop-by-shop scorecard. Drill into any shop from the selector.'
         : role === 'regional'
         ? rg.name + ' · ' + rg.division + ' - a roll-up across ' + rg.markets.length + ' markets, with a market-by-market scorecard. Drill into any market from the selector.'
+        : role === 'national'
+        ? 'Metrics rolled up across all ' + REGIONS.length + ' regions in ' + DIVISIONS.length + ' divisions. National managers monitor performance and aren’t assigned tasks; drill a region into its shops.'
         : 'One shop’s Action Plans and KPIs. Use the location selector to choose the shop.';
     }
-    kpiState.view = 'dashboard'; kpiState.shopId = null; kpiState.market = 'all'; kpiState.gran = 'shops'; kpiState.carriers = null;
-    state.store = role === 'market' ? 'book' : role === 'regional' ? 'region' : (DATA.defaultStoreId || (DATA.stores[0] && DATA.stores[0].id));
+    kpiState.view = 'dashboard'; kpiState.shopId = null; kpiState.market = 'all'; kpiState.division = 'all'; kpiState.region = null; kpiState.gran = role === 'national' ? 'regions' : 'shops'; kpiState.carriers = null;
+    state.store = role === 'market' ? 'book' : role === 'regional' ? 'region' : role === 'national' ? 'national' : (DATA.defaultStoreId || (DATA.stores[0] && DATA.stores[0].id));
     setStore(state.store);
   }
 

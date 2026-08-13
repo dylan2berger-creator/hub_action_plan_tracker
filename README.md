@@ -11,8 +11,8 @@ dashboard - switched from the nav and both driven by the shared store selector.
 
 ## Prototype view switcher (roles)
 
-A **Prototype** banner across the top lets you see the same tabs through three roles,
-each a wider scope than the last (shop → market → region):
+A **Prototype** banner across the top lets you see the same tabs through four roles,
+each a wider scope than the last (shop → market → region → national):
 
 - **General Manager (shop level)** - the default. One shop at a time; the location
   selector picks the shop, and both tabs show just that store.
@@ -35,6 +35,15 @@ each a wider scope than the last (shop → market → region):
   Markets / Region granularity toggle and a market filter - click any shop to open its
   detail. The Action Plans board shows the region's active plans. (See the KPIs tab
   section below for the full dashboard → shop detail → carrier scorecard flow.)
+- **National Manager (across all regions)** - scope becomes **every region in every
+  division**. National managers **monitor metrics, not tasks** - they aren't assigned
+  work; the KPIs tab is their view. The dashboard rolls revenue attainment up across the
+  whole company with a **Regions / Divisions / National** granularity toggle (default
+  **Regions**, one worst-first bar per region) and a **division filter**. The roll-up
+  **drills down**: click a **division** bar to open its regions, click a **region** bar
+  to drop to that region's **shops** (a breadcrumb returns you to all regions), and any
+  shop opens its detail → carrier scorecard. The Action Plans tab still shows the
+  national roll-up of every active plan, for reference.
 
 ![Regional Manager revenue-attainment dashboard](assets/preview-region.png)
 
