@@ -66,6 +66,10 @@ to Action Plans that only the National Manager sees**.
     **partner since**, **agreement renewal**, **review cadence**, **enrolled shops**, **DRP
     portal**, field rep + email/phone, **secondary contact**, **escalation contact**,
     internal owner, last review, and notes.
+  - **Active shops table** (above the activity logs, **collapsible, collapsed by
+    default**): every shop carrying that carrier's DRP volume, worst-first, with its
+    **per-shop DRP score** (color-coded on the same 0-100 scale the KPIs tab uses),
+    market, and volume.
   - **Two levels of activity tracking**, side by side:
     - **Action-plan activity** - the tasks' own activity entries **grouped by action
       plan** (each entry labeled with its task), so you see the CPM/account-manager

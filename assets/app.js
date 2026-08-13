@@ -1194,7 +1194,7 @@
   var CARRIER_CADENCES = ['Monthly', 'Quarterly', 'Semi-annual', 'Ad hoc'];
   var CRM_OWNERS = ['Marcus Delgado', 'Elaine Cho', 'Nadia Haddad', 'Jamal Carter', 'Colin Pierce', "Megan O'Rourke", 'Grant Feldman', 'Bethany Cruz'];
   var carrierOverlay, carrierBody, crmWrap, editingCarrier = null;
-  var crmState = { mode: 'table', carrier: null };   // CRM tab: carrier list vs full profile
+  var crmState = { mode: 'table', carrier: null, shopsOpen: false };   // CRM tab: carrier list vs full profile; shops table collapsed by default
 
   function profileByName(name) { for (var i = 0; i < carrierProfiles.length; i++) if (carrierProfiles[i].name === name) return carrierProfiles[i]; return null; }
   function statusClass(s) { return s === 'Preferred' ? 'cs-pref' : s === 'Active' ? 'cs-active' : s === 'At risk' ? 'cs-risk' : 'cs-prospect'; }
@@ -1398,6 +1398,40 @@
     }).join('');
   }
 
+  // Active shops for a carrier: every instrumented shop carrying that carrier's DRP
+  // volume, with its per-shop DRP score (from the same scorecard the KPIs tab uses).
+  function carrierActiveShops(name) {
+    var rows = [];
+    ALL_STORE_IDS.forEach(function (id) {
+      var d = shopData(id); if (!d || !d.carriers) return;
+      var c = null;
+      for (var i = 0; i < d.carriers.length; i++) { if (d.carriers[i].name === name) { c = d.carriers[i]; break; } }
+      if (!c) return;
+      var sh = shopById(id);
+      rows.push({ id: id, name: sh ? sh.name : id, market: sh ? sh.market : '', score: c.score, volume: c.volume });
+    });
+    rows.sort(function (a, b) { return a.score - b.score; });   // worst DRP score first
+    return rows;
+  }
+  // Collapsible "active shops" table; default collapsed, state kept in crmState.shopsOpen.
+  function carrierShopsSectionHTML(name, open) {
+    var rows = carrierActiveShops(name);
+    var head = '<button type="button" class="cd-collapse" data-cc="toggle-shops" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+      '<svg class="cd-chev" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>' +
+      '<span class="cd-shops-title">Active shops <span class="cd-badge">' + rows.length + '</span></span>' +
+      '<span class="cd-hsub">DRP score by shop</span></button>';
+    var body = rows.length
+      ? '<div class="crm-scroll"><table class="crm-table cds-table"><thead><tr><th>Shop</th><th>Market</th><th class="cds-c">DRP score</th><th class="crm-num">Volume</th></tr></thead><tbody>' +
+          rows.map(function (s) {
+            var cls = s.score >= 80 ? 'ok' : s.score >= 65 ? 'warn' : 'bad';
+            return '<tr><td class="cds-shop">' + esc(s.name) + '</td><td>' + esc(s.market) + '</td>' +
+              '<td class="cds-c"><span class="score-pill ' + cls + '">' + s.score + '</span></td>' +
+              '<td class="crm-num">' + s.volume + '</td></tr>';
+          }).join('') + '</tbody></table></div>'
+      : '<div class="ctx-sub">No shops are currently carrying ' + esc(name) + ' volume.</div>';
+    return '<div class="cd-section cd-shops' + (open ? ' open' : '') + '">' + head + (open ? '<div class="cd-shops-body">' + body + '</div>' : '') + '</div>';
+  }
+
   function carrierDetailHTML(p) {
     var st = carrierStats(p.name);
     var book = st.plans
@@ -1424,6 +1458,7 @@
         '</div>' +
         (p.notes ? '<div class="cv-notes"><span class="cv-k">Notes</span><p>' + esc(p.notes) + '</p></div>' : '') +
       '</div>' +
+      carrierShopsSectionHTML(p.name, crmState.shopsOpen) +
       '<div class="cd-activity">' +
         '<div class="cd-col"><div class="cd-h">Action-plan activity <span class="cd-hsub">grouped by plan</span></div>' +
           '<div class="cd-scroll">' + carrierPlanActivityHTML(p.name) + '</div></div>' +
@@ -1447,7 +1482,7 @@
     var ni = crmWrap.querySelector('.crm-note-input'); if (ni) ni.focus();
   }
 
-  function crmShowDetail(name) { crmState.mode = 'detail'; crmState.carrier = name; renderCrm(); }
+  function crmShowDetail(name) { crmState.mode = 'detail'; crmState.carrier = name; crmState.shopsOpen = false; renderCrm(); }
   function crmShowTable() { crmState.mode = 'table'; crmState.carrier = null; renderCrm(); }
   function onCrmClick(e) {
     var cc = e.target.closest('[data-cc]');
@@ -1456,6 +1491,7 @@
       if (a === 'back') crmShowTable();
       else if (a === 'edit-detail') openCarrier(crmState.carrier, 'edit');
       else if (a === 'add-crm-note') addCrmNote(crmState.carrier);
+      else if (a === 'toggle-shops') { crmState.shopsOpen = !crmState.shopsOpen; renderCrm(); }
       return;
     }
     var ed = e.target.closest('[data-carrier-edit]');
