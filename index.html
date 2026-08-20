@@ -15,6 +15,7 @@
   <div class="proto-banner" role="region" aria-label="Prototype view switcher">
     <span class="proto-tag">Prototype</span>
     <span class="proto-lead">Viewing as</span>
+    <span class="proto-current" id="protoCurrent" aria-hidden="true"></span>
     <div class="proto-roles" id="protoRoles" role="group" aria-label="Role">
       <button type="button" class="proto-role on" data-role="gm" aria-pressed="true">General Manager<small>Shop level</small></button>
       <button type="button" class="proto-role" data-role="market" aria-pressed="false">Market Manager<small>Book of ~10 shops</small></button>
@@ -23,6 +24,9 @@
       <button type="button" class="proto-role" data-role="nationalcrm" aria-pressed="false">National Manager w/ CRM<small>National + carrier CRM</small></button>
     </div>
     <span class="proto-note" id="protoNote"></span>
+    <button type="button" class="proto-toggle" id="protoToggle" aria-expanded="true" aria-controls="protoRoles" title="Collapse" aria-label="Collapse view switcher">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+    </button>
   </div>
 
   <!-- ================= Navigation bar - real Hub ClientLayout shell ================= -->
