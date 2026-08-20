@@ -254,6 +254,9 @@
   function fmtDateTime(s, mins) { var d = fmtDate(s); if (!d) return ''; var tm = fmtTime(mins); return tm ? d + ' · ' + tm : d; }
   function fmtDateY(s) { var d = parseISO(s); if (!d) return ''; return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
   function fmtNum(n) { return String(n == null ? 0 : n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }   // thousands separators, ICU-independent
+  // "National Manager" and "National Manager w/ CRM" share every rollup/viewing behavior;
+  // only the CRM tab (and its carrier-chip entry points) is gated to the w/ CRM persona.
+  function isNational(r) { return r === 'national' || r === 'nationalcrm'; }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function uid() { taskSeq += 1; return 'T-' + taskSeq; }
   function initials(name) { var p = String(name || '').trim().split(/\s+/).filter(Boolean); if (!p.length) return '-'; if (p.length === 1) return p[0].slice(0, 2).toUpperCase(); return (p[0][0] + p[p.length - 1][0]).toUpperCase(); }
@@ -724,10 +727,10 @@
     row.classList.toggle('required', req);
     if (!req) row.classList.remove('invalid');   // clear a stale error once it's no longer required
   }
-  // National managers get a "View CRM profile" link next to a chosen carrier in the task editor.
+  // The "National Manager w/ CRM" persona gets a "View CRM profile" link next to a chosen carrier in the task editor.
   function updateCarrierProfileLink() {
     var b = document.getElementById('carrierProfileLink'); if (!b) return;
-    b.style.display = (state.role === 'national' && fCarrier && fCarrier.value) ? '' : 'none';
+    b.style.display = (state.role === 'nationalcrm' && fCarrier && fCarrier.value) ? '' : 'none';
   }
 
   function planLabel(p) { var s = STORE_BY_ID[p.storeId]; return (s ? s.name : p.storeId) + ' - Action plan'; }
@@ -841,7 +844,7 @@
 
   // The person acting in the current persona - attributed to new activity entries.
   function currentActor() {
-    if (state.role === 'national') return 'National Manager';
+    if (isNational(state.role)) return 'National Manager';
     if (state.role === 'regional') return currentRegion().manager || 'Regional Manager';
     if (state.role === 'market') return (MARKET && MARKET.manager) || 'Market Manager';
     var sid = scopeIds()[0];                                   // GM: the shop's own GM if we can find one
@@ -952,7 +955,7 @@
       var bookPlans = MARKET.storeIds.reduce(function (a, id) { return a + planCount(id); }, 0);
       items = [{ id: 'book', name: 'All my shops', count: bookPlans, sub: MARKET.storeIds.length + ' shops' }]
         .concat(MARKET.storeIds.map(function (id) { var s = STORE_BY_ID[id]; return { id: id, name: s ? s.name : id, count: planCount(id) }; }));
-    } else if (state.role === 'national') {
+    } else if (isNational(state.role)) {
       var natPlans = ALL_STORE_IDS.reduce(function (a, id) { return a + planCount(id); }, 0);
       items = [{ id: 'national', name: 'All shops', count: natPlans, sub: REGIONS.length + ' regions' }]
         .concat((DATA.stores || []).map(function (s) { return { id: s.id, name: s.name, count: taskCounts[s.id] || 0 }; }));
@@ -1235,7 +1238,7 @@
   var CARRIERS = DATA.carriers || [];
   var RULE_TEXTS = DATA.ruleTexts || [];
 
-  /* =================== Carrier CRM (National Manager only) ===================
+  /* =============== Carrier CRM ("National Manager w/ CRM" persona) ===============
      A mini relationship profile per carrier, opened from a carrier chip on any
      task and managed on the CRM tab. Profiles live in memory, seeded from data. */
   var carrierProfiles = (DATA.carrierProfiles || []).map(function (c) {
@@ -1314,10 +1317,10 @@
     return { plans: Object.keys(plans).length, shops: Object.keys(shops).length, open: open, total: total };
   }
   // Carrier chip: a plain pill for most personas, a clickable "bubble" that opens the
-  // CRM profile for the National Manager.
+  // CRM profile for the "National Manager w/ CRM" persona.
   function carrierChipHTML(carrier) {
     if (!carrier) return '';
-    if (state.role === 'national') {
+    if (state.role === 'nationalcrm') {
       return '<button type="button" class="chip chip-gray carr-link" data-carrier-profile="' + esc(carrier) +
         '" title="Open ' + esc(carrier) + ' CRM profile">' + esc(carrier) + '</button>';
     }
@@ -1820,7 +1823,7 @@
   /* ---- scope resolution (persona + in-pane market filter) ---- */
   function baseShopIds() {
     var ids;
-    if (state.role === 'national') {
+    if (isNational(state.role)) {
       var shops = (kpiState.region && REGION_BY_ID[kpiState.region]) ? shopsOfRegion(REGION_BY_ID[kpiState.region]) : shopsOfNation();
       ids = shops.map(function (s) { return s.id; });
     }
@@ -1836,7 +1839,7 @@
     var sh = shopById(state.store); return sh ? [sh.market] : [];
   }
   function scopeTitle() {
-    if (state.role === 'national') return (kpiState.region && REGION_BY_ID[kpiState.region]) ? REGION_BY_ID[kpiState.region].name
+    if (isNational(state.role)) return (kpiState.region && REGION_BY_ID[kpiState.region]) ? REGION_BY_ID[kpiState.region].name
       : (kpiState.division && kpiState.division !== 'all') ? kpiState.division : 'All Regions';
     if (state.role === 'regional') return currentRegion().name;
     if (state.role === 'market') return MARKET.name;
@@ -1847,7 +1850,7 @@
   var _scopeCarrierCache = {};
   function scopeMonth(i) { var mi = (CUR_MONTH - 11 + i + 1200) % 12; return { mi: mi, label: MONTH_ABBR[mi] }; }
   function scopeCarrierData() {
-    var key = state.role + '|' + (kpiState.market || 'all') + '|' + (state.role === 'national' ? ('nat:' + (kpiState.division || 'all') + ':' + (kpiState.region || 'all')) : state.role === 'regional' ? currentRegion().id : MARKET.name);
+    var key = state.role + '|' + (kpiState.market || 'all') + '|' + (isNational(state.role) ? ('nat:' + (kpiState.division || 'all') + ':' + (kpiState.region || 'all')) : state.role === 'regional' ? currentRegion().id : MARKET.name);
     if (_scopeCarrierCache[key]) return _scopeCarrierCache[key];
     var ids = baseShopIds(), byName = {};
     ids.forEach(function (id) {
@@ -1897,7 +1900,7 @@
   // chart entities depending on granularity
   function chartEntities() {
     var ids = baseShopIds();
-    if (state.role === 'national') {
+    if (isNational(state.role)) {
       if (kpiState.region && REGION_BY_ID[kpiState.region]) {                                            // drilled into a region -> its shops
         return ids.map(function (id) { var rv = revFor(id, kpiState.period), sh = shopById(id); return { key: id, name: sh.name, shop: true, variancePct: rv.variancePct, actual: rv.actual, target: rv.target }; });
       }
@@ -1944,13 +1947,13 @@
     var granBtns = '';
     if (state.role === 'regional') granBtns = ['shops', 'markets', 'region'].map(function (g) { return '<button type="button" class="seg' + (kpiState.gran === g ? ' on' : '') + '" data-gran="' + g + '">' + g.charAt(0).toUpperCase() + g.slice(1) + '</button>'; }).join('');
     else if (state.role === 'market') granBtns = ['shops', 'markets', 'region'].map(function (g) { return '<button type="button" class="seg' + (kpiState.gran === g ? ' on' : '') + '" data-gran="' + g + '">' + (g === 'shops' ? 'Shops' : g === 'markets' ? 'Market' : 'Book') + '</button>'; }).join('');
-    else if (state.role === 'national') granBtns = ['regions', 'divisions', 'national'].map(function (g) { return '<button type="button" class="seg' + (!kpiState.region && kpiState.gran === g ? ' on' : '') + '" data-gran="' + g + '">' + (g === 'national' ? 'National' : g.charAt(0).toUpperCase() + g.slice(1)) + '</button>'; }).join('');
+    else if (isNational(state.role)) granBtns = ['regions', 'divisions', 'national'].map(function (g) { return '<button type="button" class="seg' + (!kpiState.region && kpiState.gran === g ? ' on' : '') + '" data-gran="' + g + '">' + (g === 'national' ? 'National' : g.charAt(0).toUpperCase() + g.slice(1)) + '</button>'; }).join('');
     var mkts = scopeMarkets();
     var mktOptions = '<option value="all">All markets</option>' + mkts.map(function (m) { return '<option value="' + esc(m) + '"' + (kpiState.market === m ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('');
     // National uses a Division filter in place of the Market filter; a region drill hides it behind a breadcrumb.
-    var inRegionMode = state.role === 'national' && kpiState.region && REGION_BY_ID[kpiState.region];
+    var inRegionMode = isNational(state.role) && kpiState.region && REGION_BY_ID[kpiState.region];
     var filterCtl;
-    if (state.role === 'national') {
+    if (isNational(state.role)) {
       var divOptions = '<option value="all">All divisions</option>' + DIVISIONS.map(function (d) { return '<option value="' + esc(d) + '"' + (kpiState.division === d ? ' selected' : '') + '>' + esc(d) + '</option>'; }).join('');
       filterCtl = inRegionMode ? '' : '<label class="wk-select dash-mkt"><span class="dash-mkt-l">Filter</span><select id="dashDivision" aria-label="Division filter">' + divOptions + '</select></label>';
     } else {
@@ -1984,7 +1987,7 @@
     wireDashboard();
     wireCarrierPanel(scopeCarrierData());
   }
-  function roleWord() { return state.role === 'national' ? 'National Manager' : state.role === 'regional' ? 'Regional Manager · ' + currentRegion().division : state.role === 'market' ? 'Market Manager' : 'General Manager'; }
+  function roleWord() { return isNational(state.role) ? 'National Manager' : state.role === 'regional' ? 'Regional Manager · ' + currentRegion().division : state.role === 'market' ? 'Market Manager' : 'General Manager'; }
 
   function raChartHTML(ents) {
     function pos(v) { return clamp((v - RA_MIN) / (RA_MAX - RA_MIN) * 100, 0, 100); }
@@ -2268,7 +2271,7 @@
       return a ? { id: id, name: sd.name, market: sd.market, a: a } : null;
     }).filter(Boolean).sort(function (x, y) { return x.a.rulesAdherence - y.a.rulesAdherence; });   // worst adherence first
     var total = rows.length, CAP = 200, shown = rows.slice(0, CAP);
-    var showMkt = state.role === 'regional' || state.role === 'national';
+    var showMkt = state.role === 'regional' || isNational(state.role);
     var avgAdh = (d.carriers[0] && d.carriers[0].shopAvg) ? d.carriers[0].shopAvg.rulesAdherence : 70;
     var f1 = function (x) { return Math.round(x * 10) / 10; };
     var options = '<option value="">All carriers</option>' + d.carriers.map(function (c) {
@@ -2555,24 +2558,27 @@
       var on = b.getAttribute('data-role') === role;
       b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
     });
-    // The CRM tab is National-Manager-only; leaving that persona hides it and any open CRM view.
+    // The CRM tab is gated to the "National Manager w/ CRM" persona; leaving it hides the tab and any open CRM view.
     var navCrm = document.getElementById('navCrm');
-    if (navCrm) navCrm.style.display = role === 'national' ? '' : 'none';
+    if (navCrm) navCrm.style.display = role === 'nationalcrm' ? '' : 'none';
     crmState.mode = 'table'; crmState.carrier = null;
-    if (role !== 'national') { closeCarrier(); if (state.view === 'crm') setView('plans'); }
+    if (role !== 'nationalcrm') { closeCarrier(); if (state.view === 'crm') setView('plans'); }
     var note = document.getElementById('protoNote');
     if (note) {
       var rg = currentRegion();
+      var natNote = 'Metrics rolled up across all ' + REGIONS.length + ' regions in ' + DIVISIONS.length + ' divisions. National managers monitor performance and aren’t assigned tasks; drill a region into its shops.';
       note.textContent = role === 'market'
         ? MARKET.name + ' - a roll-up across the book of ' + MARKET.storeIds.length + ' shops, with a shop-by-shop scorecard. Drill into any shop from the selector.'
         : role === 'regional'
         ? rg.name + ' · ' + rg.division + ' - a roll-up across ' + rg.markets.length + ' markets, with a market-by-market scorecard. Drill into any market from the selector.'
+        : role === 'nationalcrm'
+        ? natNote + ' Carrier CRM tab enabled for relationship management.'
         : role === 'national'
-        ? 'Metrics rolled up across all ' + REGIONS.length + ' regions in ' + DIVISIONS.length + ' divisions. National managers monitor performance and aren’t assigned tasks; drill a region into its shops.'
+        ? natNote
         : 'One shop’s Action Plans and KPIs. Use the location selector to choose the shop.';
     }
-    kpiState.view = 'dashboard'; kpiState.shopId = null; kpiState.market = 'all'; kpiState.division = 'all'; kpiState.region = null; kpiState.gran = role === 'national' ? 'regions' : 'shops'; kpiState.carriers = null;
-    state.store = role === 'market' ? 'book' : role === 'regional' ? 'region' : role === 'national' ? 'national' : (DATA.defaultStoreId || (DATA.stores[0] && DATA.stores[0].id));
+    kpiState.view = 'dashboard'; kpiState.shopId = null; kpiState.market = 'all'; kpiState.division = 'all'; kpiState.region = null; kpiState.gran = isNational(role) ? 'regions' : 'shops'; kpiState.carriers = null;
+    state.store = role === 'market' ? 'book' : role === 'regional' ? 'region' : isNational(role) ? 'national' : (DATA.defaultStoreId || (DATA.stores[0] && DATA.stores[0].id));
     setStore(state.store);
   }
 
