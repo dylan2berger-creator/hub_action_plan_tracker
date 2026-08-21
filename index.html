@@ -15,7 +15,6 @@
   <div class="proto-banner" role="region" aria-label="Prototype view switcher">
     <span class="proto-tag">Prototype</span>
     <span class="proto-lead">Viewing as</span>
-    <span class="proto-current" id="protoCurrent" aria-hidden="true"></span>
     <div class="proto-roles" id="protoRoles" role="group" aria-label="Role">
       <button type="button" class="proto-role on" data-role="gm" aria-pressed="true">General Manager<small>Shop level</small></button>
       <button type="button" class="proto-role" data-role="market" aria-pressed="false">Market Manager<small>Book of ~10 shops</small></button>
@@ -61,6 +60,10 @@
     </nav>
 
     <div class="nav-actions">
+      <button type="button" class="proto-show" id="protoShow" title="Show prototype view switcher" aria-label="Show prototype view switcher" aria-expanded="false">
+        <span class="proto-tag">Prototype</span>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="m7 10 5 5 5-5z"/></svg>
+      </button>
       <div class="shop-selector-wrap">
         <button class="shop-selector" id="shopBtn" aria-haspopup="listbox" aria-expanded="false" aria-label="Select store">
           <svg class="pin" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C7.8 2 4 5.22 4 10.2c0 3.32 2.67 7.25 8 11.8 5.33-4.55 8-8.48 8-11.8C20 5.22 16.2 2 12 2m0 10.2a2 2 0 1 1 0-4 2 2 0 0 1 0 4"/></svg>

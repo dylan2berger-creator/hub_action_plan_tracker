@@ -2552,20 +2552,12 @@
     renderDashboard();
   }
 
-  // Mirror the active persona's name into the collapsed-banner label.
-  function syncProtoCurrent() {
-    var pc = document.getElementById('protoCurrent'); if (!pc) return;
-    var onb = document.querySelector('.proto-role.on'); if (!onb) return;
-    var first = onb.childNodes[0];
-    pc.textContent = (first && first.nodeType === 3) ? first.nodeValue.trim() : onb.textContent.trim();
-  }
   function setRole(role) {
     state.role = role;
     Array.prototype.forEach.call(document.querySelectorAll('.proto-role'), function (b) {
       var on = b.getAttribute('data-role') === role;
       b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
     });
-    syncProtoCurrent();
     // The CRM tab is gated to the "National Manager w/ CRM" persona; leaving it hides the tab and any open CRM view.
     var navCrm = document.getElementById('navCrm');
     if (navCrm) navCrm.style.display = role === 'nationalcrm' ? '' : 'none';
@@ -2765,17 +2757,16 @@
     });
     var pn = document.getElementById('protoNote');
     if (pn) pn.textContent = 'One shop’s Action Plans and KPIs. Use the location selector to choose the shop.';
-    syncProtoCurrent();
-    // Collapse / expand the "Viewing as" banner.
+    // Collapse hides the whole "Viewing as" banner; a compact pill in the nav re-opens it.
+    function setBannerCollapsed(collapsed) {
+      document.body.classList.toggle('proto-collapsed', collapsed);
+      var t = document.getElementById('protoToggle'); if (t) t.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      var s = document.getElementById('protoShow'); if (s) s.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
     var protoToggle = document.getElementById('protoToggle');
-    if (protoToggle) protoToggle.addEventListener('click', function () {
-      var banner = document.querySelector('.proto-banner'); if (!banner) return;
-      var collapsed = banner.classList.toggle('collapsed');
-      protoToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-      protoToggle.setAttribute('aria-label', collapsed ? 'Expand view switcher' : 'Collapse view switcher');
-      protoToggle.setAttribute('title', collapsed ? 'Expand' : 'Collapse');
-      if (collapsed) syncProtoCurrent();
-    });
+    if (protoToggle) protoToggle.addEventListener('click', function () { setBannerCollapsed(true); });
+    var protoShow = document.getElementById('protoShow');
+    if (protoShow) protoShow.addEventListener('click', function () { setBannerCollapsed(false); });
 
     var rz; window.addEventListener('resize', function () { if (state.view !== 'kpis') return; clearTimeout(rz); rz = setTimeout(function () { renderKpiTab(); }, 200); });
 
